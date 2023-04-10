@@ -1,0 +1,34 @@
+#pragma once
+
+#include <string>
+
+{% for enum in enums %}
+    {% if truthy(enum.attributes, "enum_") and not truthy(enum.attributes, "enum_.values.ignore") %}
+        {% if truthy(enum.scope) %}
+            namespace {{ enum.scope }}
+            {
+        {% endif %}
+                std::string_view to_string({{enum.name}} value)
+                {
+                    switch(value)
+                    {
+                        {% for enum_value in enum.enum_values %}
+                            {% if not truthy(enum_value.attributes, "enum_.values.ignore") %}
+                                case {{ enum.name }}::{{ enum_value.name }}:
+                                    {% if truthy(enum_value.attributes, "enum_.values.name") %}
+                                        return "{{ enum_value.attributes.enum_.values.name }}";
+                                    {% else %}
+                                        return "{{ enum_value.name }}";
+                                    {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                        default:
+                            return std::string();
+                    }
+                }
+        {% if truthy(enum.scope) %}
+            }
+
+        {% endif %}
+    {% endif %}
+{% endfor %}

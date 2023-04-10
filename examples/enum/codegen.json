@@ -1,0 +1,11 @@
+{
+  "steps": [
+    {
+      "name": "headers",
+      "input": "include/**/*.hpp",
+      "templates": [
+        "templates/enum.hpp.inja"
+      ]
+    }
+  ]
+}

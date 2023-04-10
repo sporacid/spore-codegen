@@ -1,0 +1,59 @@
+#pragma once
+
+#include "nlohmann/json.hpp"
+
+{% for class in classes %}
+    {% if truthy(class.attributes, "json") and not truthy(class.attributes, "json.values.ignore") %}
+        {% if truthy(class.scope) %}
+            namespace {{ class.scope }}
+            {
+        {% endif %}
+            {% if class.is_template %}
+                template < {# #}
+                    {% for template_param in class.template_params %}
+                        {{ template_param.type }} {{ template_param.name }} {% if not loop.is_last %}, {% endif %}
+                    {% endfor %}
+                > {# #}
+            {% else %}
+                inline
+            {% endif %}
+            void to_json(nlohmann::json& json, const {{ class.full_name }}& value)
+            {
+                {% for field in class.fields %}
+                    {% if not truthy(field.attributes, "json.values.ignore") %}
+                        {% if truthy(field.attributes, "json.values.name") %}
+                            json["{{ field.attributes.json.values.name }}"] = value.{{ field.name }};
+                        {% else %}
+                            json["{{ field.name }}"] = value.{{ field.name }};
+                        {% endif %}
+                    {% endif %}
+                {% endfor %}
+            }
+
+            {% if class.is_template %}
+                template < {# #}
+                    {% for template_param in class.template_params %}
+                        {{ template_param.type }} {{ template_param.name }} {% if not loop.is_last %}, {% endif %}
+                    {% endfor %}
+                > {# #}
+            {% else %}
+                inline
+            {% endif %}
+            void from_json(const nlohmann::json& json, {{ class.full_name }}& value)
+            {
+                {% for field in class.fields %}
+                    {% if not truthy(field.attributes, "json.values.ignore") %}
+                        {% if truthy(field.attributes, "json.values.name") %}
+                            json["{{ field.attributes.json.values.name }}"].get_to(value.{{ field.name }});
+                        {% else %}
+                            json["{{ field.name }}"].get_to(value.{{ field.name }});
+                        {% endif %}
+                    {% endif %}
+                {% endfor %}
+            }
+        {% if truthy(class.scope) %}
+            }
+
+        {% endif %}
+    {% endif %}
+{% endfor %}
