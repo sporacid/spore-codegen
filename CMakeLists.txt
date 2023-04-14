@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.15)
 
 cmake_policy(SET CMP0048 NEW)
 cmake_policy(SET CMP0077 NEW)
@@ -33,6 +33,8 @@ configure_file(
 # Removes warning for undefined attributes
 add_compile_options(
   "$<$<CXX_COMPILER_ID:MSVC>:/wd5030>"
+  "$<$<CXX_COMPILER_ID:GNU>:-Wno-attributes>"
+  "$<$<CXX_COMPILER_ID:Clang>:-Wno-attributes>"
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")

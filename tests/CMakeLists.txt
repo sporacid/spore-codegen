@@ -42,4 +42,6 @@ list(
 include(CTest)
 include(Catch)
 
+enable_testing()
+
 catch_discover_tests(${SPORE_CODEGEN_TESTS})
