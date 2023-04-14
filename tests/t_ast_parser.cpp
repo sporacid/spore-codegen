@@ -108,6 +108,20 @@ TEMPLATE_TEST_CASE("ast parsers are feature complete", "[spore::codegen][spore::
             // REQUIRE(class_.fields[1].scope == "class_.full_name()");
         }
 
+        SECTION("parse class constructor is feature complete")
+        {
+            REQUIRE(class_.constructors.size() == 1);
+
+            REQUIRE(class_.constructors[0].attributes.size() == 1);
+            REQUIRE(class_.constructors[0].attributes[0].name == "_constructor_attribute");
+            REQUIRE(class_.constructors[0].arguments.size() == 1);
+            REQUIRE(class_.constructors[0].arguments[0].name == "_arg");
+            REQUIRE(class_.constructors[0].arguments[0].type.name == "int");
+            REQUIRE(class_.constructors[0].arguments[0].attributes.size() == 1);
+            REQUIRE(class_.constructors[0].arguments[0].attributes[0].name == "_constructor_argument_attribute");
+            REQUIRE(class_.constructors[0].arguments[0].default_value.has_value() == false);
+        }
+
         SECTION("parse class function is feature complete")
         {
             REQUIRE(class_.functions.size() == 2);

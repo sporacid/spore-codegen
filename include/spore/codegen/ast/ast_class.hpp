@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "spore/codegen/ast/ast_attribute.hpp"
+#include "spore/codegen/ast/ast_constructor.hpp"
 #include "spore/codegen/ast/ast_field.hpp"
 #include "spore/codegen/ast/ast_function.hpp"
 #include "spore/codegen/ast/ast_name.hpp"
@@ -25,5 +26,6 @@ namespace spore::codegen
         std::vector<ast_ref> bases;
         std::vector<ast_field> fields;
         std::vector<ast_function> functions;
+        std::vector<ast_constructor> constructors;
     };
 }
