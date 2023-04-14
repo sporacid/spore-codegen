@@ -255,7 +255,7 @@ namespace spore::codegen
             return argument;
         }
 
-        ast_function parse_function(const cppast::cpp_function_base& cpp_function_base)
+        ast_function parse_function(const cppast::cpp_function_base& cpp_function_base, const cppast::cpp_template* cpp_template = nullptr)
         {
             ast_function function;
             function.name = cpp_function_base.name();
@@ -307,19 +307,40 @@ namespace spore::codegen
                     return parse_argument(cpp_parameter);
                 });
 
+            if (cpp_template != nullptr)
+            {
+                std::transform(cpp_template->parameters().begin(), cpp_template->parameters().end(), std::back_inserter(function.template_params),
+                    [&](const cppast::cpp_template_parameter& cpp_template_param) {
+                        return parse_template_param(cpp_template_param);
+                    });
+            }
+
             return function;
         }
 
-        ast_function parse_function(const cppast::cpp_function_template& cpp_function_template)
+        ast_constructor parse_constructor(const cppast::cpp_constructor& cpp_constructor, const cppast::cpp_template* cpp_template = nullptr)
         {
-            ast_function function = parse_function(cpp_function_template.function());
+            ast_constructor constructor;
 
-            std::transform(cpp_function_template.parameters().begin(), cpp_function_template.parameters().end(), std::back_inserter(function.template_params),
-                [&](const cppast::cpp_template_parameter& cpp_template_param) {
-                    return parse_template_param(cpp_template_param);
+            std::transform(cpp_constructor.attributes().begin(), cpp_constructor.attributes().end(), std::back_inserter(constructor.attributes),
+                [&](const cppast::cpp_attribute& cpp_attribute) {
+                    return parse_attribute(cpp_attribute);
                 });
 
-            return function;
+            std::transform(cpp_constructor.parameters().begin(), cpp_constructor.parameters().end(), std::back_inserter(constructor.arguments),
+                [&](const cppast::cpp_function_parameter& cpp_parameter) {
+                    return parse_argument(cpp_parameter);
+                });
+
+            if (cpp_template != nullptr)
+            {
+                std::transform(cpp_template->parameters().begin(), cpp_template->parameters().end(), std::back_inserter(constructor.template_params),
+                    [&](const cppast::cpp_template_parameter& cpp_template_param) {
+                        return parse_template_param(cpp_template_param);
+                    });
+            }
+
+            return constructor;
         }
 
         ast_class parse_class(const cppast::cpp_class& cpp_class)
@@ -327,15 +348,6 @@ namespace spore::codegen
             ast_class class_;
             class_.name = cpp_class.name();
             class_.scope = find_scope(cpp_class);
-
-            auto a = cpp_class.semantic_scope();
-            auto b = cpp_class.scope_name().has_value() ? cpp_class.scope_name().value().name() : "";
-
-            if (cpp_class.parent().has_value())
-            {
-                const auto& c = cpp_class.parent().value();
-                (void) c;
-            }
 
             switch (cpp_class.class_kind())
             {
@@ -360,6 +372,10 @@ namespace spore::codegen
                     return parse_ref(cpp_base_class);
                 });
 
+            const auto is_definition = [](const cppast::cpp_function_base& cpp_function) {
+                return cpp_function.body_kind() == cppast::cpp_function_definition;
+            };
+
             for (const cppast::cpp_entity& cpp_entity : cpp_class)
             {
                 switch (cpp_entity.kind())
@@ -369,12 +385,22 @@ namespace spore::codegen
                         class_.fields.emplace_back(parse_field(cpp_variable));
                         break;
                     }
+                    case cppast::cpp_entity_kind::constructor_t: {
+                        const auto& cpp_constructor = dynamic_cast<const cppast::cpp_constructor&>(cpp_entity);
+
+                        if (is_definition(cpp_constructor))
+                        {
+                            class_.constructors.emplace_back(parse_constructor(cpp_constructor));
+                        }
+
+                        break;
+                    }
+
                     case cppast::cpp_entity_kind::function_t:
                     case cppast::cpp_entity_kind::member_function_t: {
                         const auto& cpp_function = dynamic_cast<const cppast::cpp_function_base&>(cpp_entity);
 
-                        if (cpp_function.body_kind() != cppast::cpp_function_body_kind::cpp_function_deleted &&
-                            cpp_function.body_kind() != cppast::cpp_function_body_kind::cpp_function_defaulted)
+                        if (is_definition(cpp_function))
                         {
                             class_.functions.emplace_back(parse_function(cpp_function));
                         }
@@ -384,10 +410,17 @@ namespace spore::codegen
                     case cppast::cpp_entity_kind::function_template_t: {
                         const auto& cpp_function_template = dynamic_cast<const cppast::cpp_function_template&>(cpp_entity);
 
-                        if (cpp_function_template.function().body_kind() != cppast::cpp_function_body_kind::cpp_function_deleted &&
-                            cpp_function_template.function().body_kind() != cppast::cpp_function_body_kind::cpp_function_defaulted)
+                        if (is_definition(cpp_function_template.function()))
                         {
-                            class_.functions.emplace_back(parse_function(cpp_function_template));
+                            if (cpp_function_template.function().kind() == cppast::cpp_entity_kind::constructor_t)
+                            {
+                                const auto& cpp_constructor = dynamic_cast<const cppast::cpp_constructor&>(cpp_function_template.function());
+                                class_.constructors.emplace_back(parse_constructor(cpp_constructor, &cpp_function_template));
+                            }
+                            else
+                            {
+                                class_.functions.emplace_back(parse_function(cpp_function_template.function(), &cpp_function_template));
+                            }
                         }
 
                         break;
@@ -520,7 +553,7 @@ namespace spore::codegen
                         }
                         case cppast::cpp_entity_kind::function_template_t: {
                             const auto& cpp_function_template = dynamic_cast<const cppast::cpp_function_template&>(cpp_entity);
-                            file.functions.emplace_back(parse_function(cpp_function_template));
+                            file.functions.emplace_back(parse_function(cpp_function_template.function(), &cpp_function_template));
                             break;
                         }
                         case cppast::cpp_entity_kind::function_t: {

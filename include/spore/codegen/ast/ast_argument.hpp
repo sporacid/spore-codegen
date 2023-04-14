@@ -2,11 +2,8 @@
 
 #include <optional>
 #include <string>
-#include <vector>
 
-#include "spore/codegen/ast/ast_field.hpp"
-#include "spore/codegen/ast/ast_function.hpp"
-#include "spore/codegen/ast/ast_name.hpp"
+#include "spore/codegen/ast/ast_attribute.hpp"
 #include "spore/codegen/ast/ast_ref.hpp"
 
 namespace spore::codegen

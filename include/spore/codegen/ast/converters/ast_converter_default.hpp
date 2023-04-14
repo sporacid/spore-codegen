@@ -113,6 +113,16 @@ namespace spore::codegen
         json["return_type"] = value.return_type;
     }
 
+    void to_json(nlohmann::json& json, const ast_constructor& value)
+    {
+        to_json(json, static_cast<const ast_has_attributes<ast_constructor>&>(value));
+        to_json(json, static_cast<const ast_has_template_params<ast_constructor>&>(value));
+
+        json["id"] = details::make_unique_id();
+        json["flags"] = value.flags;
+        json["arguments"] = value.arguments;
+    }
+
     void to_json(nlohmann::json& json, const ast_field& value)
     {
         to_json(json, static_cast<const ast_has_attributes<ast_field>&>(value));

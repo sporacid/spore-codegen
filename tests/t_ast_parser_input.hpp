@@ -4,8 +4,7 @@
 
 namespace _namespace1::_namespace2
 {
-    enum class [[_enum_attribute(key1 = value1, key2)]] _enum
-    {
+    enum class [[_enum_attribute(key1 = value1, key2)]] _enum {
         _value1 [[_enum_value_attribute]],
         _value2 = 42,
     };
@@ -18,6 +17,12 @@ namespace _namespace1::_namespace2
     {
         [[_field_attribute]] int _i = 42;
         std::string _s;
+
+        _struct() = default;
+
+        [[_constructor_attribute]] _struct([[_constructor_argument_attribute]] int _arg)
+        {
+        }
 
         [[_member_func_attribute]] int _member_func([[_argument_attribute]] int _arg)
         {
