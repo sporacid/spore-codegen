@@ -26,7 +26,7 @@ namespace spore::codegen
 
             if constexpr (std::is_convertible_v<ast_value_t, ast_has_template_params<ast_value_t>>)
             {
-                const auto& has_template_params = reinterpret_cast<const ast_value_t&>(*this);
+                const auto& has_template_params = static_cast<const ast_value_t&>(*this);
 
                 if (has_template_params.is_template())
                 {
