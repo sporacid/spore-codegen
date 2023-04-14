@@ -1,0 +1,19 @@
+name: ci
+on:
+  - pull_request
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+      - name: Setup Dependencies
+        run: |
+          sudo apt-get -qq update && 
+          sudo apt-get install -y llvm clang libclang-dev libtbb-dev ninja-build
+      - name: Configure CMake Project
+        run: cmake -B.cmake -G 'Ninja'
+      - name: Build CMake Project
+        run: cmake --build .cmake --config Release
+      - name: Test CMake Project
+        run: ctest --test-dir .cmake/tests --no-tests=error --output-on-failure --verbose

@@ -39,7 +39,7 @@ target_link_libraries(
     spdlog
 )
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   find_package(TBB REQUIRED)
   target_link_libraries(
     ${SPORE_CODEGEN_BIN}
