@@ -23,7 +23,7 @@
                             {% endif %}
                         {% endfor %}
                         default:
-                            return std::string();
+                            return std::string_view();
                     }
                 }
         {% if truthy(enum.scope) %}
