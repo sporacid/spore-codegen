@@ -10,9 +10,9 @@
 
 namespace spore::codegen
 {
-    struct ast_function : ast_has_name<ast_function>,
+    struct ast_function : ast_has_attributes<ast_function>,
                           ast_has_flags<ast_function>,
-                          ast_has_attributes<ast_function>,
+                          ast_has_name<ast_function>,
                           ast_has_template_params<ast_function>
     {
         std::vector<ast_argument> arguments;

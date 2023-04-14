@@ -18,8 +18,8 @@ namespace spore::codegen
         struct_,
     };
 
-    struct ast_class : ast_has_name<ast_class>,
-                       ast_has_attributes<ast_class>,
+    struct ast_class : ast_has_attributes<ast_class>,
+                       ast_has_name<ast_class>,
                        ast_has_template_params<ast_class>
     {
         ast_class_type type = ast_class_type::unknown;
