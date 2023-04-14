@@ -9,8 +9,8 @@
 
 namespace spore::codegen
 {
-    struct ast_constructor : ast_has_flags<ast_constructor>,
-                             ast_has_attributes<ast_constructor>,
+    struct ast_constructor : ast_has_attributes<ast_constructor>,
+                             ast_has_flags<ast_constructor>,
                              ast_has_template_params<ast_constructor>
     {
         std::vector<ast_argument> arguments;
