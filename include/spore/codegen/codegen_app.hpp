@@ -72,6 +72,12 @@ namespace spore::codegen
         std::shared_ptr<ast_converter> converter = std::make_shared<ast_converter_default>();
         std::shared_ptr<codegen_renderer> renderer = std::make_shared<codegen_renderer_composite>(std::make_shared<codegen_renderer_inja>());
 
+        nlohmann::json user_data_json;
+        for (const std::pair<std::string,std::string>& pair : options.user_data)
+        {
+            user_data_json[pair.first] = pair.second;
+        }
+
         for (const codegen_config_step& step : config.steps)
         {
             std::vector<std::filesystem::path> inputs = glob::rglob(step.input);
@@ -106,6 +112,8 @@ namespace spore::codegen
                     {
                         throw codegen_error(codegen_error_code::rendering, "failed to convert input data to json, file={}", input.string());
                     }
+
+                    json_data["user_data"] = user_data_json;
 
                     for (const std::string& template_ : step.templates)
                     {

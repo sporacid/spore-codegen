@@ -12,6 +12,17 @@
 #include "spore/codegen/codegen_options.hpp"
 #include "spore/codegen/codegen_version.hpp"
 
+namespace details
+{
+    std::pair<std::string, std::string> parse_pair(const std::string& pair)
+    {
+        const auto equal_sign = pair.find_first_of("=:");
+        std::string name = equal_sign != std::string::npos ? pair.substr(0, equal_sign) : pair;
+        std::string value = equal_sign != std::string::npos ? pair.substr(equal_sign + 1) : "";
+        return std::pair(std::move(name), std::move(value));
+    }
+}
+
 int main(int argc, const char* argv[])
 {
     std::shared_ptr<spdlog::logger> logger = spdlog::stdout_color_st<spdlog::async_factory>("default");
@@ -55,12 +66,14 @@ int main(int argc, const char* argv[])
         .help("compiler definitions to add to clang compilation")
         .default_value(std::vector<std::pair<std::string, std::string>> {})
         .append()
-        .action([](const std::string& definition) {
-            const auto equal_sign = definition.find_first_of("=:");
-            std::string name = equal_sign != std::string::npos ? definition.substr(0, equal_sign) : definition;
-            std::string value = equal_sign != std::string::npos ? definition.substr(equal_sign + 1) : "";
-            return std::pair(std::move(name), std::move(value));
-        });
+        .action(&details::parse_pair);
+
+    arg_parser
+        .add_argument("-d", "--user-data")
+        .help("additional user data to be passed to the rendering stage, can be accessed through the `user_data` JSON property")
+        .default_value(std::vector<std::pair<std::string, std::string>> {})
+        .append()
+        .action(&details::parse_pair);
 
     arg_parser
         .add_argument("-s", "--cpp-standard")
@@ -119,6 +132,7 @@ int main(int argc, const char* argv[])
     options.includes = arg_parser.get<std::vector<std::string>>("--includes");
     options.features = arg_parser.get<std::vector<std::string>>("--features");
     options.definitions = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--definitions");
+    options.user_data = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--user-data");
     options.force = arg_parser.get<bool>("--force");
     options.reformat = arg_parser.get<bool>("--reformat");
     options.sequential = arg_parser.get<bool>("--sequential");

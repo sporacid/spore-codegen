@@ -15,6 +15,7 @@ namespace spore::codegen
         std::vector<std::string> includes;
         std::vector<std::string> features;
         std::vector<std::pair<std::string, std::string>> definitions;
+        std::vector<std::pair<std::string, std::string>> user_data;
         bool force = false;
         bool reformat = false;
         bool sequential = false;
