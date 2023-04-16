@@ -4,7 +4,7 @@ cmake-build-debug/
 cmake-build-release/
 
 # VScode files
-.vscode/ipch/
+.vscode/
 build/
 
 # Default excluded extensions
