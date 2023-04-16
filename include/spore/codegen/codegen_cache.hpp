@@ -9,6 +9,7 @@
 #include "spdlog/spdlog.h"
 
 #include "spore/codegen/codegen_helpers.hpp"
+#include "spore/codegen/codegen_version.hpp"
 
 namespace spore::codegen
 {
@@ -41,6 +42,7 @@ namespace spore::codegen
     struct codegen_cache
     {
         std::mutex mutex;
+        std::string version;
         std::vector<codegen_cache_entry> entries;
 
         bool check_and_update(const std::string_view& file)
@@ -87,11 +89,20 @@ namespace spore::codegen
 
     void to_json(nlohmann::json& json, const codegen_cache& value)
     {
-        json = value.entries;
+        json["version"] = SPORE_CODEGEN_VERSION;
+        json["entries"] = value.entries;
     }
 
     void from_json(const nlohmann::json& json, codegen_cache& value)
     {
-        json.get_to(value.entries);
+        if (json.type() == nlohmann::json::value_t::array)
+        {
+            json.get_to(value.entries);
+        }
+        else
+        {
+            json["version"].get_to(value.version);
+            json["entries"].get_to(value.entries);
+        }
     }
 }

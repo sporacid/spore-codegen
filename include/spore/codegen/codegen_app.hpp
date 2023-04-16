@@ -17,6 +17,7 @@
 #include "spore/codegen/codegen_error.hpp"
 #include "spore/codegen/codegen_helpers.hpp"
 #include "spore/codegen/codegen_options.hpp"
+#include "spore/codegen/codegen_version.hpp"
 #include "spore/codegen/renderers/codegen_renderer.hpp"
 #include "spore/codegen/renderers/codegen_renderer_composite.hpp"
 #include "spore/codegen/renderers/codegen_renderer_inja.hpp"
@@ -34,18 +35,23 @@ namespace spore::codegen
             throw codegen_error(codegen_error_code::io, "unable to read config, file={}", options.config);
         }
 
-        nlohmann::json config_json = nlohmann::json::parse(config_data);
-        from_json(config_json, config);
+        nlohmann::json::parse(config_data).get_to(config);
 
         std::string cache_data;
         std::string cache_file = (std::filesystem::path(options.output) / options.cache).string();
 
         if (!options.force && spore::codegen::read_file(cache_file, cache_data))
         {
-            nlohmann::json cache_json = nlohmann::json::parse(cache_data);
-            from_json(cache_json, cache);
+            nlohmann::json::parse(cache_data).get_to(cache);
 
-            SPDLOG_DEBUG("parsed cache, file={}", cache_file);
+            if (cache.version != SPORE_CODEGEN_VERSION)
+            {
+                SPDLOG_INFO("ignoring old cache, file={} version={}", cache_file, cache.version);
+            }
+            else
+            {
+                SPDLOG_DEBUG("using cache, file={}", cache_file);
+            }
         }
 
         cppast::libclang_compile_config cppast_config;
@@ -165,9 +171,7 @@ namespace spore::codegen
             }
         }
 
-        nlohmann::json cache_json;
-        to_json(cache_json, cache);
-        cache_data = cache_json.dump(2);
+        cache_data = nlohmann::json(cache).dump(2);
 
         if (!spore::codegen::write_file(cache_file, cache_data))
         {
