@@ -4,26 +4,22 @@ cmake_policy(SET CMP0048 NEW)
 cmake_policy(SET CMP0077 NEW)
 cmake_policy(SET CMP0079 NEW)
 
-project(spore.codegen VERSION 0.1.0)
-
 option(WITH_EXAMPLES "Whether to include examples" ON)
-option(WITH_TESTS "Whether to include tests" On)
+option(WITH_TESTS "Whether to include tests" ON)
 
 set(CMAKE_CXX_STANDARD 17)
 
 list(
   APPEND CMAKE_MODULE_PATH
-    ${CMAKE_SOURCE_DIR}/cmake
+   ${CMAKE_SOURCE_DIR}/cmake
 )
 
-include(FetchContent_argparse)
-include(FetchContent_catch2)
-include(FetchContent_cppast)
-include(FetchContent_fmt)
-include(FetchContent_glob)
-include(FetchContent_nlohmann_json)
-include(FetchContent_inja)
-include(FetchContent_spdlog)
+if (NOT SPORE_VERSION)
+  include(spore_version)
+  spore_get_version(SPORE_VERSION)
+endif ()
+
+project(spore.codegen VERSION ${SPORE_VERSION})
 
 configure_file(
   ${CMAKE_SOURCE_DIR}/include/spore/codegen/codegen_version.hpp.in
@@ -52,6 +48,15 @@ elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
     "$<$<CXX_COMPILER_ID:Clang>:-O3>"
   )
 endif ()
+
+include(FetchContent_argparse)
+include(FetchContent_catch2)
+include(FetchContent_cppast)
+include(FetchContent_fmt)
+include(FetchContent_glob)
+include(FetchContent_nlohmann_json)
+include(FetchContent_inja)
+include(FetchContent_spdlog)
 
 add_subdirectory(src)
 
