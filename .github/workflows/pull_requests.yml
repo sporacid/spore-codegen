@@ -11,6 +11,10 @@ jobs:
     name: Check Pull Request
     runs-on: ubuntu-latest
     steps:
+      - name: Check Name
+        uses: Slashgear/action-check-pr-title@v4.3.0
+        with:
+          regexp: '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test){1}(\([\w\-\.]+\))?(!)?: ([\w ])+([\s\S]*)'
       - name: Check Commit Message
         uses: gsactions/commit-message-checker@v2
         with:
