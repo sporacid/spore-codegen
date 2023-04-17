@@ -1,5 +1,5 @@
 function(spore_get_version SPORE_VERSION_OUT)
-  set(SPORE_VERSION_MAJOR 0)
+  set(SPORE_VERSION_MAJOR 1)
   set(SPORE_VERSION_MINOR 0)
   set(SPORE_VERSION_PATCH 0)
 
