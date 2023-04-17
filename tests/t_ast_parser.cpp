@@ -27,7 +27,7 @@ namespace details
     }
 }
 
-TEMPLATE_TEST_CASE("ast parsers are feature complete", "[spore::codegen][spore::codegen::ast_parser]", spore::codegen::ast_parser_cppast)
+TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codegen::ast_parser]", spore::codegen::ast_parser_cppast)
 {
     using ast_parser_t = TestType;
 
@@ -118,7 +118,7 @@ TEMPLATE_TEST_CASE("ast parsers are feature complete", "[spore::codegen][spore::
             REQUIRE(class_.constructors[0].arguments[0].name == "_arg");
             REQUIRE(class_.constructors[0].arguments[0].type.name == "int");
             REQUIRE(class_.constructors[0].arguments[0].attributes.size() == 1);
-            REQUIRE(class_.constructors[0].arguments[0].attributes[0].name == "_constructor_argument_attribute");
+            REQUIRE(class_.constructors[0].arguments[0].attributes[0].name == "_argument_attribute");
             REQUIRE(class_.constructors[0].arguments[0].default_value.has_value() == false);
         }
 
@@ -129,7 +129,7 @@ TEMPLATE_TEST_CASE("ast parsers are feature complete", "[spore::codegen][spore::
             REQUIRE(class_.functions[0].name == "_member_func");
             REQUIRE(class_.functions[0].return_type.name == "int");
             REQUIRE(class_.functions[0].attributes.size() == 1);
-            REQUIRE(class_.functions[0].attributes[0].name == "_member_func_attribute");
+            REQUIRE(class_.functions[0].attributes[0].name == "_func_attribute");
             REQUIRE(class_.functions[0].arguments.size() == 1);
             REQUIRE(class_.functions[0].arguments[0].name == "_arg");
             REQUIRE(class_.functions[0].arguments[0].type.name == "int");
@@ -140,36 +140,96 @@ TEMPLATE_TEST_CASE("ast parsers are feature complete", "[spore::codegen][spore::
             REQUIRE(class_.functions[1].name == "_template_member_func");
             REQUIRE(class_.functions[1].return_type.name == "_value_t");
             REQUIRE(class_.functions[1].attributes.size() == 1);
-            REQUIRE(class_.functions[1].attributes[0].name == "_template_member_func_attribute");
-            REQUIRE(class_.functions[1].template_params.size() == 1);
+            REQUIRE(class_.functions[1].attributes[0].name == "_func_attribute");
+            REQUIRE(class_.functions[1].template_params.size() == 2);
             REQUIRE(class_.functions[1].template_params[0].type == "typename");
             REQUIRE(class_.functions[1].template_params[0].name == "_value_t");
             REQUIRE(class_.functions[1].template_params[0].default_value.has_value() == false);
+            REQUIRE(class_.functions[1].template_params[1].type == "int");
+            REQUIRE(class_.functions[1].template_params[1].name == "_n");
+            REQUIRE(class_.functions[1].template_params[1].default_value.has_value());
+            REQUIRE(class_.functions[1].template_params[1].default_value == "42");
             REQUIRE(class_.functions[1].arguments.size() == 1);
             REQUIRE(class_.functions[1].arguments[0].name == "_arg");
             REQUIRE(class_.functions[1].arguments[0].type.name == "_value_t");
             REQUIRE(class_.functions[1].arguments[0].attributes.size() == 1);
-            REQUIRE(class_.functions[1].arguments[0].attributes[0].name == "_template_argument_attribute");
+            REQUIRE(class_.functions[1].arguments[0].attributes[0].name == "_argument_attribute");
             REQUIRE(class_.functions[1].arguments[0].default_value.has_value() == false);
         }
     }
 
     SECTION("parse class template is feature complete")
     {
+        const auto& class_ = file.classes[2];
+
+        REQUIRE(class_.name == "_struct_template");
+        REQUIRE(class_.scope == "_namespace1::_namespace2");
+        REQUIRE(class_.full_name() == "_namespace1::_namespace2::_struct_template<_value_t, _n>");
+        REQUIRE(class_.type == spore::codegen::ast_class_type::struct_);
+        REQUIRE(class_.attributes.size() == 1);
+        REQUIRE(class_.attributes[0].name == "_struct_attribute");
+        REQUIRE(class_.bases.size() == 1);
+        REQUIRE(class_.bases[0].name == "_base");
+        REQUIRE(class_.template_params.size() == 2);
+        REQUIRE(class_.template_params[0].type == "typename");
+        REQUIRE(class_.template_params[0].name == "_value_t");
+        REQUIRE(class_.template_params[0].default_value.has_value() == false);
+        REQUIRE(class_.template_params[1].type == "int");
+        REQUIRE(class_.template_params[1].name == "_n");
+        REQUIRE(class_.template_params[1].default_value.has_value());
+        REQUIRE(class_.template_params[1].default_value == "42");
+
+        REQUIRE(class_.fields.size() == 1);
+
+        REQUIRE(class_.fields[0].name == "_value");
+        REQUIRE(class_.fields[0].type.name == "_value_t");
+        REQUIRE(class_.fields[0].default_value.has_value() == false);
+        REQUIRE(class_.fields[0].attributes.size() == 1);
+        REQUIRE(class_.fields[0].attributes[0].name == "_field_attribute");
     }
 
     SECTION("parse free function is feature complete")
     {
-        const auto& function = file.functions[0];
+        REQUIRE(file.functions.size() == 3);
 
-        REQUIRE(function.name == "_free_func");
-        REQUIRE(function.scope == "_namespace1::_namespace2");
-        REQUIRE(function.full_name() == "_namespace1::_namespace2::_free_func");
-        REQUIRE(function.return_type.name == "int");
-        REQUIRE(function.arguments.size() == 1);
-        REQUIRE(function.arguments[0].name == "_arg");
-        REQUIRE(function.arguments[0].type.name == "int");
-        REQUIRE(function.arguments[0].default_value.has_value());
-        REQUIRE(function.arguments[0].default_value.value() == "42");
+        REQUIRE(file.functions[0].name == "_free_func");
+        REQUIRE(file.functions[0].scope == "_namespace1::_namespace2");
+        REQUIRE(file.functions[0].full_name() == "_namespace1::_namespace2::_free_func");
+        REQUIRE(file.functions[0].return_type.name == "int");
+        REQUIRE(file.functions[0].attributes.size() == 1);
+        REQUIRE(file.functions[0].attributes[0].name == "_func_attribute");
+        REQUIRE(file.functions[0].arguments.size() == 1);
+        REQUIRE(file.functions[0].arguments[0].name == "_arg");
+        REQUIRE(file.functions[0].arguments[0].type.name == "int");
+        REQUIRE(file.functions[0].arguments[0].default_value.has_value());
+        REQUIRE(file.functions[0].arguments[0].default_value.value() == "42");
+        REQUIRE(file.functions[0].arguments[0].attributes.size() == 1);
+        REQUIRE(file.functions[0].arguments[0].attributes[0].name == "_argument_attribute");
+
+        REQUIRE(file.functions[1].name == "_template_free_func");
+        REQUIRE(file.functions[1].return_type.name == "_value_t");
+        REQUIRE(file.functions[1].attributes.size() == 1);
+        REQUIRE(file.functions[1].attributes[0].name == "_func_attribute");
+        REQUIRE(file.functions[1].template_params.size() == 2);
+        REQUIRE(file.functions[1].template_params[0].type == "typename");
+        REQUIRE(file.functions[1].template_params[0].name == "_value_t");
+        REQUIRE(file.functions[1].template_params[0].default_value.has_value() == false);
+        REQUIRE(file.functions[1].template_params[1].type == "int");
+        REQUIRE(file.functions[1].template_params[1].name == "_n");
+        REQUIRE(file.functions[1].template_params[1].default_value.has_value());
+        REQUIRE(file.functions[1].template_params[1].default_value == "42");
+        REQUIRE(file.functions[1].arguments.size() == 1);
+        REQUIRE(file.functions[1].arguments[0].name == "_arg");
+        REQUIRE(file.functions[1].arguments[0].type.name == "_value_t");
+        REQUIRE(file.functions[1].arguments[0].attributes.size() == 1);
+        REQUIRE(file.functions[1].arguments[0].attributes[0].name == "_argument_attribute");
+        REQUIRE(file.functions[1].arguments[0].default_value.has_value() == false);
+
+        REQUIRE(file.functions[2].name == "_global_func");
+        REQUIRE(file.functions[2].scope.empty());
+        REQUIRE(file.functions[2].full_name() == "_global_func");
+        REQUIRE(file.functions[2].return_type.name == "void");
+        REQUIRE(file.functions[2].attributes.empty());
+        REQUIRE(file.functions[2].arguments.empty());
     }
 }
