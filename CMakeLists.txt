@@ -34,6 +34,9 @@ add_compile_options(
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+  add_compile_definitions(
+    SPDLOG_ACTIVE_LEVEL=0
+  )
   add_compile_options(
     "$<$<CXX_COMPILER_ID:MSVC>:/Od>"
     "$<$<CXX_COMPILER_ID:GNU>:-g3>"
@@ -42,6 +45,9 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     "$<$<CXX_COMPILER_ID:Clang>:-O0>"
   )
 elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
+  add_compile_definitions(
+    SPDLOG_ACTIVE_LEVEL=1
+  )
   add_compile_options(
     "$<$<CXX_COMPILER_ID:MSVC>:/Ox>"
     "$<$<CXX_COMPILER_ID:GNU>:-O3>"

@@ -79,7 +79,7 @@ namespace spore::codegen
         std::shared_ptr<codegen_renderer> renderer = std::make_shared<codegen_renderer_composite>(std::make_shared<codegen_renderer_inja>());
 
         nlohmann::json user_data_json;
-        for (const std::pair<std::string,std::string>& pair : options.user_data)
+        for (const std::pair<std::string, std::string>& pair : options.user_data)
         {
             user_data_json[pair.first] = pair.second;
         }
@@ -97,7 +97,10 @@ namespace spore::codegen
             std::mutex mutex;
             std::vector<std::exception_ptr> exceptions;
 
+            SPDLOG_DEBUG("processing step, name={}", step.name);
+
             const auto action = [&](const std::filesystem::path& input) {
+                SPDLOG_DEBUG("processing input, file={}", input.string());
                 try
                 {
                     const bool input_up_to_date = cache.check_and_update(input.string());
@@ -133,6 +136,8 @@ namespace spore::codegen
                         std::filesystem::path output_filename = fmt::format("{}.{}", input.stem().string(), output_ext.string());
                         std::filesystem::path output_directory = std::filesystem::path(options.output) / input.parent_path();
                         std::string output = (output_directory / output_filename).string();
+
+                        SPDLOG_INFO("generating output, file={}", output);
 
                         if (!spore::codegen::write_file(output, result))
                         {
