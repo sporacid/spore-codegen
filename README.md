@@ -15,21 +15,19 @@ for the engine types.
 #### Windows
 
 ```cmd
+set VCPKG_DEFAULT_TRIPLET="x64-windows"
 git clone https://github.com/microsoft/vcpkg
 cd vcpkg
 ./bootstrap-vcpkg.bat
 ./vcpkg.exe install llvm
-set LLVM_CONFIG_BINARY="%cd%/installed/x86-windows/tools/llvm"
+set LLVM_CONFIG_BINARY="%cd%/installed/%VCPKG_DEFAULT_TRIPLET%/tools/llvm/llvm-config.exe"
 ```
 
-#### Linux
+#### Ubuntu
 
 ```sh
-git clone https://github.com/microsoft/vcpkg
-cd vcpkg
-sh ./bootstrap-vcpkg.sh
-sh ./vcpkg install llvm
-export LLVM_CONFIG_BINARY="$(pwd)/installed/x86-linux/tools/llvm"
+sudo apt-get -qq update
+sudo apt-get install -y llvm clang clang-format libclang-dev
 ```
 
 ## How to use
