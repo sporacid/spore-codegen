@@ -1,4 +1,4 @@
-name: ci
+name: Continuous Integration
 on:
   pull_request:
   push:
@@ -8,6 +8,7 @@ permissions:
   contents: write
 jobs:
   build:
+    name: Build Project
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
