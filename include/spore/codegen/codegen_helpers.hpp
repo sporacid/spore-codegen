@@ -10,7 +10,6 @@
 
 #include "cppast/compile_config.hpp"
 #include "fmt/format.h"
-#include "process.hpp"
 
 namespace spore::codegen
 {
@@ -58,51 +57,6 @@ namespace spore::codegen
 
         return true;
     }
-
-    bool format_file(const std::string_view& path)
-    {
-        std::string command = fmt::format("clang-format -i {}", path);
-        TinyProcessLib::Process process {command};
-        return process.get_exit_status() == 0;
-    }
-
-    //    template <typename predicate_t>
-    //    bool collect_files_if(const std::string_view& path, std::vector<std::string>& files, const predicate_t& predicate)
-    //    {
-    //        std::filesystem::file_status status = std::filesystem::status(path);
-    //
-    //        if (!std::filesystem::exists(status))
-    //        {
-    //            return false;
-    //        }
-    //
-    //        if (std::filesystem::is_regular_file(status) && predicate(path))
-    //        {
-    //            files.emplace_back(path);
-    //        }
-    //        else
-    //        {
-    //            for (const std::filesystem::directory_entry& entry : std::filesystem::recursive_directory_iterator(path))
-    //            {
-    //                std::string entry_path = entry.path().string();
-    //                if (entry.is_regular_file() && predicate(entry_path))
-    //                {
-    //                    files.emplace_back(std::move(entry_path));
-    //                }
-    //            }
-    //        }
-    //
-    //        return true;
-    //    }
-    //
-    //    bool collect_files(const std::string_view& path, std::vector<std::string>& files)
-    //    {
-    //        const auto predicate = [](const std::string_view& path) {
-    //            return true;
-    //        };
-    //
-    //        return spore::codegen::collect_files_if(path, files, predicate);
-    //    }
 
     cppast::cpp_standard parse_cpp_standard(const std::string_view& string)
     {

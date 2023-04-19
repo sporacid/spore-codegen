@@ -37,5 +37,4 @@ target_link_libraries(
 
 spore_codegen(
   ${SPORE_CODEGEN_EXAMPLES_JSON_TARGET}
-  REFORMAT
 )

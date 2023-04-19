@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "glob/glob.h"
+#include "process.hpp"
 
 #include "spore/codegen/ast/converters/ast_converter.hpp"
 #include "spore/codegen/ast/converters/ast_converter_default.hpp"
@@ -144,9 +145,15 @@ namespace spore::codegen
                             throw codegen_error(codegen_error_code::io, "failed to write output, file={}", output);
                         }
 
-                        if (options.reformat && !spore::codegen::format_file(output))
+                        if (!options.reformat.empty())
                         {
-                            SPDLOG_WARN("failed to reformat output, file={}", output);
+                            std::string command = fmt::format("{} {}", options.reformat, output);
+                            TinyProcessLib::Process process {command};
+
+                            if (process.get_exit_status() != 0)
+                            {
+                                SPDLOG_WARN("failed to reformat output, file={}", output);
+                            }
                         }
                     }
                 }
