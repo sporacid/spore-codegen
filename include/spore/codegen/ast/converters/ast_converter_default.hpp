@@ -83,8 +83,10 @@ namespace spore::codegen
 
     void to_json(nlohmann::json& json, const ast_template_param& value)
     {
-        json["id"] = details::make_unique_id();
-        json["name"] = value.name;
+        std::uint32_t unique_id = details::make_unique_id();
+        
+        json["id"] = unique_id;
+        json["name"] = value.name.empty() ? fmt::format("_{}", unique_id) : value.name;
         json["type"] = value.type;
         json["default_value"] = value.default_value.value_or("");
         json["has_default_value"] = value.default_value.has_value();
