@@ -11,7 +11,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 list(
   APPEND CMAKE_MODULE_PATH
-   ${CMAKE_SOURCE_DIR}/cmake
+   ${CMAKE_CURRENT_SOURCE_DIR}/cmake
 )
 
 if (NOT SPORE_VERSION)
@@ -22,8 +22,8 @@ endif ()
 project(spore.codegen VERSION ${SPORE_VERSION})
 
 configure_file(
-  ${CMAKE_SOURCE_DIR}/include/spore/codegen/codegen_version.hpp.in
-  ${CMAKE_SOURCE_DIR}/include/spore/codegen/codegen_version.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/spore/codegen/codegen_version.hpp.in
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/spore/codegen/codegen_version.hpp
 )
 
 # Removes warning for undefined attributes

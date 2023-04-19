@@ -8,8 +8,8 @@ include(spore)
 
 file(
   GLOB_RECURSE SPORE_CODEGEN_EXAMPLES_JSON_BIN_FILES
-    ${CMAKE_SOURCE_DIR}/examples/json/include/**.hpp
-    ${CMAKE_SOURCE_DIR}/examples/json/src/**.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/**.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/**.cpp
 )
 
 add_executable(
@@ -26,8 +26,8 @@ set_target_properties(
 target_include_directories(
   ${SPORE_CODEGEN_EXAMPLES_JSON_BIN}
   PRIVATE
-    ${CMAKE_SOURCE_DIR}/examples/json/include
-    ${CMAKE_SOURCE_DIR}/examples/json/.codegen/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/.codegen/include
 )
 
 target_link_libraries(
