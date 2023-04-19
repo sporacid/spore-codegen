@@ -8,7 +8,7 @@ function(spore_codegen SPORE_TARGET_NAME)
   )
 
   if (NOT SPORE_CODEGEN_BIN_NAME)
-    set(SPORE_CODEGEN_BIN_NAME "spore.codegen.bin")
+    set(SPORE_CODEGEN_BIN_NAME $<TARGET_FILE:${SPORE_CODEGEN_TARGET}>)
   endif()
 
   if (NOT SPORE_CODEGEN_TARGET_NAME)
@@ -40,7 +40,7 @@ function(spore_codegen SPORE_TARGET_NAME)
   add_custom_target(
     ${SPORE_CODEGEN_TARGET_NAME}
     COMMAND
-      $<TARGET_FILE:${SPORE_CODEGEN_BIN_NAME}>
+      ${SPORE_CODEGEN_BIN_NAME}
         "$<$<BOOL:${SPORE_CODEGEN_CONFIG}>:--config;${SPORE_CODEGEN_CONFIG};>"
         "$<$<BOOL:${SPORE_CODEGEN_CACHE}>:--cache;${SPORE_CODEGEN_CACHE};>"
         "$<$<BOOL:${SPORE_CODEGEN_CXX_STANDARD}>:--cpp-standard;${SPORE_CODEGEN_CXX_STANDARD};>"

@@ -26,13 +26,6 @@ configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/include/spore/codegen/codegen_version.hpp
 )
 
-# Removes warning for undefined attributes
-add_compile_options(
-  "$<$<CXX_COMPILER_ID:MSVC>:/wd5030>"
-  "$<$<CXX_COMPILER_ID:GNU>:-Wno-attributes>"
-  "$<$<CXX_COMPILER_ID:Clang>:-Wno-attributes>"
-)
-
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_compile_definitions(
     SPDLOG_ACTIVE_LEVEL=0

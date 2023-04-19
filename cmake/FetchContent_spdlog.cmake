@@ -3,7 +3,7 @@ include(FetchContent)
 set(CONTENT_NAME "spdlog")
 set(CONTENT_URL "https://github.com/gabime/spdlog.git")
 set(CONTENT_TAG "v1.11.0")
-set(CONTENT_DOWNLOAD_DIR "${CMAKE_BINARY_DIR}/content/${CONTENT_NAME}")
+set(CONTENT_DOWNLOAD_DIR "${CMAKE_CURRENT_BINARY_DIR}/content/${CONTENT_NAME}")
 
 message(STATUS
   "Fetching ${CONTENT_NAME}:\n"

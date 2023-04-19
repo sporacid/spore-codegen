@@ -3,7 +3,7 @@ include(FetchContent)
 set(CONTENT_NAME "catch")
 set(CONTENT_URL "https://github.com/catchorg/Catch2.git")
 set(CONTENT_TAG "v3.3.2")
-set(CONTENT_DOWNLOAD_DIR "${CMAKE_BINARY_DIR}/content/${CONTENT_NAME}")
+set(CONTENT_DOWNLOAD_DIR "${CMAKE_CURRENT_BINARY_DIR}/content/${CONTENT_NAME}")
 
 message(STATUS
   "Fetching ${CONTENT_NAME}:\n"

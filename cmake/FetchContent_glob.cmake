@@ -3,7 +3,7 @@ include(FetchContent)
 set(CONTENT_NAME "glob")
 set(CONTENT_URL "https://github.com/p-ranav/glob.git")
 set(CONTENT_TAG "master")
-set(CONTENT_DOWNLOAD_DIR "${CMAKE_BINARY_DIR}/content/${CONTENT_NAME}")
+set(CONTENT_DOWNLOAD_DIR "${CMAKE_CURRENT_BINARY_DIR}/content/${CONTENT_NAME}")
 
 message(STATUS
   "Fetching ${CONTENT_NAME}:\n"

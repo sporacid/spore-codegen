@@ -1,6 +1,6 @@
 set(
-  SPORE_CODEGEN_TESTS "${PROJECT_NAME}.tests"
-  CACHE INTERNAL SPORE_CODEGEN_TESTS
+  SPORE_CODEGEN_TESTS_TARGET "${PROJECT_NAME}.tests"
+  CACHE STRING "Target for the codegen unit tests"
 )
 
 file(
@@ -10,24 +10,24 @@ file(
 )
 
 add_executable(
-  ${SPORE_CODEGEN_TESTS}
+  ${SPORE_CODEGEN_TESTS_TARGET}
   ${SPORE_CODEGEN_TESTS_FILES}
 )
 
 set_target_properties(
-  ${SPORE_CODEGEN_TESTS}
+  ${SPORE_CODEGEN_TESTS_TARGET}
   PROPERTIES
     LINKER_LANGUAGE CXX
 )
 
 target_include_directories(
-  ${SPORE_CODEGEN_TESTS}
+  ${SPORE_CODEGEN_TESTS_TARGET}
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
 )
 
 target_link_libraries(
-  ${SPORE_CODEGEN_TESTS}
+  ${SPORE_CODEGEN_TESTS_TARGET}
   PRIVATE
     cppast
     fmt
@@ -39,7 +39,7 @@ target_link_libraries(
 
 list(
   APPEND CMAKE_MODULE_PATH
-    ${CMAKE_BINARY_DIR}/content/catch2/extras
+    ${CMAKE_CURRENT_BINARY_DIR}/content/catch2/extras
 )
 
 include(CTest)
@@ -47,4 +47,4 @@ include(Catch)
 
 enable_testing()
 
-catch_discover_tests(${SPORE_CODEGEN_TESTS})
+catch_discover_tests(${SPORE_CODEGEN_TESTS_TARGET})
