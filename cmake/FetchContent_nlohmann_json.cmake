@@ -3,7 +3,7 @@ include(FetchContent)
 set(CONTENT_NAME "nlohmann_json")
 set(CONTENT_URL "https://github.com/nlohmann/json.git")
 set(CONTENT_TAG "v3.11.2")
-set(CONTENT_DOWNLOAD_DIR "${CMAKE_BINARY_DIR}/content/${CONTENT_NAME}")
+set(CONTENT_DOWNLOAD_DIR "${CMAKE_CURRENT_BINARY_DIR}/content/${CONTENT_NAME}")
 
 message(STATUS
   "Fetching ${CONTENT_NAME}:\n"

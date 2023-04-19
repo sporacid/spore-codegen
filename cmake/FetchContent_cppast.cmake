@@ -3,7 +3,7 @@ include(FetchContent)
 set(CONTENT_NAME "cppast")
 set(CONTENT_URL "https://github.com/foonathan/cppast.git")
 set(CONTENT_TAG "main")
-set(CONTENT_DOWNLOAD_DIR "${CMAKE_BINARY_DIR}/content/${CONTENT_NAME}")
+set(CONTENT_DOWNLOAD_DIR "${CMAKE_CURRENT_BINARY_DIR}/content/${CONTENT_NAME}")
 
 message(STATUS
   "Fetching ${CONTENT_NAME}:\n"
