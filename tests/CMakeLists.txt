@@ -1,9 +1,12 @@
-set(SPORE_CODEGEN_TESTS "${PROJECT_NAME}.tests" CACHE INTERNAL SPORE_CODEGEN_TESTS)
+set(
+  SPORE_CODEGEN_TESTS "${PROJECT_NAME}.tests"
+  CACHE INTERNAL SPORE_CODEGEN_TESTS
+)
 
 file(
   GLOB_RECURSE SPORE_CODEGEN_TESTS_FILES
-    ${CMAKE_SOURCE_DIR}/include/**.hpp
-    ${CMAKE_SOURCE_DIR}/tests/**.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/**.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/**.cpp
 )
 
 add_executable(
@@ -20,7 +23,7 @@ set_target_properties(
 target_include_directories(
   ${SPORE_CODEGEN_TESTS}
   PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
 )
 
 target_link_libraries(

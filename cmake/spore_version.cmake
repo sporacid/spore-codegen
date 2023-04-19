@@ -8,7 +8,7 @@ function(spore_get_version SPORE_VERSION_OUT)
   if (GIT_FOUND)
     execute_process(
       COMMAND ${GIT_EXECUTABLE} --no-pager log --format=%H --reverse
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
       OUTPUT_VARIABLE SPORE_GIT_COMMITS
     )
 
@@ -23,7 +23,7 @@ function(spore_get_version SPORE_VERSION_OUT)
     foreach (SPORE_GIT_COMMIT ${SPORE_GIT_COMMITS})
       execute_process(
         COMMAND ${GIT_EXECUTABLE} --no-pager log -n1 --format=%B ${SPORE_GIT_COMMIT}
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         OUTPUT_VARIABLE SPORE_GIT_COMMIT_BODY
         OUTPUT_STRIP_TRAILING_WHITESPACE
       )

@@ -6,8 +6,8 @@ set(
 
 file(
   GLOB_RECURSE SPORE_CODEGEN_BIN_FILES
-    ${CMAKE_SOURCE_DIR}/include/**.hpp
-    ${CMAKE_SOURCE_DIR}/src/**.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/**.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/**.cpp
 )
 
 add_executable(
@@ -24,7 +24,7 @@ set_target_properties(
 target_include_directories(
   ${SPORE_CODEGEN_BIN}
   PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
 )
 
 target_link_libraries(
