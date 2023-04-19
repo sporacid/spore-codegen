@@ -85,14 +85,16 @@ int main(int argc, const char* argv[])
         });
 
     arg_parser
-        .add_argument("-F", "--force")
-        .help("force generation for all input files even if files haven't changed")
-        .default_value(false)
-        .implicit_value(true);
+        .add_argument("-r", "--reformat")
+        .help("command to reformat output files, or false to disable reformatting")
+        .default_value(std::string {"clang-format -i"})
+        .action([](const std::string& reformat) {
+            return reformat != "false" ? reformat : "";
+        });
 
     arg_parser
-        .add_argument("-r", "--reformat")
-        .help("whether to reformat generated files with clang-format")
+        .add_argument("-F", "--force")
+        .help("force generation for all input files even if files haven't changed")
         .default_value(false)
         .implicit_value(true);
 
@@ -129,12 +131,12 @@ int main(int argc, const char* argv[])
     options.config = arg_parser.get<std::string>("--config");
     options.cache = arg_parser.get<std::string>("--cache");
     options.cpp_standard = arg_parser.get<std::string>("--cpp-standard");
+    options.reformat = arg_parser.get<std::string>("--reformat");
     options.includes = arg_parser.get<std::vector<std::string>>("--includes");
     options.features = arg_parser.get<std::vector<std::string>>("--features");
     options.definitions = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--definitions");
     options.user_data = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--user-data");
     options.force = arg_parser.get<bool>("--force");
-    options.reformat = arg_parser.get<bool>("--reformat");
     options.sequential = arg_parser.get<bool>("--sequential");
 
     try

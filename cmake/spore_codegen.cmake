@@ -9,15 +9,24 @@ function(spore_codegen SPORE_TARGET_NAME)
 
   if (NOT SPORE_CODEGEN_BIN_NAME)
     set(SPORE_CODEGEN_BIN_NAME $<TARGET_FILE:${SPORE_CODEGEN_TARGET}>)
-  endif()
+  endif ()
 
   if (NOT SPORE_CODEGEN_TARGET_NAME)
     set(SPORE_CODEGEN_TARGET_NAME "${SPORE_TARGET_NAME}.codegen")
-  endif()
+  endif ()
 
   if (NOT SPORE_CODEGEN_CXX_STANDARD)
     set(SPORE_CODEGEN_CXX_STANDARD $<TARGET_PROPERTY:${SPORE_TARGET_NAME},CXX_STANDARD>)
-  endif()
+  endif ()
+
+  if (NOT SPORE_CODEGEN_REFORMAT)
+    find_package(ClangFormat)
+    if (CLANG_FORMAT_FOUND)
+      set(SPORE_CODEGEN_REFORMAT "${CLANG_FORMAT_EXECUTABLE} -i")
+    else ()
+      set(SPORE_CODEGEN_REFORMAT "false")
+    endif ()
+  endif ()
 
   list(
     APPEND SPORE_CODEGEN_INCLUDES
@@ -44,13 +53,13 @@ function(spore_codegen SPORE_TARGET_NAME)
         "$<$<BOOL:${SPORE_CODEGEN_CONFIG}>:--config;${SPORE_CODEGEN_CONFIG};>"
         "$<$<BOOL:${SPORE_CODEGEN_CACHE}>:--cache;${SPORE_CODEGEN_CACHE};>"
         "$<$<BOOL:${SPORE_CODEGEN_CXX_STANDARD}>:--cpp-standard;${SPORE_CODEGEN_CXX_STANDARD};>"
+        "$<$<BOOL:${SPORE_CODEGEN_REFORMAT}>:--reformat;${SPORE_CODEGEN_REFORMAT};>"
         "$<$<BOOL:$<FILTER:${SPORE_CODEGEN_INCLUDES},EXCLUDE,^$>>:--includes;$<JOIN:${SPORE_CODEGEN_INCLUDES},;--includes;>>"
         "$<$<BOOL:$<FILTER:${SPORE_CODEGEN_DEFINITIONS},EXCLUDE,^$>>:--definitions;$<JOIN:${SPORE_CODEGEN_DEFINITIONS},;--definitions;>>"
         "$<$<BOOL:$<FILTER:${SPORE_CODEGEN_FEATURES},EXCLUDE,^$>>:--features;$<JOIN:${SPORE_CODEGEN_FEATURES},;--features;>>"
         "$<$<BOOL:$<FILTER:${SPORE_CODEGEN_USER_DATA},EXCLUDE,^$>>:--user-data;$<JOIN:${SPORE_CODEGEN_USER_DATA},;--user-data;>>"
         "$<$<BOOL:${SPORE_CODEGEN_DEBUG}>:--debug>"
         "$<$<BOOL:${SPORE_CODEGEN_FORCE}>:--force>"
-        "$<$<BOOL:${SPORE_CODEGEN_REFORMAT}>:--reformat>"
         "$<$<BOOL:${SPORE_CODEGEN_SEQUENTIAL}>:--sequential>"
     COMMENT "Running codegen for ${SPORE_TARGET_NAME} in ${SPORE_CODEGEN_OUTPUT}"
     WORKING_DIRECTORY $<TARGET_PROPERTY:${SPORE_TARGET_NAME},SOURCE_DIR>

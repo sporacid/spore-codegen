@@ -31,5 +31,4 @@ target_include_directories(
 
 spore_codegen(
   ${SPORE_CODEGEN_EXAMPLES_ENUM_TARGET}
-  REFORMAT
 )
