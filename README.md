@@ -6,6 +6,9 @@ build-system agnostic code generation for C++.
 It was originally made to power a game engine in order to generate reflection, JSON serialization and shader bindings
 for the engine types.
 
+For an example how to integrate `spore-codegen` in your project, you can look
+at [this repository](https://github.com/sporacid/spore-codegen-example).
+
 ## Requirements
 
 ### LLVM
@@ -73,7 +76,8 @@ file. Given:
 - A template file `templates/generated.inl.inja`
 - An output directory `.codegen`
 
-Then the output file will be `.codegen/include/project/header.generated.inl`. You can include this file at the end of the `include/project/header.hpp` file with the `SPORE_CODEGEN` guard to prevent circular inclusion during generation.
+Then the output file will be `.codegen/include/project/header.generated.inl`. You can include this file at the end of
+the `include/project/header.hpp` file with the `SPORE_CODEGEN` guard to prevent circular inclusion during generation.
 
 ```cpp
 #ifndef SPORE_CODEGEN
