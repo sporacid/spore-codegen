@@ -89,8 +89,45 @@ namespace spore::codegen
         {
             std::vector<std::filesystem::path> inputs = glob::rglob(step.input);
 
+            // search for templates starting at the working directory and then going
+            // through configured template prefix paths.
+            SPDLOG_DEBUG("searching for templates");
+            std::vector<std::string> templates;
+
+            for (const std::string& template_ : step.templates)
+            {
+                bool template_found = false;
+
+                SPDLOG_DEBUG("  search template, file={}", template_);
+                if (std::filesystem::exists(template_))
+                {
+                    SPDLOG_DEBUG("  found template, file={}", template_);
+                    templates.push_back(template_);
+                    template_found = true;
+                    continue;
+                }
+
+                for (const std::string& prefix : options.template_paths)
+                {
+                    auto prefix_path = std::filesystem::path(prefix) / template_;
+                    SPDLOG_DEBUG("  search template, file={}", prefix_path.c_str());
+                    if (std::filesystem::exists(prefix_path))
+                    {
+                        SPDLOG_DEBUG("  found template, file={}", prefix_path.c_str());
+                        templates.push_back(prefix_path);
+                        template_found = true;
+                        break;
+                    }
+                }
+
+                if (!template_found)
+                {
+                    throw codegen_error(codegen_error_code::configuring, "could not find template file, file={}", template_);
+                }
+            }
+
             const bool templates_up_to_date = std::all_of(
-                step.templates.begin(), step.templates.end(),
+                templates.begin(), templates.end(),
                 [&](const std::string& template_) {
                     return cache.check_and_update(template_);
                 });
@@ -137,7 +174,7 @@ namespace spore::codegen
 
                     json_data["user_data"] = user_data_json;
 
-                    for (const std::string& template_ : step.templates)
+                    for (const std::string& template_ : templates)
                     {
                         std::string result;
                         if (!renderer->render_file(template_, json_data, result))
