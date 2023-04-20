@@ -69,7 +69,9 @@ dkms.conf
 
 # CMake files
 .cmake/
+compile_commands.json
 
 # Codegen files
 .codegen/
 .dumps/
+.cache
