@@ -89,8 +89,32 @@ namespace spore::codegen
         {
             std::vector<std::filesystem::path> inputs = glob::rglob(step.input);
 
+            // search for templates starting at the working directory and then going
+            // through configured template prefix paths.
+            std::vector<std::string> templates;
+
+            for (const auto& template_ : step.templates) {
+              std::cout << "search " << template_ << "\n";
+              if (std::filesystem::exists(template_)) {
+              std::cout << "found " << template_ << "\n";
+                templates.push_back(template_);
+                continue;
+              }
+
+              for (const auto& prefix : options.template_paths) {
+              std::cout << "search in " << prefix << "\n";
+                auto prefix_path = std::filesystem::path(prefix) / template_; 
+                std::cout << "full name " << prefix_path << "\n";
+                if (std::filesystem::exists(prefix_path)) {
+              std::cout << "found " << prefix_path << "\n";
+                  templates.push_back(prefix_path);
+                  break;
+                }
+              }
+            }
+
             const bool templates_up_to_date = std::all_of(
-                step.templates.begin(), step.templates.end(),
+                templates.begin(), templates.end(),
                 [&](const std::string& template_) {
                     return cache.check_and_update(template_);
                 });
@@ -137,7 +161,7 @@ namespace spore::codegen
 
                     json_data["user_data"] = user_data_json;
 
-                    for (const std::string& template_ : step.templates)
+                    for (const std::string& template_ : templates)
                     {
                         std::string result;
                         if (!renderer->render_file(template_, json_data, result))
