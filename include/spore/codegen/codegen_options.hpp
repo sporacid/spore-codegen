@@ -19,5 +19,6 @@ namespace spore::codegen
         std::vector<std::pair<std::string, std::string>> user_data;
         bool force = false;
         bool sequential = false;
+        bool dump_ast = false;
     };
 }

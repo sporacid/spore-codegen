@@ -99,6 +99,12 @@ int main(int argc, const char* argv[])
         .implicit_value(true);
 
     arg_parser
+        .add_argument("--dump-ast")
+        .help("dump internal json representation of the AST being passed into the templates")
+        .default_value(false)
+        .implicit_value(true);
+
+    arg_parser
         .add_argument("-g", "--debug")
         .help("sets output verbosity to debug")
         .default_value(false)
@@ -137,6 +143,7 @@ int main(int argc, const char* argv[])
     options.definitions = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--definitions");
     options.user_data = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--user-data");
     options.force = arg_parser.get<bool>("--force");
+    options.dump_ast = arg_parser.get<bool>("--dump-ast");
     options.sequential = arg_parser.get<bool>("--sequential");
 
     try

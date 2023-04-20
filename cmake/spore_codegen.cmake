@@ -1,7 +1,7 @@
 function(spore_codegen SPORE_TARGET_NAME)
   cmake_parse_arguments(
     "SPORE_CODEGEN"
-    "DEBUG;SEQUENTIAL;FORCE;REFORMAT"
+    "DEBUG;SEQUENTIAL;FORCE;REFORMAT;DUMP_AST"
     "CONFIG;CACHE;CXX_STANDARD;TARGET_NAME;BIN_NAME"
     "DEFINITIONS;INCLUDES;FEATURES;USER_DATA"
     ${ARGN}
@@ -60,6 +60,7 @@ function(spore_codegen SPORE_TARGET_NAME)
         "$<$<BOOL:$<FILTER:${SPORE_CODEGEN_USER_DATA},EXCLUDE,^$>>:--user-data;$<JOIN:${SPORE_CODEGEN_USER_DATA},;--user-data;>>"
         "$<$<BOOL:${SPORE_CODEGEN_DEBUG}>:--debug>"
         "$<$<BOOL:${SPORE_CODEGEN_FORCE}>:--force>"
+        "$<$<BOOL:${SPORE_CODEGEN_DUMP_AST}>:--dump-ast>"
         "$<$<BOOL:${SPORE_CODEGEN_SEQUENTIAL}>:--sequential>"
     COMMENT "Running codegen for ${SPORE_TARGET_NAME} in ${SPORE_CODEGEN_OUTPUT}"
     WORKING_DIRECTORY $<TARGET_PROPERTY:${SPORE_TARGET_NAME},SOURCE_DIR>
