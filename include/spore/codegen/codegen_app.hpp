@@ -96,27 +96,34 @@ namespace spore::codegen
 
             for (const auto& template_ : step.templates)
             {
+                bool template_found = false;
+
                 SPDLOG_DEBUG("  search {}", template_);
                 if (std::filesystem::exists(template_))
                 {
                     SPDLOG_DEBUG("  found {}", template_);
                     templates.push_back(template_);
+                    template_found = true;
                     continue;
                 }
 
                 for (const auto& prefix : options.template_paths)
                 {
                     auto prefix_path = std::filesystem::path(prefix) / template_;
-                    SPDLOG_DEBUG("  search {}", prefix_path.str());
+                    SPDLOG_DEBUG("  search {}", prefix_path.c_str());
                     if (std::filesystem::exists(prefix_path))
                     {
-                        SPDLOG_DEBUG("  found {}", prefix_path.str());
+                        SPDLOG_DEBUG("  found {}", prefix_path.c_str());
                         templates.push_back(prefix_path);
+                        template_found = true;
                         break;
                     }
                 }
 
-                throw codegen_error(codegen_error_code::configuring, "could not find template file, file={}", template_);
+                if (!template_found)
+                {
+                    throw codegen_error(codegen_error_code::configuring, "could not find template file, file={}", template_);
+                }
             }
 
             const bool templates_up_to_date = std::all_of(
