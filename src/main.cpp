@@ -56,6 +56,12 @@ int main(int argc, const char* argv[])
         .append();
 
     arg_parser
+        .add_argument("-T", "--template-paths")
+        .help("paths to search for templates")
+        .default_value(std::vector<std::string> {})
+        .append();
+
+    arg_parser
         .add_argument("-f", "--features")
         .help("feature to enable for clang compilation")
         .default_value(std::vector<std::string> {})
@@ -137,6 +143,7 @@ int main(int argc, const char* argv[])
     options.cpp_standard = arg_parser.get<std::string>("--cpp-standard");
     options.reformat = arg_parser.get<std::string>("--reformat");
     options.includes = arg_parser.get<std::vector<std::string>>("--includes");
+    options.template_paths = arg_parser.get<std::vector<std::string>>("--template-paths");
     options.features = arg_parser.get<std::vector<std::string>>("--features");
     options.definitions = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--definitions");
     options.user_data = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--user-data");
