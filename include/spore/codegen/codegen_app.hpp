@@ -125,13 +125,13 @@ namespace spore::codegen
 
                     if (options.dump_ast)
                     {
-                        std::filesystem::path output_filename = fmt::format("{}.dump", input.stem().string());
-                        std::filesystem::path output_directory = std::filesystem::path(options.output) / "ast" / input.parent_path();
+                        std::filesystem::path output_filename = fmt::format("{}.json", input.stem().string());
+                        std::filesystem::path output_directory = std::filesystem::path(*options.dump_ast) / input.parent_path();
                         std::string output = (output_directory / output_filename).string();
 
                         if (!spore::codegen::write_file(output, json_data.dump(2)))
                         {
-                            throw codegen_error(codegen_error_code::io, "failed to write output, file={}", output);
+                            SPDLOG_WARN("failed to write dump file, file={}", output);
                         }
                     }
 
