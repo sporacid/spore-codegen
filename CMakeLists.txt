@@ -6,9 +6,13 @@ cmake_policy(SET CMP0079 NEW)
 
 option(WITH_EXAMPLES "Whether to include examples" ON)
 option(WITH_TESTS "Whether to include tests" ON)
+option(WITH_COMPILE_COMMANDS "Whether to generate a compilation database" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+if (WITH_COMPILE_COMMANDS)
+  set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+endif()
 
 list(
   APPEND CMAKE_MODULE_PATH
@@ -69,10 +73,12 @@ if (WITH_EXAMPLES)
   add_subdirectory(examples)
 endif ()
 
-set(COPY_COMPILE_COMMANDS_FILE "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json")
+if (WITH_COMPILE_COMMANDS)
+  set(COPY_COMPILE_COMMANDS_FILE "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json")
 
-if(EXISTS "${COPY_COMPILE_COMMANDS_FILE}")
-  file(
-    COPY "${COPY_COMPILE_COMMANDS_FILE}"
-    DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}")
+  if(EXISTS "${COPY_COMPILE_COMMANDS_FILE}")
+    file(
+      COPY "${COPY_COMPILE_COMMANDS_FILE}"
+      DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}")
+  endif()
 endif()
