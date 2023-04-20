@@ -31,5 +31,5 @@ jobs:
           GIT_TAG="v$(cat .cmake/CMakeCache.txt | awk -F= '$1~/CMAKE_PROJECT_VERSION:STATIC/{print$2}')" &&
           git config user.name "${GITHUB_ACTOR}" &&
           git config user.email "${GITHUB_ACTOR}@users.noreply.github.com" &&
-          git tag -a $GIT_TAG -m "Auto-generated semantic tag $GIT_TAG" &&
+          git tag -af $GIT_TAG -m "Auto-generated semantic tag $GIT_TAG" &&
           git push origin $GIT_TAG --force
