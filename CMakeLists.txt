@@ -8,6 +8,7 @@ option(WITH_EXAMPLES "Whether to include examples" ON)
 option(WITH_TESTS "Whether to include tests" ON)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 list(
   APPEND CMAKE_MODULE_PATH
@@ -67,3 +68,11 @@ endif ()
 if (WITH_EXAMPLES)
   add_subdirectory(examples)
 endif ()
+
+set(COPY_COMPILE_COMMANDS_FILE "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json")
+
+if(EXISTS "${COPY_COMPILE_COMMANDS_FILE}")
+  file(
+    COPY "${COPY_COMPILE_COMMANDS_FILE}"
+    DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}")
+endif()
