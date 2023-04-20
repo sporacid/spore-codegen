@@ -91,26 +91,32 @@ namespace spore::codegen
 
             // search for templates starting at the working directory and then going
             // through configured template prefix paths.
+            SPDLOG_DEBUG("searching for templates");
             std::vector<std::string> templates;
 
-            for (const auto& template_ : step.templates) {
-              std::cout << "search " << template_ << "\n";
-              if (std::filesystem::exists(template_)) {
-              std::cout << "found " << template_ << "\n";
-                templates.push_back(template_);
-                continue;
-              }
-
-              for (const auto& prefix : options.template_paths) {
-              std::cout << "search in " << prefix << "\n";
-                auto prefix_path = std::filesystem::path(prefix) / template_; 
-                std::cout << "full name " << prefix_path << "\n";
-                if (std::filesystem::exists(prefix_path)) {
-              std::cout << "found " << prefix_path << "\n";
-                  templates.push_back(prefix_path);
-                  break;
+            for (const auto& template_ : step.templates)
+            {
+                SPDLOG_DEBUG("  search {}", template_);
+                if (std::filesystem::exists(template_))
+                {
+                    SPDLOG_DEBUG("  found {}", template_);
+                    templates.push_back(template_);
+                    continue;
                 }
-              }
+
+                for (const auto& prefix : options.template_paths)
+                {
+                    auto prefix_path = std::filesystem::path(prefix) / template_;
+                    SPDLOG_DEBUG("  search {}", prefix_path);
+                    if (std::filesystem::exists(prefix_path))
+                    {
+                        SPDLOG_DEBUG("  found {}", prefix_path);
+                        templates.push_back(prefix_path);
+                        break;
+                    }
+                }
+
+                throw codegen_error(codegen_error_code::configuring, "could not find template file, file={}", template_);
             }
 
             const bool templates_up_to_date = std::all_of(

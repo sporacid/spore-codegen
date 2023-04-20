@@ -13,6 +13,7 @@ namespace spore::codegen
         unknown,
         invalid,
         io,
+        configuring,
         parsing,
         conversion,
         rendering,
