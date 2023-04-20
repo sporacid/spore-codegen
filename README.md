@@ -53,6 +53,7 @@ Spore codegen is a command line application that can be added to any build pipel
 | Sequential mode      | `-S`       | `--sequential`     | `false`           | Enable sequential processing instead of the default parallel processing.                                                                                |
 | Dump AST             |            | `--dump-ast`       | Empty             | Output directory where to write JSON dumps of the AST.                                                                                                  |
 | Template directories | `-T`       | `--template-paths` | Empty             | List of directories in which to search for templates in case the template is not found in the command's WORKING_DIRECTORY                               |
+| Dump AST             |            | `--dump-ast`       | Empty             | Output directory where to write JSON dumps of the AST.                                                                                                  |
 
 For a minimally working setup, you need at least a configuration file. By default, the application will look for a
 the `codegen.json` file at the root of your project.
