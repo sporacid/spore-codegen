@@ -41,6 +41,7 @@ target_link_libraries(
     Glob
     inja
     nlohmann_json
+    picosha2
     spdlog
 )
 
