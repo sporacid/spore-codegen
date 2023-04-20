@@ -94,26 +94,26 @@ namespace spore::codegen
             SPDLOG_DEBUG("searching for templates");
             std::vector<std::string> templates;
 
-            for (const auto& template_ : step.templates)
+            for (const std::string& template_ : step.templates)
             {
                 bool template_found = false;
 
-                SPDLOG_DEBUG("  search {}", template_);
+                SPDLOG_DEBUG("  search template, file={}", template_);
                 if (std::filesystem::exists(template_))
                 {
-                    SPDLOG_DEBUG("  found {}", template_);
+                    SPDLOG_DEBUG("  found template, file={}", template_);
                     templates.push_back(template_);
                     template_found = true;
                     continue;
                 }
 
-                for (const auto& prefix : options.template_paths)
+                for (const std::string& prefix : options.template_paths)
                 {
                     auto prefix_path = std::filesystem::path(prefix) / template_;
-                    SPDLOG_DEBUG("  search {}", prefix_path.c_str());
+                    SPDLOG_DEBUG("  search template, file={}", prefix_path.c_str());
                     if (std::filesystem::exists(prefix_path))
                     {
-                        SPDLOG_DEBUG("  found {}", prefix_path.c_str());
+                        SPDLOG_DEBUG("  found template, file={}", prefix_path.c_str());
                         templates.push_back(prefix_path);
                         template_found = true;
                         break;
