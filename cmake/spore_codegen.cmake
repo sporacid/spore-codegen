@@ -66,6 +66,7 @@ function(spore_codegen SPORE_TARGET_NAME)
         "$<$<BOOL:$<FILTER:${SPORE_CODEGEN_USER_DATA},EXCLUDE,^$>>:--user-data;$<JOIN:${SPORE_CODEGEN_USER_DATA},;--user-data;>>"
         "$<$<BOOL:${SPORE_CODEGEN_DEBUG}>:--debug>"
         "$<$<BOOL:${SPORE_CODEGEN_FORCE}>:--force>"
+        "$<$<BOOL:${SPORE_CODEGEN_DUMP_AST}>:--dump-ast>"
         "$<$<BOOL:${SPORE_CODEGEN_SEQUENTIAL}>:--sequential>"
     COMMENT "Running codegen for ${SPORE_TARGET_NAME} in ${SPORE_CODEGEN_OUTPUT}"
     WORKING_DIRECTORY "${SPORE_CODEGEN_WORKING_DIRECTORY}"
