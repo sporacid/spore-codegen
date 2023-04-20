@@ -72,3 +72,4 @@ dkms.conf
 
 # Codegen files
 .codegen/
+.dumps/

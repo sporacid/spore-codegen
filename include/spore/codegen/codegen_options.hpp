@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -19,6 +20,6 @@ namespace spore::codegen
         std::vector<std::pair<std::string, std::string>> user_data;
         bool force = false;
         bool sequential = false;
-        bool dump_ast = false;
+        std::optional<std::string> dump_ast = std::nullopt;
     };
 }
