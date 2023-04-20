@@ -51,6 +51,7 @@ Spore codegen is a command line application that can be added to any build pipel
 | Force generate      | `-F`       | `--force`        | `false`           | Skip cache and force generate all input files.                                                                                                          |
 | Debug mode          | `-g`       | `--debug`        | `false`           | Enable debug logs.                                                                                                                                      |
 | Sequential mode     | `-S`       | `--sequential`   | `false`           | Enable sequential processing instead of the default parallel processing.                                                                                |
+| DUMP AST            |            | `--dump-ast`     | Empty             | Output directory where to write JSON dumps of the AST.                                                                                                  |
 
 For a minimally working setup, you need at least a configuration file. By default, the application will look for a
 the `codegen.json` file at the root of your project.

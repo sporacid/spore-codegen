@@ -143,8 +143,9 @@ int main(int argc, const char* argv[])
     options.force = arg_parser.get<bool>("--force");
     options.sequential = arg_parser.get<bool>("--sequential");
 
-    if (arg_parser.present("--dump-ast")) {
-      options.dump_ast = arg_parser.get<std::string>("--dump-ast");
+    if (arg_parser.present("--dump-ast"))
+    {
+        options.dump_ast = arg_parser.get<std::string>("--dump-ast");
     }
 
     try
