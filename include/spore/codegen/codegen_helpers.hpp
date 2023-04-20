@@ -10,6 +10,7 @@
 
 #include "cppast/compile_config.hpp"
 #include "fmt/format.h"
+#include "picosha2.h"
 
 namespace spore::codegen
 {
@@ -49,12 +50,7 @@ namespace spore::codegen
             return false;
         }
 
-        std::uint64_t hash_code = std::hash<std::string>()(file_content);
-
-        std::stringstream string;
-        string << std::setw(16) << std::setfill('0') << std::hex << hash_code;
-        hash = string.str();
-
+        hash = picosha2::hash256_hex_string(file_content.begin(), file_content.end());
         return true;
     }
 

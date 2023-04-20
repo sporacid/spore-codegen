@@ -54,6 +54,7 @@ include(FetchContent_cppast)
 include(FetchContent_fmt)
 include(FetchContent_glob)
 include(FetchContent_nlohmann_json)
+include(FetchContent_picosha2)
 include(FetchContent_inja)
 include(FetchContent_spdlog)
 

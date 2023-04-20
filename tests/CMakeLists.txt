@@ -33,6 +33,7 @@ target_link_libraries(
     fmt
     inja
     nlohmann_json
+    picosha2
     spdlog
     Catch2::Catch2WithMain
 )
