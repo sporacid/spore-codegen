@@ -4,7 +4,7 @@ set(
 )
 
 set(
-  SPORE_CODEGEN_OUTPUT "spore-codegen"
+  SPORE_CODEGEN_BINARY_NAME "spore-codegen"
   CACHE STRING "Output name for the main codegen application"
 )
 
@@ -23,7 +23,7 @@ set_target_properties(
   ${SPORE_CODEGEN_TARGET}
   PROPERTIES
     LINKER_LANGUAGE CXX
-    OUTPUT_NAME ${SPORE_CODEGEN_OUTPUT}
+    OUTPUT_NAME ${SPORE_CODEGEN_BINARY_NAME}
 )
 
 target_include_directories(
