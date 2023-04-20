@@ -107,10 +107,10 @@ namespace spore::codegen
                 for (const auto& prefix : options.template_paths)
                 {
                     auto prefix_path = std::filesystem::path(prefix) / template_;
-                    SPDLOG_DEBUG("  search {}", prefix_path);
+                    SPDLOG_DEBUG("  search {}", prefix_path.str());
                     if (std::filesystem::exists(prefix_path))
                     {
-                        SPDLOG_DEBUG("  found {}", prefix_path);
+                        SPDLOG_DEBUG("  found {}", prefix_path.str());
                         templates.push_back(prefix_path);
                         break;
                     }
