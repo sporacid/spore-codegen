@@ -14,7 +14,7 @@ jobs:
       - name: Check Commit Message
         uses: gsactions/commit-message-checker@v2
         with:
-          pattern: '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test){1}(\([\w\-\.]+\))?(!)?: ([\w ])+([\s\S]*)'
+          pattern: '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test){1}(\([\w\-\.]+\))?(!)?: ([\w\-\.,]+[\s\S]*)'
           flags: 'gm'
           error: 'The commit message does not follow the [conventional commit guidelines](https://www.conventionalcommits.org/en/v1.0.0/).'
           checkAllCommitMessages: 'true'
