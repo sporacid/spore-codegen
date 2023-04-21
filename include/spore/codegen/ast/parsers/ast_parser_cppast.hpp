@@ -55,16 +55,55 @@ namespace spore::codegen
 
             type_safe::optional_ref<const cppast::cpp_entity> cpp_parent = cpp_entity.parent();
 
+            const bool is_class_template =
+                cpp_parent.has_value() &&
+                cpp_entity.kind() == cppast::cpp_entity_kind::class_t &&
+                cpp_parent.value().kind() == cppast::cpp_entity_kind::class_template_t;
+
+            if (is_class_template)
+            {
+                cpp_parent = cpp_parent.value().parent();
+            }
+
             while (cpp_parent.has_value())
             {
-                if (cpp_parent.value().kind() == cppast::cpp_entity_kind::namespace_t)
+                switch (cpp_parent.value().kind())
                 {
-                    if (!scope.empty())
-                    {
-                        scope.insert(0, "::");
+                    case cppast::cpp_entity_kind::class_template_t: {
+                        const auto& cpp_class_template = dynamic_cast<const cppast::cpp_class_template&>(cpp_parent.value());
+
+                        scope += "<";
+
+                        for (const cppast::cpp_template_parameter& cpp_template_param : cpp_class_template.parameters())
+                        {
+                            scope += cpp_template_param.name() + ", ";
+                        }
+
+                        if (spore::codegen::ends_with(scope, ", "))
+                        {
+                            scope.resize(scope.length() - 2);
+                        }
+
+                        scope += ">";
+
+                        break;
                     }
 
-                    scope.insert(0, cpp_parent.value().name());
+                    case cppast::cpp_entity_kind::namespace_t:
+                    case cppast::cpp_entity_kind::class_t: {
+                        if (!scope.empty())
+                        {
+                            scope.insert(0, "::");
+                        }
+
+                        scope.insert(0, cpp_parent.value().name());
+
+                        break;
+                    }
+
+                    default: {
+                        break;
+                    }
                 }
 
                 cpp_parent = cpp_parent.value().parent();
@@ -343,8 +382,12 @@ namespace spore::codegen
             return constructor;
         }
 
-        ast_class parse_class(const cppast::cpp_class& cpp_class)
+        void parse_classes(const cppast::cpp_class_template& cpp_class, std::vector<ast_class>& classes);
+
+        void parse_classes(const cppast::cpp_class& cpp_class, std::vector<ast_class>& classes)
         {
+            const std::size_t insert_index = classes.size();
+
             ast_class class_;
             class_.name = cpp_class.name();
             class_.scope = find_scope(cpp_class);
@@ -380,11 +423,24 @@ namespace spore::codegen
             {
                 switch (cpp_entity.kind())
                 {
+                    case cppast::cpp_entity_kind::class_t: {
+                        const auto& cpp_class_inner = dynamic_cast<const cppast::cpp_class&>(cpp_entity);
+                        parse_classes(cpp_class_inner, classes);
+                        break;
+                    }
+
+                    case cppast::cpp_entity_kind::class_template_t: {
+                        const auto& cpp_class_inner = dynamic_cast<const cppast::cpp_class_template&>(cpp_entity);
+                        parse_classes(cpp_class_inner, classes);
+                        break;
+                    }
+
                     case cppast::cpp_entity_kind::member_variable_t: {
                         const auto& cpp_variable = dynamic_cast<const cppast::cpp_member_variable&>(cpp_entity);
                         class_.fields.emplace_back(parse_field(cpp_variable));
                         break;
                     }
+
                     case cppast::cpp_entity_kind::constructor_t: {
                         const auto& cpp_constructor = dynamic_cast<const cppast::cpp_constructor&>(cpp_entity);
 
@@ -407,6 +463,7 @@ namespace spore::codegen
 
                         break;
                     }
+
                     case cppast::cpp_entity_kind::function_template_t: {
                         const auto& cpp_function_template = dynamic_cast<const cppast::cpp_function_template&>(cpp_entity);
 
@@ -425,25 +482,28 @@ namespace spore::codegen
 
                         break;
                     }
+
                     default: {
                         break;
                     }
                 }
             }
 
-            return class_;
+            classes.insert(classes.begin() + insert_index, std::move(class_));
         }
 
-        ast_class parse_class(const cppast::cpp_class_template& cpp_class)
+        void parse_classes(const cppast::cpp_class_template& cpp_class, std::vector<ast_class>& classes)
         {
-            ast_class class_ = parse_class(cpp_class.class_());
+            const std::size_t insert_index = classes.size();
+
+            parse_classes(cpp_class.class_(), classes);
+
+            ast_class& class_ = classes.at(insert_index);
 
             std::transform(cpp_class.parameters().begin(), cpp_class.parameters().end(), std::back_inserter(class_.template_params),
                 [&](const cppast::cpp_template_parameter& cpp_template_param) {
                     return parse_template_param(cpp_template_param);
                 });
-
-            return class_;
         }
 
         ast_enum_value parse_enum_value(const cppast::cpp_enum_value& cpp_enum_value)
@@ -543,12 +603,12 @@ namespace spore::codegen
                         }
                         case cppast::cpp_entity_kind::class_template_t: {
                             const auto& cpp_class_template = dynamic_cast<const cppast::cpp_class_template&>(cpp_entity);
-                            file.classes.emplace_back(parse_class(cpp_class_template));
+                            parse_classes(cpp_class_template, file.classes);
                             break;
                         }
                         case cppast::cpp_entity_kind::class_t: {
                             const auto& cpp_class = dynamic_cast<const cppast::cpp_class&>(cpp_entity);
-                            file.classes.emplace_back(parse_class(cpp_class));
+                            parse_classes(cpp_class, file.classes);
                             break;
                         }
                         case cppast::cpp_entity_kind::function_template_t: {
