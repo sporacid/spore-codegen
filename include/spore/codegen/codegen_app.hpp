@@ -58,6 +58,7 @@ namespace spore::codegen
         cppast::libclang_compile_config cppast_config;
         cppast_config.set_flags(spore::codegen::parse_cpp_standard(options.cpp_standard));
         cppast_config.define_macro("SPORE_CODEGEN", "1");
+        cppast_config.remove_comments_in_macro(true);
 
         for (const std::string& include : options.includes)
         {
