@@ -108,14 +108,15 @@ namespace spore::codegen
                     continue;
                 }
 
-                for (const std::string& prefix : options.template_paths)
+                for (const std::string& template_path : options.template_paths)
                 {
-                    auto prefix_path = std::filesystem::path(prefix) / template_;
-                    SPDLOG_DEBUG("  search template, file={}", prefix_path.c_str());
-                    if (std::filesystem::exists(prefix_path))
+                    std::filesystem::path prefix_template = std::filesystem::path(template_path) / template_;
+
+                    SPDLOG_DEBUG("  search template, file={}", prefix_template.string());
+                    if (std::filesystem::exists(prefix_template))
                     {
-                        SPDLOG_DEBUG("  found template, file={}", prefix_path.c_str());
-                        templates.push_back(prefix_path);
+                        SPDLOG_DEBUG("  found template, file={}", prefix_template.string());
+                        templates.push_back(prefix_template.string());
                         template_found = true;
                         break;
                     }
