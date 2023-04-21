@@ -29,14 +29,12 @@ namespace details
 
 TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codegen::ast_parser]", spore::codegen::ast_parser_cppast)
 {
-    using ast_parser_t = TestType;
-
     spore::codegen::ast_file file;
-    std::shared_ptr<ast_parser_t> parser = details::make_parser<ast_parser_t>();
+    std::shared_ptr<TestType> parser = details::make_parser<TestType>();
 
     REQUIRE(parser->parse_file(details::get_input_file(), file));
     REQUIRE(file.enums.size() == 1);
-    REQUIRE(file.classes.size() == 3);
+    REQUIRE(file.classes.size() == 5);
     REQUIRE(file.functions.size() == 3);
 
     SECTION("parse include is feature complete")
@@ -158,9 +156,19 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
         }
     }
 
-    SECTION("parse class template is feature complete")
+    SECTION("parse inner class is feature complete")
     {
         const auto& class_ = file.classes[2];
+
+        REQUIRE(class_.name == "_inner");
+        REQUIRE(class_.scope == "_namespace1::_namespace2::_struct");
+        REQUIRE(class_.full_name() == "_namespace1::_namespace2::_struct::_inner");
+        REQUIRE(class_.type == spore::codegen::ast_class_type::struct_);
+    }
+
+    SECTION("parse class template is feature complete")
+    {
+        const auto& class_ = file.classes[3];
 
         REQUIRE(class_.name == "_struct_template");
         REQUIRE(class_.scope == "_namespace1::_namespace2");
@@ -186,6 +194,19 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
         REQUIRE(class_.fields[0].default_value.has_value() == false);
         REQUIRE(class_.fields[0].attributes.size() == 1);
         REQUIRE(class_.fields[0].attributes[0].name == "_field_attribute");
+    }
+
+    SECTION("parse inner class template is feature complete")
+    {
+        const auto& class_ = file.classes[4];
+
+        REQUIRE(class_.name == "_inner_template");
+        REQUIRE(class_.scope == "_namespace1::_namespace2::_struct_template<_value_t, _n>");
+        REQUIRE(class_.full_name() == "_namespace1::_namespace2::_struct_template<_value_t, _n>::_inner_template<_inner_value_t>");
+        REQUIRE(class_.type == spore::codegen::ast_class_type::struct_);
+        REQUIRE(class_.template_params[0].type == "typename");
+        REQUIRE(class_.template_params[0].name == "_inner_value_t");
+        REQUIRE(class_.template_params[0].default_value.has_value() == false);
     }
 
     SECTION("parse free function is feature complete")

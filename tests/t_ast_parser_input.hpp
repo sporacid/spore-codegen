@@ -34,12 +34,21 @@ namespace _namespace1::_namespace2
         {
             return _value_t();
         }
+
+        struct _inner
+        {
+        };
     };
 
     template <typename _value_t, int _n = 42>
     struct [[_struct_attribute]] _struct_template : _base
     {
         [[_field_attribute]] _value_t _value;
+
+        template <typename _inner_value_t>
+        struct _inner_template
+        {
+        };
     };
 
     [[_func_attribute]] int _free_func([[_argument_attribute]] int _arg = 42)
