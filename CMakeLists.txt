@@ -55,6 +55,7 @@ endif ()
 
 include(FetchContent_argparse)
 include(FetchContent_catch2)
+include(FetchContent_chaiscript)
 include(FetchContent_cppast)
 include(FetchContent_fmt)
 include(FetchContent_glob)

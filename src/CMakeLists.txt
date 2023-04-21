@@ -27,9 +27,10 @@ target_include_directories(
 target_link_libraries(
   ${SPORE_CODEGEN_LIBRARY_TARGET}
   INTERFACE
+    chaiscript
     cppast
     fmt
-    Glob
+    glob
     inja
     nlohmann_json
     picosha2
