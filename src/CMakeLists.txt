@@ -22,15 +22,16 @@ target_include_directories(
   ${SPORE_CODEGEN_LIBRARY_TARGET}
   INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_BINARY_DIR}/content/chaiscript/include
 )
 
 target_link_libraries(
   ${SPORE_CODEGEN_LIBRARY_TARGET}
   INTERFACE
-    chaiscript
+    ${CHAISCRIPT_LIBS}
     cppast
     fmt
-    glob
+    Glob
     inja
     nlohmann_json
     picosha2
