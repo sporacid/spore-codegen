@@ -20,21 +20,10 @@ set_target_properties(
     LINKER_LANGUAGE CXX
 )
 
-target_include_directories(
-  ${SPORE_CODEGEN_TESTS_TARGET}
-  PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include
-)
-
 target_link_libraries(
   ${SPORE_CODEGEN_TESTS_TARGET}
   PRIVATE
-    cppast
-    fmt
-    inja
-    nlohmann_json
-    picosha2
-    spdlog
+    ${SPORE_CODEGEN_LIBRARY_TARGET}
     Catch2::Catch2WithMain
 )
 
