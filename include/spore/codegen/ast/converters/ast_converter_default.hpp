@@ -70,7 +70,13 @@ namespace spore::codegen
 
         for (const ast_attribute& attribute : value)
         {
-            json[attribute.full_name()] = attribute;
+            std::string json_path = attribute.full_name();
+            json_path.insert(json_path.begin(), '/');
+
+            spore::codegen::replace_all(json_path, "::", "/");
+
+            nlohmann::json::json_pointer json_ptr(json_path);
+            json[json_ptr] = attribute;
         }
     }
 
@@ -84,7 +90,7 @@ namespace spore::codegen
     void to_json(nlohmann::json& json, const ast_template_param& value)
     {
         std::uint32_t unique_id = details::make_unique_id();
-        
+
         json["id"] = unique_id;
         json["name"] = value.name.empty() ? fmt::format("_{}", unique_id) : value.name;
         json["type"] = value.type;
@@ -160,6 +166,7 @@ namespace spore::codegen
     {
         to_json(json, static_cast<const ast_has_name<ast_enum>&>(value));
         to_json(json, static_cast<const ast_has_attributes<ast_enum>&>(value));
+
         json["id"] = details::make_unique_id();
         json["enum_values"] = value.enum_values;
     }
