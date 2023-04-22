@@ -7,3 +7,4 @@ add_compile_options(
 
 add_subdirectory(enum)
 add_subdirectory(json)
+add_subdirectory(scripts)

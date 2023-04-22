@@ -28,7 +28,7 @@ target_include_directories(
 target_link_libraries(
   ${SPORE_CODEGEN_LIBRARY_TARGET}
   INTERFACE
-    ${CHAISCRIPT_LIBS}
+    chai
     cppast
     fmt
     Glob

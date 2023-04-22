@@ -3,8 +3,7 @@
 #include <memory>
 #include <string>
 
-#include <chaiscript/chaiscript.hpp>
-
+#include "chaiscript/chaiscript.hpp"
 #include "spdlog/spdlog.h"
 
 #include "spore/codegen/scripts/codegen_script.hpp"
@@ -16,11 +15,11 @@ namespace spore::codegen
     {
         bool compile_script(const std::string& file, codegen_script& script) override
         {
-            std::shared_ptr<chaiscript::ChaiScript> chaiscript = std::make_shared<chaiscript::ChaiScript>();
+            std::shared_ptr<chaiscript::ChaiScript> chai_script = std::make_shared<chaiscript::ChaiScript>();
             try
             {
                 SPDLOG_DEBUG("compiling chai script, file={}", file);
-                chaiscript::Boxed_Value value = chaiscript->eval_file(file);
+                chaiscript::Boxed_Value value = chai_script->eval_file(file);
                 return true;
             }
             catch (const chaiscript::exception::eval_error& error)

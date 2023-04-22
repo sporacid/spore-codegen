@@ -25,8 +25,7 @@ set_target_properties(
 target_include_directories(
   ${SPORE_CODEGEN_EXAMPLES_SCRIPTS_TARGET}
   PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/.codegen/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/.codegen/src
 )
 
 target_link_libraries(

@@ -1,8 +1,8 @@
 {
   "steps": [
     {
-      "name": "headers",
-      "input": "src/**/*.cpp",
+      "name": "main",
+      "input": "src/main.cpp",
       "templates": [
         "templates/scripts.hpp.inja"
       ],
