@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <string>
 
 #include "chaiscript/chaiscript.hpp"
@@ -12,18 +13,16 @@ namespace spore::codegen
 {
     struct codegen_script_compiler_chaiscript : codegen_script_compiler
     {
-        chaiscript::ChaiScript chaiscript;
-
         bool compile_script(const std::string& file, codegen_script& script) override
         {
+            std::shared_ptr<chaiscript::ChaiScript> chaiscript = std::make_shared<chaiscript::ChaiScript>();
             try
             {
                 SPDLOG_DEBUG("compiling chai script, file={}", file);
-                chaiscript::Boxed_Value value = chaiscript.eval_file(file);
+                chaiscript::Boxed_Value value = chaiscript->eval_file(file);
             }
-            catch(const chaiscript::exception::eval_error& e)
+            catch (const chaiscript::exception::eval_error& e)
             {
-
             }
 
             return false;

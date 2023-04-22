@@ -1,0 +1,5 @@
+#pragma once
+
+{% for class in classes %}
+    // {{ say_hello(class.name) }}
+{% endfor %}

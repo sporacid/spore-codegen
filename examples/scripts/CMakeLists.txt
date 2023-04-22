@@ -1,0 +1,38 @@
+set(
+  SPORE_CODEGEN_EXAMPLES_SCRIPTS_TARGET "${PROJECT_NAME}.examples.scripts.bin"
+  CACHE STRING "Target for the JSON scripts example"
+)
+
+include(spore_codegen)
+
+file(
+  GLOB_RECURSE SPORE_CODEGEN_EXAMPLES_SCRIPTS_FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/**.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/**.cpp
+)
+
+add_executable(
+  ${SPORE_CODEGEN_EXAMPLES_SCRIPTS_TARGET}
+  ${SPORE_CODEGEN_EXAMPLES_SCRIPTS_FILES}
+)
+
+set_target_properties(
+  ${SPORE_CODEGEN_EXAMPLES_SCRIPTS_TARGET}
+  PROPERTIES
+  LINKER_LANGUAGE CXX
+)
+
+target_include_directories(
+  ${SPORE_CODEGEN_EXAMPLES_SCRIPTS_TARGET}
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/.codegen/include
+)
+
+target_link_libraries(
+  ${SPORE_CODEGEN_EXAMPLES_SCRIPTS_TARGET}
+)
+
+spore_codegen(
+  ${SPORE_CODEGEN_EXAMPLES_SCRIPTS_TARGET}
+)

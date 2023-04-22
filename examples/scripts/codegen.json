@@ -1,0 +1,14 @@
+{
+  "steps": [
+    {
+      "name": "headers",
+      "input": "include/**/*.hpp",
+      "templates": [
+        "templates/scripts.hpp.inja"
+      ],
+      "scripts": [
+        "scripts/functions.chai"
+      ]
+    }
+  ]
+}

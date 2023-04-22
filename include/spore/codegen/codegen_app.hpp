@@ -22,6 +22,8 @@
 #include "spore/codegen/renderers/codegen_renderer.hpp"
 #include "spore/codegen/renderers/codegen_renderer_composite.hpp"
 #include "spore/codegen/renderers/codegen_renderer_inja.hpp"
+#include "spore/codegen/scripts/codegen_script_compiler.hpp"
+#include "spore/codegen/scripts/codegen_script_compiler_chaiscript.hpp"
 
 namespace spore::codegen
 {
@@ -79,6 +81,7 @@ namespace spore::codegen
         std::shared_ptr<ast_parser> parser = std::make_shared<ast_parser_cppast>(std::move(cppast_config));
         std::shared_ptr<ast_converter> converter = std::make_shared<ast_converter_default>();
         std::shared_ptr<codegen_renderer> renderer = std::make_shared<codegen_renderer_composite>(std::make_shared<codegen_renderer_inja>());
+        std::shared_ptr<codegen_script_compiler> compiler = std::make_shared<codegen_script_compiler_chaiscript>();
 
         nlohmann::json user_data_json;
         for (const std::pair<std::string, std::string>& pair : options.user_data)
@@ -133,6 +136,15 @@ namespace spore::codegen
                 [&](const std::string& template_) {
                     return cache.check_and_update(template_);
                 });
+
+            codegen_script script;
+            for (const std::string& script_file : step.scripts)
+            {
+                if (!compiler->compile_script(script_file, script))
+                {
+                    throw codegen_error(codegen_error_code::scripting, "could not compile script, file={}", script_file);
+                }
+            }
 
             std::mutex mutex;
             std::vector<std::exception_ptr> exceptions;

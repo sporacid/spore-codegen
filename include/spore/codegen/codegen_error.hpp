@@ -14,6 +14,7 @@ namespace spore::codegen
         invalid,
         io,
         configuring,
+        scripting,
         parsing,
         conversion,
         rendering,
