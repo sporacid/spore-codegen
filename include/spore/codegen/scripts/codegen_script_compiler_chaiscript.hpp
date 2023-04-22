@@ -3,7 +3,8 @@
 #include <memory>
 #include <string>
 
-#include "chaiscript/chaiscript.hpp"
+#include <chaiscript/chaiscript.hpp>
+
 #include "spdlog/spdlog.h"
 
 #include "spore/codegen/scripts/codegen_script.hpp"
@@ -20,12 +21,13 @@ namespace spore::codegen
             {
                 SPDLOG_DEBUG("compiling chai script, file={}", file);
                 chaiscript::Boxed_Value value = chaiscript->eval_file(file);
+                return true;
             }
-            catch (const chaiscript::exception::eval_error& e)
+            catch (const chaiscript::exception::eval_error& error)
             {
+                SPDLOG_ERROR("failed to compile chai script, file={} error={}", file, error.what());
+                return false;
             }
-
-            return false;
         }
     };
 }

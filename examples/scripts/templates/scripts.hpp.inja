@@ -1,5 +1,8 @@
 #pragma once
 
-{% for class in classes %}
-    // {{ say_hello(class.name) }}
-{% endfor %}
+#include <string_view>
+
+namespace spore::codegen::examples::scripts
+{
+    constexpr std::string_view hello = "{{ say_hello('sporacid') }}";
+}

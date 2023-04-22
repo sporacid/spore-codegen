@@ -25,7 +25,11 @@ namespace spore::codegen
         json["name"].get_to(value.name);
         json["input"].get_to(value.input);
         json["templates"].get_to(value.templates);
-        json["scripts"].get_to(value.scripts);
+
+        if (!json["scripts"].empty())
+        {
+            json["scripts"].get_to(value.scripts);
+        }
     }
 
     void from_json(const nlohmann::json& json, codegen_config& value)

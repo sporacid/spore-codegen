@@ -2,7 +2,7 @@
   "steps": [
     {
       "name": "headers",
-      "input": "include/**/*.hpp",
+      "input": "src/**/*.cpp",
       "templates": [
         "templates/scripts.hpp.inja"
       ],

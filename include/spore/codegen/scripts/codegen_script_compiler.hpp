@@ -12,6 +12,6 @@ namespace spore::codegen
     struct codegen_script_compiler : std::enable_shared_from_this<codegen_script_compiler>
     {
         virtual ~codegen_script_compiler() = default;
-        virtual bool compile_script(const std::string& file, codegen_script& script);
+        virtual bool compile_script(const std::string& file, codegen_script& script) = 0;
     };
 }

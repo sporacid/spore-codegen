@@ -31,6 +31,10 @@ configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/include/spore/codegen/codegen_version.hpp
 )
 
+add_compile_options(
+  "$<$<CXX_COMPILER_ID:MSVC>:/bigobj>"
+)
+
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_compile_definitions(
     SPDLOG_ACTIVE_LEVEL=0
