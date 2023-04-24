@@ -75,7 +75,7 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
 
     SECTION("parse class is feature complete")
     {
-        const auto& class_ = file.classes[1];
+        const auto& class_ = file.classes[2];
 
         REQUIRE(class_.name == "_struct");
         REQUIRE(class_.scope == "_namespace1::_namespace2");
@@ -158,17 +158,19 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
 
     SECTION("parse inner class is feature complete")
     {
-        const auto& class_ = file.classes[2];
+        const auto& class_ = file.classes[1];
 
         REQUIRE(class_.name == "_inner");
         REQUIRE(class_.scope == "_namespace1::_namespace2::_struct");
         REQUIRE(class_.full_name() == "_namespace1::_namespace2::_struct::_inner");
+        REQUIRE(class_.namespace_ == "_namespace1::_namespace2");
+        REQUIRE(class_.parent_classes == "_struct");
         REQUIRE(class_.type == spore::codegen::ast_class_type::struct_);
     }
 
     SECTION("parse class template is feature complete")
     {
-        const auto& class_ = file.classes[3];
+        const auto& class_ = file.classes[4];
 
         REQUIRE(class_.name == "_struct_template");
         REQUIRE(class_.scope == "_namespace1::_namespace2");
@@ -198,7 +200,7 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
 
     SECTION("parse inner class template is feature complete")
     {
-        const auto& class_ = file.classes[4];
+        const auto& class_ = file.classes[3];
 
         REQUIRE(class_.name == "_inner_template");
         REQUIRE(class_.scope == "_namespace1::_namespace2::_struct_template<_value_t, _n>");

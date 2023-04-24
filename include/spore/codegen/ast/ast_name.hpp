@@ -12,6 +12,8 @@ namespace spore::codegen
     {
         std::string scope;
         std::string name;
+        std::string namespace_;
+        std::string parent_classes;
 
         [[nodiscard]] std::string full_name() const
         {
