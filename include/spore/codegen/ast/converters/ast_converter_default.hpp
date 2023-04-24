@@ -41,6 +41,8 @@ namespace spore::codegen
         json["name"] = value.name;
         json["scope"] = value.scope;
         json["full_name"] = value.full_name();
+        json["namespace"] = value.namespace_;
+        json["parent_classes"] = value.parent_classes;
     }
 
     template <typename ast_object_t>

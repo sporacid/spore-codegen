@@ -4,8 +4,8 @@
 
 {% for class in classes %}
     {% if truthy(class.attributes, "json") and not truthy(class.attributes, "json.values.ignore") %}
-        {% if truthy(class.scope) %}
-            namespace {{ class.scope }}
+        {% if truthy(class.namespace) %}
+            namespace {{ class.namespace }}
             {
         {% endif %}
             {% if class.is_template %}
@@ -17,7 +17,7 @@
             {% else %}
                 inline
             {% endif %}
-            void to_json(nlohmann::json& json, const {{ class.full_name }}& value)
+            void to_json([[maybe_unused]] nlohmann::json& json, [[maybe_unused]] const {% if truthy(class.parent_classes) %} {{ class.parent_classes }}:: {% endif %} {{ class.name }}& value)
             {
                 {% for field in class.fields %}
                     {% if not truthy(field.attributes, "json.values.ignore") %}
@@ -39,7 +39,7 @@
             {% else %}
                 inline
             {% endif %}
-            void from_json(const nlohmann::json& json, {{ class.full_name }}& value)
+            void from_json([[maybe_unused]] const nlohmann::json& json, [[maybe_unused]] {% if truthy(class.parent_classes) %} {{ class.parent_classes }}:: {% endif %} {{ class.name }}& value)
             {
                 {% for field in class.fields %}
                     {% if not truthy(field.attributes, "json.values.ignore") %}
@@ -51,7 +51,7 @@
                     {% endif %}
                 {% endfor %}
             }
-        {% if truthy(class.scope) %}
+        {% if truthy(class.namespace) %}
             }
 
         {% endif %}

@@ -112,6 +112,91 @@ namespace spore::codegen
             return scope;
         }
 
+        std::string find_namespace(const cppast::cpp_entity& cpp_entity)
+        {
+            std::string namespace_;
+
+            type_safe::optional_ref<const cppast::cpp_entity> cpp_parent = cpp_entity.parent();
+
+            const bool is_class_template =
+                cpp_parent.has_value() &&
+                cpp_entity.kind() == cppast::cpp_entity_kind::class_t &&
+                cpp_parent.value().kind() == cppast::cpp_entity_kind::class_template_t;
+
+            if (is_class_template)
+            {
+                cpp_parent = cpp_parent.value().parent();
+            }
+
+            while (cpp_parent.has_value())
+            {
+                switch (cpp_parent.value().kind())
+                {
+                    case cppast::cpp_entity_kind::namespace_t: {
+                        if (!namespace_.empty())
+                        {
+                            namespace_.insert(0, "::");
+                        }
+
+                        namespace_.insert(0, cpp_parent.value().name());
+
+                        break;
+                    }
+
+                    default: {
+                        break;
+                    }
+                }
+
+                cpp_parent = cpp_parent.value().parent();
+            }
+
+            return namespace_;
+        }
+
+        std::string find_parent_classes(const cppast::cpp_entity& cpp_entity)
+        {
+            std::string parent_classes;
+
+            type_safe::optional_ref<const cppast::cpp_entity> cpp_parent = cpp_entity.parent();
+
+            const bool is_class_template =
+                cpp_parent.has_value() &&
+                cpp_entity.kind() == cppast::cpp_entity_kind::class_t &&
+                cpp_parent.value().kind() == cppast::cpp_entity_kind::class_template_t;
+
+            if (is_class_template)
+            {
+                cpp_parent = cpp_parent.value().parent();
+            }
+
+            while (cpp_parent.has_value())
+            {
+                switch (cpp_parent.value().kind())
+                {
+                    case cppast::cpp_entity_kind::class_t: {
+                        if (!parent_classes.empty())
+                        {
+                            parent_classes.insert(0, "::");
+                        }
+
+                        parent_classes.insert(0, cpp_parent.value().name());
+
+                        break;
+                    }
+
+                    default: {
+                        break;
+                    }
+                }
+
+                cpp_parent = cpp_parent.value().parent();
+            }
+
+            return parent_classes;
+        }
+
+
         std::string parse_expression(const cppast::cpp_expression& cpp_expr)
         {
             switch (cpp_expr.kind())
@@ -299,6 +384,8 @@ namespace spore::codegen
             ast_function function;
             function.name = cpp_function_base.name();
             function.scope = find_scope(cpp_function_base);
+            function.namespace_ = find_namespace(cpp_function_base);
+            function.parent_classes = find_parent_classes(cpp_function_base);
 
             switch (cpp_function_base.kind())
             {
@@ -391,6 +478,8 @@ namespace spore::codegen
             ast_class class_;
             class_.name = cpp_class.name();
             class_.scope = find_scope(cpp_class);
+            class_.namespace_ = find_namespace(cpp_class);
+            class_.parent_classes = find_parent_classes(cpp_class);
 
             switch (cpp_class.class_kind())
             {
@@ -541,6 +630,8 @@ namespace spore::codegen
             ast_enum enum_;
             enum_.name = cpp_enum.name();
             enum_.scope = find_scope(cpp_enum);
+            enum_.namespace_ = find_namespace(cpp_enum);
+            enum_.parent_classes = find_parent_classes(cpp_enum);
 
             std::transform(cpp_enum.attributes().begin(), cpp_enum.attributes().end(), std::back_inserter(enum_.attributes),
                 [&](const cppast::cpp_attribute& cpp_attribute) {
