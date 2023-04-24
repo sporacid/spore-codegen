@@ -37,4 +37,5 @@ target_link_libraries(
 
 spore_codegen(
   ${SPORE_CODEGEN_EXAMPLES_JSON_TARGET}
+  DUMP_AST "${CMAKE_CURRENT_SOURCE_DIR}/.dumps"
 )

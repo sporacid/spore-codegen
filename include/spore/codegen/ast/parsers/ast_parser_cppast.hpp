@@ -268,6 +268,13 @@ namespace spore::codegen
             {
                 const auto& template_ = static_cast<const cppast::cpp_template_instantiation_type&>(cpp_type).primary_template();
 
+                // check for direct instantiation of std::optional
+                if (template_.name() == "std::optional")
+                {
+                    return true;
+                }
+
+                // check for alised std::optional
                 for (const auto& id : template_.id())
                 {
                     if (context.optional_type_ids.find(id.value_) != context.optional_type_ids.end())

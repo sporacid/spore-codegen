@@ -9,7 +9,7 @@ namespace spore::codegen::examples::json
         [[json(name = "Key")]] std::string key;
         [[json(name = "Value")]] std::string value;
         [[json(ignore)]] std::uint32_t version = 0;
-        std::optional<int> opt;
+        std::optional<int> optional_field;
     };
 
     template <typename value_t>
