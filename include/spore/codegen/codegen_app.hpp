@@ -142,7 +142,7 @@ namespace spore::codegen
             {
                 if (!compiler->compile_script(script_file, script))
                 {
-                    throw codegen_error(codegen_error_code::scripting, "could not compile script, file={}", script_file);
+                    throw codegen_error(codegen_error_code::scripting, "failed to compile script, file={}", script_file);
                 }
             }
 

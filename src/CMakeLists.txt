@@ -23,12 +23,12 @@ target_include_directories(
   INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
     ${CMAKE_BINARY_DIR}/content/chaiscript/include
+    ${CMAKE_BINARY_DIR}/content/chaiscript_extras/include
 )
 
 target_link_libraries(
   ${SPORE_CODEGEN_LIBRARY_TARGET}
   INTERFACE
-    chai
     cppast
     fmt
     Glob

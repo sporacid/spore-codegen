@@ -4,5 +4,5 @@
 
 namespace spore::codegen::examples::scripts
 {
-    constexpr std::string_view hello = "{{ say_hello('sporacid') }}";
+    constexpr std::string_view hello = "{{ say_hello("path") }}";
 }

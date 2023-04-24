@@ -26,7 +26,7 @@ namespace spore::codegen
         json["input"].get_to(value.input);
         json["templates"].get_to(value.templates);
 
-        if (!json["scripts"].empty())
+        if (json.contains("scripts"))
         {
             json["scripts"].get_to(value.scripts);
         }
