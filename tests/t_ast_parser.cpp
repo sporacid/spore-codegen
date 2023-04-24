@@ -39,9 +39,11 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
 
     SECTION("parse include is feature complete")
     {
-        REQUIRE(file.includes.size() == 1);
+        REQUIRE(file.includes.size() == 2);
         REQUIRE(file.includes[0].type == spore::codegen::ast_include_type::system);
         REQUIRE(file.includes[0].name == "string");
+        REQUIRE(file.includes[1].type == spore::codegen::ast_include_type::system);
+        REQUIRE(file.includes[1].name == "optional");
         REQUIRE_FALSE(file.includes[0].path.empty());
     }
 
@@ -92,7 +94,7 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
 
         SECTION("parse class field is feature complete")
         {
-            REQUIRE(class_.fields.size() == 2);
+            REQUIRE(class_.fields.size() == 4);
 
             REQUIRE(class_.fields[0].name == "_i");
             REQUIRE(class_.fields[0].type.name == "int");
@@ -104,6 +106,14 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
             REQUIRE(class_.fields[1].name == "_s");
             REQUIRE(class_.fields[1].type.name == "std::string");
             // REQUIRE(class_.fields[1].scope == "class_.full_name()");
+
+            REQUIRE(class_.fields[2].name == "_opt");
+            REQUIRE(class_.fields[2].type.name == "std::optional<int>");
+            REQUIRE(class_.fields[2].is_optional == true);
+
+            REQUIRE(class_.fields[3].name == "_opt_alias");
+            REQUIRE(class_.fields[3].type.name == "optional_alias_t<int>");
+            REQUIRE(class_.fields[3].is_optional == true);
         }
 
         SECTION("parse class constructor is feature complete")

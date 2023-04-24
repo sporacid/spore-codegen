@@ -138,6 +138,7 @@ namespace spore::codegen
         json["id"] = details::make_unique_id();
         json["name"] = value.name;
         json["type"] = value.type;
+        json["is_optional"] = value.is_optional;
     }
 
     void to_json(nlohmann::json& json, const ast_class& value)

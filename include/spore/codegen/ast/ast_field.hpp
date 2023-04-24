@@ -15,5 +15,6 @@ namespace spore::codegen
         std::string name;
         std::optional<std::string> default_value;
         ast_ref type;
+        bool is_optional;
     };
 }

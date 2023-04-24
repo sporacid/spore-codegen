@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>
-
+#include <optional>
 namespace spore::codegen::examples::json
 {
     struct [[json]] generic_pair
@@ -9,6 +9,7 @@ namespace spore::codegen::examples::json
         [[json(name = "Key")]] std::string key;
         [[json(name = "Value")]] std::string value;
         [[json(ignore)]] std::uint32_t version = 0;
+        std::optional<int> opt;
     };
 
     template <typename value_t>

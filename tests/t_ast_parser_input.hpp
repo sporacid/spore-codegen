@@ -1,9 +1,13 @@
 #pragma once
 
 #include <string>
+#include <optional>
 
 namespace _namespace1::_namespace2
 {
+  template <typename T>
+  using optional_alias_t = std::optional<T>;
+
     enum class [[_enum_attribute(key1 = value1, key2)]] _enum {
         _value1 [[_enum_value_attribute]],
         _value2 = 42,
@@ -17,6 +21,8 @@ namespace _namespace1::_namespace2
     {
         [[_field_attribute]] int _i = 42;
         std::string _s;
+        std::optional<int> _opt;
+        optional_alias_t<int> _opt_alias;
 
         _struct() = default;
 

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "cppast/cpp_class.hpp"
@@ -17,6 +18,7 @@
 #include "cppast/cpp_preprocessor.hpp"
 #include "cppast/cpp_template_parameter.hpp"
 #include "cppast/cpp_type.hpp"
+#include "cppast/cpp_type_alias.hpp"
 #include "cppast/libclang_parser.hpp"
 #include "cppast/visitor.hpp"
 #include "fmt/format.h"
@@ -29,6 +31,11 @@ namespace spore::codegen
 {
     namespace details
     {
+        struct parser_context
+        {
+            std::unordered_set<unsigned long> optional_type_ids;
+        };
+
         struct cppast_logger_impl : cppast::diagnostic_logger
         {
             bool do_log(const char* source, const cppast::diagnostic& diagnostic) const override
@@ -255,11 +262,30 @@ namespace spore::codegen
             return attribute;
         }
 
-        ast_field parse_field(const cppast::cpp_member_variable& cpp_variable)
+        bool is_optional(const cppast::cpp_type& cpp_type, const parser_context& context)
+        {
+            if (cpp_type.kind() == cppast::cpp_type_kind::template_instantiation_t)
+            {
+                const auto& template_ = static_cast<const cppast::cpp_template_instantiation_type&>(cpp_type).primary_template();
+
+                for (const auto& id : template_.id())
+                {
+                    if (context.optional_type_ids.find(id.value_) != context.optional_type_ids.end())
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        ast_field parse_field(const cppast::cpp_member_variable& cpp_variable, const parser_context& context)
         {
             ast_field field;
             field.name = cpp_variable.name();
             field.type = parse_ref(cpp_variable.type());
+            field.is_optional = is_optional(cpp_variable.type(), context);
 
             if (cpp_variable.default_value().has_value())
             {
@@ -382,9 +408,9 @@ namespace spore::codegen
             return constructor;
         }
 
-        void parse_classes(const cppast::cpp_class_template& cpp_class, std::vector<ast_class>& classes);
+        void parse_classes(const cppast::cpp_class_template& cpp_class, std::vector<ast_class>& classes, const parser_context& context);
 
-        void parse_classes(const cppast::cpp_class& cpp_class, std::vector<ast_class>& classes)
+        void parse_classes(const cppast::cpp_class& cpp_class, std::vector<ast_class>& classes, const parser_context& context)
         {
             const std::size_t insert_index = classes.size();
 
@@ -425,19 +451,19 @@ namespace spore::codegen
                 {
                     case cppast::cpp_entity_kind::class_t: {
                         const auto& cpp_class_inner = dynamic_cast<const cppast::cpp_class&>(cpp_entity);
-                        parse_classes(cpp_class_inner, classes);
+                        parse_classes(cpp_class_inner, classes, context);
                         break;
                     }
 
                     case cppast::cpp_entity_kind::class_template_t: {
                         const auto& cpp_class_inner = dynamic_cast<const cppast::cpp_class_template&>(cpp_entity);
-                        parse_classes(cpp_class_inner, classes);
+                        parse_classes(cpp_class_inner, classes, context);
                         break;
                     }
 
                     case cppast::cpp_entity_kind::member_variable_t: {
                         const auto& cpp_variable = dynamic_cast<const cppast::cpp_member_variable&>(cpp_entity);
-                        class_.fields.emplace_back(parse_field(cpp_variable));
+                        class_.fields.emplace_back(parse_field(cpp_variable, context));
                         break;
                     }
 
@@ -492,11 +518,11 @@ namespace spore::codegen
             classes.insert(classes.begin() + insert_index, std::move(class_));
         }
 
-        void parse_classes(const cppast::cpp_class_template& cpp_class, std::vector<ast_class>& classes)
+        void parse_classes(const cppast::cpp_class_template& cpp_class, std::vector<ast_class>& classes, const parser_context& context)
         {
             const std::size_t insert_index = classes.size();
 
-            parse_classes(cpp_class.class_(), classes);
+            parse_classes(cpp_class.class_(), classes, context);
 
             ast_class& class_ = classes.at(insert_index);
 
@@ -581,6 +607,7 @@ namespace spore::codegen
         {
             ast_file file;
             file.path = cpp_file.name();
+            parser_context context;
 
             const auto predicate = [&](const cppast::cpp_entity& cpp_entity) {
                 const bool is_definition = cppast::is_definition(cpp_entity);
@@ -588,7 +615,8 @@ namespace spore::codegen
                 const bool is_class = is_definition && (cpp_entity.kind() == cppast::cpp_entity_kind::class_t || cpp_entity.kind() == cppast::cpp_entity_kind::class_template_t);
                 const bool is_function = is_definition && (cpp_entity.kind() == cppast::cpp_entity_kind::function_t || cpp_entity.kind() == cppast::cpp_entity_kind::function_template_t);
                 const bool is_include = cpp_entity.kind() == cppast::cpp_entity_kind::include_directive_t;
-                return is_enum || is_class || is_function || is_include;
+                const bool is_type_alias = cpp_entity.kind() == cppast::cpp_entity_kind::type_alias_t;
+                return is_enum || is_class || is_function || is_include || is_type_alias;
             };
 
             const auto action = [&](const cppast::cpp_entity& cpp_entity, const cppast::visitor_info& cppast_info) {
@@ -603,12 +631,12 @@ namespace spore::codegen
                         }
                         case cppast::cpp_entity_kind::class_template_t: {
                             const auto& cpp_class_template = dynamic_cast<const cppast::cpp_class_template&>(cpp_entity);
-                            parse_classes(cpp_class_template, file.classes);
+                            parse_classes(cpp_class_template, file.classes, context);
                             break;
                         }
                         case cppast::cpp_entity_kind::class_t: {
                             const auto& cpp_class = dynamic_cast<const cppast::cpp_class&>(cpp_entity);
-                            parse_classes(cpp_class, file.classes);
+                            parse_classes(cpp_class, file.classes, context);
                             break;
                         }
                         case cppast::cpp_entity_kind::function_template_t: {
@@ -624,6 +652,23 @@ namespace spore::codegen
                         case cppast::cpp_entity_kind::include_directive_t: {
                             const auto& cpp_include = dynamic_cast<const cppast::cpp_include_directive&>(cpp_entity);
                             file.includes.emplace_back(parse_include(cpp_include));
+                            break;
+                        }
+                        case cppast::cpp_entity_kind::type_alias_t: {
+                            const auto& cpp_type_alias = dynamic_cast<const cppast::cpp_type_alias&>(cpp_entity);
+                            const auto& underlying_type = cpp_type_alias.underlying_type();
+
+                            if (underlying_type.kind() == cppast::cpp_type_kind::template_instantiation_t)
+                            {
+                                const auto& tmpl_instantiation = static_cast<const cppast::cpp_template_instantiation_type&>(underlying_type);
+                                if (tmpl_instantiation.primary_template().name() == "std::optional")
+                                {
+                                    for (const auto& id : tmpl_instantiation.primary_template().id())
+                                    {
+                                        context.optional_type_ids.emplace(id);
+                                    }
+                                }
+                            }
                             break;
                         }
                         default:
