@@ -473,8 +473,6 @@ namespace spore::codegen
 
         void parse_classes(const cppast::cpp_class& cpp_class, std::vector<ast_class>& classes)
         {
-            const std::size_t insert_index = classes.size();
-
             ast_class class_;
             class_.name = cpp_class.name();
             class_.scope = find_scope(cpp_class);
@@ -578,6 +576,7 @@ namespace spore::codegen
                 }
             }
 
+            const std::size_t insert_index = classes.size();
             classes.insert(classes.begin() + insert_index, std::move(class_));
         }
 
