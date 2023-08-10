@@ -218,6 +218,8 @@ namespace spore::codegen
                                 SPDLOG_WARN("failed to reformat output, file={}", output);
                             }
                         }
+
+                        ++index_template;
                     }
                 }
                 catch (...)
