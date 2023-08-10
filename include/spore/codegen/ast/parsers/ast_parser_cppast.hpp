@@ -173,6 +173,21 @@ namespace spore::codegen
             return template_param;
         }
 
+        ast_flags parse_flags(cppast::cpp_access_specifier_kind cpp_access_specifier)
+        {
+            switch (cpp_access_specifier)
+            {
+                case cppast::cpp_private:
+                    return ast_flags::private_;
+                case cppast::cpp_public:
+                    return ast_flags::public_;
+                case cppast::cpp_protected:
+                    return ast_flags::protected_;
+                default:
+                    return ast_flags::none;
+            }
+        }
+
         ast_ref parse_ref(const cppast::cpp_type& cpp_type)
         {
             ast_ref ref;
@@ -184,6 +199,7 @@ namespace spore::codegen
         {
             ast_ref ref;
             ref.name = cpp_base_class.name();
+            ref.flags = ref.flags | parse_flags(cpp_base_class.access_specifier());
             return ref;
         }
 
