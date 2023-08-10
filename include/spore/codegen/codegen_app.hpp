@@ -58,7 +58,6 @@ namespace spore::codegen
         cppast::libclang_compile_config cppast_config;
         cppast_config.set_flags(spore::codegen::parse_cpp_standard(options.cpp_standard));
         cppast_config.define_macro("SPORE_CODEGEN", "1");
-        cppast_config.remove_comments_in_macro(true);
         cppast_config.fast_preprocessing(true);
 
         for (const std::string& include : options.includes)
@@ -175,8 +174,24 @@ namespace spore::codegen
                         }
                     }
 
+                    std::vector<std::string> outputs;
+                    outputs.reserve(templates.size());
+
+                    std::transform(
+                        templates.begin(), templates.end(),
+                        std::back_inserter(outputs),
+                        [&](const std::string& template_) {
+                            std::filesystem::path output_ext = std::filesystem::path(template_).stem();
+                            std::filesystem::path output_filename = fmt::format("{}.{}", input.stem().string(), output_ext.string());
+                            std::filesystem::path output_directory = std::filesystem::path(options.output) / input.parent_path();
+                            std::string output = (output_directory / output_filename).string();
+                            return output;
+                        });
+
+                    json_data["outputs"] = user_data_json;
                     json_data["user_data"] = user_data_json;
 
+                    int index_template = 0;
                     for (const std::string& template_ : templates)
                     {
                         std::string result;
@@ -185,11 +200,7 @@ namespace spore::codegen
                             throw codegen_error(codegen_error_code::rendering, "failed to render input, file={} template={}", input.string(), template_);
                         }
 
-                        std::filesystem::path output_ext = std::filesystem::path(template_).stem();
-                        std::filesystem::path output_filename = fmt::format("{}.{}", input.stem().string(), output_ext.string());
-                        std::filesystem::path output_directory = std::filesystem::path(options.output) / input.parent_path();
-                        std::string output = (output_directory / output_filename).string();
-
+                        const std::string& output = outputs[index_template];
                         SPDLOG_INFO("generating output, file={}", output);
 
                         if (!spore::codegen::write_file(output, result))
