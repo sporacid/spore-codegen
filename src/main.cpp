@@ -1,10 +1,7 @@
-#include <iostream>
-#include <memory>
 #include <string>
 #include <vector>
 
 #include "argparse/argparse.hpp"
-#include "spdlog/async.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
 
@@ -19,14 +16,12 @@ namespace details
         const auto equal_sign = pair.find_first_of("=:");
         std::string name = equal_sign != std::string::npos ? pair.substr(0, equal_sign) : pair;
         std::string value = equal_sign != std::string::npos ? pair.substr(equal_sign + 1) : "";
-        return std::pair(std::move(name), std::move(value));
+        return {std::move(name), std::move(value)};
     }
 }
 
 int main(int argc, const char* argv[])
 {
-    std::shared_ptr<spdlog::logger> logger = spdlog::stdout_color_st<spdlog::async_factory>("default");
-    spdlog::set_default_logger(logger);
     spdlog::set_pattern("%l: %v");
 
     argparse::ArgumentParser arg_parser {
@@ -58,12 +53,6 @@ int main(int argc, const char* argv[])
     arg_parser
         .add_argument("-T", "--template-paths")
         .help("paths to search for templates")
-        .default_value(std::vector<std::string> {})
-        .append();
-
-    arg_parser
-        .add_argument("-f", "--features")
-        .help("feature to enable for clang compilation")
         .default_value(std::vector<std::string> {})
         .append();
 
@@ -105,18 +94,8 @@ int main(int argc, const char* argv[])
         .implicit_value(true);
 
     arg_parser
-        .add_argument("--dump-ast")
-        .help("dump internal json representation of the AST being passed into the templates");
-
-    arg_parser
         .add_argument("-g", "--debug")
         .help("sets output verbosity to debug")
-        .default_value(false)
-        .implicit_value(true);
-
-    arg_parser
-        .add_argument("-S", "--sequential")
-        .help("process input files sequentially instead of in parallel")
         .default_value(false)
         .implicit_value(true);
 
@@ -131,33 +110,28 @@ int main(int argc, const char* argv[])
         return static_cast<int>(spore::codegen::codegen_error_code::invalid);
     }
 
-    if (arg_parser.get<bool>("--debug"))
+    spore::codegen::codegen_options options {
+        .output = arg_parser.get<std::string>("--output"),
+        .config = arg_parser.get<std::string>("--config"),
+        .cache = arg_parser.get<std::string>("--cache"),
+        .cpp_standard = arg_parser.get<std::string>("--cpp-standard"),
+        .reformat = arg_parser.get<std::string>("--reformat"),
+        .includes = arg_parser.get<std::vector<std::string>>("--includes"),
+        .template_paths = arg_parser.get<std::vector<std::string>>("--template-paths"),
+        .definitions = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--definitions"),
+        .user_data = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--user-data"),
+        .force = arg_parser.get<bool>("--force"),
+        .debug = arg_parser.get<bool>("--debug"),
+    };
+
+    if (options.debug)
     {
         spdlog::set_level(spdlog::level::debug);
     }
 
-    spore::codegen::codegen_options options;
-    options.output = arg_parser.get<std::string>("--output");
-    options.config = arg_parser.get<std::string>("--config");
-    options.cache = arg_parser.get<std::string>("--cache");
-    options.cpp_standard = arg_parser.get<std::string>("--cpp-standard");
-    options.reformat = arg_parser.get<std::string>("--reformat");
-    options.includes = arg_parser.get<std::vector<std::string>>("--includes");
-    options.template_paths = arg_parser.get<std::vector<std::string>>("--template-paths");
-    options.features = arg_parser.get<std::vector<std::string>>("--features");
-    options.definitions = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--definitions");
-    options.user_data = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--user-data");
-    options.force = arg_parser.get<bool>("--force");
-    options.sequential = arg_parser.get<bool>("--sequential");
-
-    if (arg_parser.present("--dump-ast"))
-    {
-        options.dump_ast = arg_parser.get<std::string>("--dump-ast");
-    }
-
     try
     {
-        spore::codegen::run_codegen(options);
+        spore::codegen::codegen_app(options).run();
     }
     catch (const spore::codegen::codegen_error& e)
     {

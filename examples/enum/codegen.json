@@ -1,10 +1,18 @@
 {
-  "steps": [
+  "version": 1,
+  "stages": [
     {
       "name": "headers",
-      "input": "include/**/*.hpp",
-      "templates": [
-        "templates/enum.hpp.inja"
+      "directory": "include",
+      "files": "**/*.hpp",
+      "steps": [
+        {
+          "name": "enum",
+          "directory": "include",
+          "templates": [
+            "templates/enum.hpp.inja"
+          ]
+        }
       ]
     }
   ]

@@ -1,16 +1,18 @@
 #pragma once
 
+#define ATTRIBUTE(...) [[clang::annotate(#__VA_ARGS__)]]
+
 namespace spore::codegen::examples::enums
 {
-    enum class [[enum_]] my_enum
+    enum class ATTRIBUTE(enum) my_enum
     {
-        value1 [[enum_(name = "CustomName1")]],
-        value2 [[enum_(name = "CustomName2")]],
-        value3 [[enum_(ignore)]],
+        value1 ATTRIBUTE(name = "CustomName1"),
+        value2 ATTRIBUTE(name = "CustomName2"),
+        value3 ATTRIBUTE(ignore),
         value4,
     };
 
-    enum class [[enum_(ignore)]] my_ignored_enum
+    enum class ATTRIBUTE(enum = false) my_ignored_enum
     {
         value1,
         value2,

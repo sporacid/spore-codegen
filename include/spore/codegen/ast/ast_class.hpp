@@ -27,5 +27,6 @@ namespace spore::codegen
         std::vector<ast_field> fields;
         std::vector<ast_function> functions;
         std::vector<ast_constructor> constructors;
+        bool nested = false;
     };
 }

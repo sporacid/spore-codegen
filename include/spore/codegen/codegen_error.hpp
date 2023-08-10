@@ -25,7 +25,7 @@ namespace spore::codegen
 
         template <typename... args_t>
         explicit codegen_error(codegen_error_code error_code, std::string_view format, args_t&&... args)
-            : std::runtime_error(fmt::format(format, std::forward<args_t>(args)...)),
+            : std::runtime_error(fmt::vformat(format, fmt::make_format_args(args...))),
               error_code(error_code)
         {
         }

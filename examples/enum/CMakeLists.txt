@@ -1,9 +1,7 @@
 set(
-  SPORE_CODEGEN_EXAMPLES_ENUM_TARGET "${PROJECT_NAME}.examples.enum.bin"
+  SPORE_CODEGEN_EXAMPLES_ENUM_TARGET "${PROJECT_NAME}-examples-enum-bin"
   CACHE STRING "Target for the enum to string example"
 )
-
-include(spore_codegen)
 
 file(
   GLOB_RECURSE SPORE_CODEGEN_EXAMPLES_ENUM_FILES
@@ -29,6 +27,9 @@ target_include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/.codegen/include
 )
 
+include(SporeCodegen)
+
 spore_codegen(
   ${SPORE_CODEGEN_EXAMPLES_ENUM_TARGET}
+  DEBUG
 )

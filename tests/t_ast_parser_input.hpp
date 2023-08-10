@@ -1,11 +1,12 @@
 #pragma once
 
-#include <string>
+#define ATTRIBUTE(...) [[clang::annotate(#__VA_ARGS__)]]
 
 namespace _namespace1::_namespace2
 {
-    enum class [[_enum_attribute(key1 = value1, key2)]] _enum {
-        _value1 [[_enum_value_attribute]],
+    enum class ATTRIBUTE(_enum) _enum
+    {
+        _value1 ATTRIBUTE(_enum_value),
         _value2 = 42,
     };
 
@@ -13,56 +14,82 @@ namespace _namespace1::_namespace2
     {
     };
 
-    struct [[_struct_attribute]] _struct : _base
+    struct ATTRIBUTE(_struct) _struct : _base
     {
-        [[_field_attribute]] int _i = 42;
-        std::string _s;
+        ATTRIBUTE(_field)
+        int _i = 42;
+        float _f;
 
+        ATTRIBUTE(_constructor)
         _struct() = default;
 
-        [[_constructor_attribute]] _struct([[_argument_attribute]] int _arg)
+        ATTRIBUTE(_constructor)
+        _struct(ATTRIBUTE(_argument) int _arg)
         {
         }
 
-        [[_func_attribute]] int _member_func([[_argument_attribute]] int _arg)
+        ATTRIBUTE(_function)
+        inline int _member_func(ATTRIBUTE(_argument) int _arg)
         {
             return 0;
         }
 
         template <typename _value_t, int _n = 42>
-        [[_func_attribute]] _value_t _template_member_func([[_argument_attribute]] _value_t _arg)
+        ATTRIBUTE(_function)
+        _value_t _template_member_func(ATTRIBUTE(_argument) _value_t _arg)
         {
             return _value_t();
         }
 
-        struct _inner
+        struct _nested
+        {
+        };
+
+        enum _nested_enum
         {
         };
     };
 
     template <typename _value_t, int _n = 42>
-    struct [[_struct_attribute]] _struct_template : _base
+    struct ATTRIBUTE(_struct) _struct_template : _base
     {
-        [[_field_attribute]] _value_t _value;
+        ATTRIBUTE(_field)
+        _value_t _value;
 
-        template <typename _inner_value_t>
-        struct _inner_template
+        template <typename _nested_value_t = int>
+        struct ATTRIBUTE(_inner) _nested_template
         {
         };
     };
 
-    [[_func_attribute]] int _free_func([[_argument_attribute]] int _arg = 42)
+    ATTRIBUTE(_function)
+    int _free_func(ATTRIBUTE(_argument) int _arg = 42)
     {
         return 0;
     }
 
     template <typename _value_t, int _n = 42>
-    [[_func_attribute]] _value_t _template_free_func([[_argument_attribute]] _value_t _arg)
+    ATTRIBUTE(_function)
+    _value_t _template_free_func(ATTRIBUTE(_argument) _value_t _arg)
     {
         return _value_t();
     }
 }
 
-void _global_func()
+inline void _global_func()
 {
 }
+
+struct ATTRIBUTE(a, b = 1, c = "2", d = 3.0, e = (f = 4, g = (h = 5))) _attributes
+{
+    ATTRIBUTE(a, a = false)
+    int _overridden_field = 0;
+};
+
+template <typename>
+concept concept_ = true;
+
+template <typename value_t, int size_v, template <typename arg_t, typename, int> typename template_t, concept_ concept_t, typename... variadic_t>
+struct _template
+{
+};

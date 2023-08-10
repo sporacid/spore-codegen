@@ -1,9 +1,9 @@
 #pragma once
 
-#include <string>
+#include <string_view>
 
 {% for enum in enums %}
-    {% if truthy(enum.attributes, "enum_") and not truthy(enum.attributes, "enum_.values.ignore") %}
+    {% if truthy(enum.attributes, "enum") %}
         {% if truthy(enum.scope) %}
             namespace {{ enum.scope }}
             {
@@ -12,13 +12,13 @@
                 {
                     switch(value)
                     {
-                        {% for enum_value in enum.enum_values %}
-                            {% if not truthy(enum_value.attributes, "enum_.values.ignore") %}
-                                case {{ enum.name }}::{{ enum_value.name }}:
-                                    {% if truthy(enum_value.attributes, "enum_.values.name") %}
-                                        return "{{ enum_value.attributes.enum_.values.name }}";
+                        {% for value in enum.values %}
+                            {% if not truthy(value.attributes, "ignore") %}
+                                case {{ enum.name }}::{{ value.name }}:
+                                    {% if truthy(value.attributes, "name") %}
+                                        return "{{ value.attributes.name }}";
                                     {% else %}
-                                        return "{{ enum_value.name }}";
+                                        return "{{ value.name }}";
                                     {% endif %}
                             {% endif %}
                         {% endfor %}

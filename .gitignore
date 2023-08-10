@@ -70,8 +70,13 @@ dkms.conf
 # CMake files
 .cmake/
 compile_commands.json
+CMakeUserPresets.json
 
 # Codegen files
 .codegen/
 .dumps/
 .cache
+.version
+
+# Visual Studio Files
+.vs/

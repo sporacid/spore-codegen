@@ -10,7 +10,7 @@
 
 namespace spore::codegen
 {
-    namespace details
+    namespace detail
     {
         std::uint32_t make_unique_id()
         {
@@ -25,6 +25,7 @@ namespace spore::codegen
         json["volatile"] = (value & ast_flags::volatile_) == ast_flags::volatile_;
         json["mutable"] = (value & ast_flags::mutable_) == ast_flags::mutable_;
         json["static"] = (value & ast_flags::static_) == ast_flags::static_;
+        json["virtual"] = (value & ast_flags::static_) == ast_flags::virtual_;
         json["public"] = (value & ast_flags::public_) == ast_flags::public_;
         json["private"] = (value & ast_flags::private_) == ast_flags::private_;
         json["protected"] = (value & ast_flags::protected_) == ast_flags::protected_;
@@ -47,62 +48,48 @@ namespace spore::codegen
     void to_json(nlohmann::json& json, const ast_has_template_params<ast_object_t>& value)
     {
         json["is_template"] = value.is_template();
+        json["is_template_specialization"] = value.is_template_specialization();
         json["template_params"] = value.template_params;
+        json["template_specialization_params"] = value.template_specialization_params;
     }
 
     template <typename ast_object_t>
     void to_json(nlohmann::json& json, const ast_has_attributes<ast_object_t>& value)
     {
-        json["attributes"] = value.attributes;
+        json["attributes"] = value.attributes.is_object() ? value.attributes : nlohmann::json::object();
     }
 
-    void to_json(nlohmann::json& json, const ast_attribute& value)
+    template <typename ast_object_t>
+    void to_json(nlohmann::json& json, const ast_has_flags<ast_object_t>& value)
     {
-        to_json(json, static_cast<const ast_has_name<ast_attribute>&>(value));
-
-        json["id"] = details::make_unique_id();
-        json["values"] = value.values;
-    }
-
-    void to_json(nlohmann::json& json, const std::vector<ast_attribute>& value)
-    {
-        json = nlohmann::json(nlohmann::json::value_t::object);
-
-        for (const ast_attribute& attribute : value)
-        {
-            std::string json_path = attribute.full_name();
-            json_path.insert(json_path.begin(), '/');
-
-            spore::codegen::replace_all(json_path, "::", "/");
-
-            nlohmann::json::json_pointer json_ptr(json_path);
-            json[json_ptr] = attribute;
-        }
+        json["flags"] = value.flags;
     }
 
     void to_json(nlohmann::json& json, const ast_ref& value)
     {
-        json["id"] = details::make_unique_id();
+        to_json(json, static_cast<const ast_has_flags<ast_ref>&>(value));
+
+        json["id"] = detail::make_unique_id();
         json["name"] = value.name;
-        json["flags"] = value.flags;
     }
 
     void to_json(nlohmann::json& json, const ast_template_param& value)
     {
-        std::uint32_t unique_id = details::make_unique_id();
+        std::uint32_t unique_id = detail::make_unique_id();
 
         json["id"] = unique_id;
         json["name"] = value.name.empty() ? fmt::format("_{}", unique_id) : value.name;
         json["type"] = value.type;
         json["default_value"] = value.default_value.value_or("");
         json["has_default_value"] = value.default_value.has_value();
+        json["is_variadic"] = value.is_variadic;
     }
 
     void to_json(nlohmann::json& json, const ast_argument& value)
     {
         to_json(json, static_cast<const ast_has_attributes<ast_argument>&>(value));
 
-        json["id"] = details::make_unique_id();
+        json["id"] = detail::make_unique_id();
         json["name"] = value.name;
         json["type"] = value.type;
         json["default_value"] = value.default_value.value_or("");
@@ -114,9 +101,9 @@ namespace spore::codegen
         to_json(json, static_cast<const ast_has_name<ast_function>&>(value));
         to_json(json, static_cast<const ast_has_attributes<ast_function>&>(value));
         to_json(json, static_cast<const ast_has_template_params<ast_function>&>(value));
+        to_json(json, static_cast<const ast_has_flags<ast_function>&>(value));
 
-        json["id"] = details::make_unique_id();
-        json["flags"] = value.flags;
+        json["id"] = detail::make_unique_id();
         json["arguments"] = value.arguments;
         json["return_type"] = value.return_type;
     }
@@ -125,19 +112,35 @@ namespace spore::codegen
     {
         to_json(json, static_cast<const ast_has_attributes<ast_constructor>&>(value));
         to_json(json, static_cast<const ast_has_template_params<ast_constructor>&>(value));
+        to_json(json, static_cast<const ast_has_flags<ast_constructor>&>(value));
 
-        json["id"] = details::make_unique_id();
-        json["flags"] = value.flags;
+        json["id"] = detail::make_unique_id();
         json["arguments"] = value.arguments;
     }
 
     void to_json(nlohmann::json& json, const ast_field& value)
     {
         to_json(json, static_cast<const ast_has_attributes<ast_field>&>(value));
+        to_json(json, static_cast<const ast_has_flags<ast_field>&>(value));
 
-        json["id"] = details::make_unique_id();
+        json["id"] = detail::make_unique_id();
         json["name"] = value.name;
         json["type"] = value.type;
+    }
+
+    void to_json(nlohmann::json& json, ast_class_type value)
+    {
+        static const std::map<ast_class_type, std::string> value_map {
+            {ast_class_type::unknown, "unknown"},
+            {ast_class_type::class_, "class"},
+            {ast_class_type::struct_, "struct"},
+        };
+
+        const auto it = value_map.find(value);
+        if (it != value_map.end())
+        {
+            json = it->second;
+        }
     }
 
     void to_json(nlohmann::json& json, const ast_class& value)
@@ -146,11 +149,13 @@ namespace spore::codegen
         to_json(json, static_cast<const ast_has_attributes<ast_class>&>(value));
         to_json(json, static_cast<const ast_has_template_params<ast_class>&>(value));
 
-        json["id"] = details::make_unique_id();
+        json["id"] = detail::make_unique_id();
         json["type"] = value.type;
         json["bases"] = value.bases;
         json["fields"] = value.fields;
         json["functions"] = value.functions;
+        json["constructors"] = value.constructors;
+        json["nested"] = value.nested;
     }
 
     void to_json(nlohmann::json& json, const ast_enum_value& value)
@@ -158,8 +163,22 @@ namespace spore::codegen
         to_json(json, static_cast<const ast_has_attributes<ast_enum_value>&>(value));
 
         json["name"] = value.name;
-        json["value"] = value.value.value_or("");
-        json["has_value"] = value.value.has_value();
+        json["value"] = value.value;
+    }
+
+    void to_json(nlohmann::json& json, ast_enum_type value)
+    {
+        static const std::map<ast_enum_type, std::string> value_map {
+            {ast_enum_type::none, "none"},
+            {ast_enum_type::enum_, "enum"},
+            {ast_enum_type::enum_class, "enum class"},
+        };
+
+        const auto it = value_map.find(value);
+        if (it != value_map.end())
+        {
+            json = it->second;
+        }
     }
 
     void to_json(nlohmann::json& json, const ast_enum& value)
@@ -167,24 +186,20 @@ namespace spore::codegen
         to_json(json, static_cast<const ast_has_name<ast_enum>&>(value));
         to_json(json, static_cast<const ast_has_attributes<ast_enum>&>(value));
 
-        json["id"] = details::make_unique_id();
-        json["enum_values"] = value.enum_values;
-    }
-
-    void to_json(nlohmann::json& json, const ast_include& value)
-    {
-        json["name"] = value.name;
-        json["path"] = value.path;
+        json["id"] = detail::make_unique_id();
+        json["type"] = value.type;
+        json["base"] = value.base;
+        json["values"] = value.values;
+        json["nested"] = value.nested;
     }
 
     void to_json(nlohmann::json& json, const ast_file& value)
     {
-        json["id"] = details::make_unique_id();
+        json["id"] = detail::make_unique_id();
         json["path"] = value.path;
         json["classes"] = value.classes;
         json["enums"] = value.enums;
         json["functions"] = value.functions;
-        json["includes"] = value.includes;
     }
 
     struct ast_converter_default : ast_converter
