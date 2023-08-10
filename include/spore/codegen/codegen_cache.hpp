@@ -1,7 +1,7 @@
 #pragma once
 
 #include <filesystem>
-#include <mutex>
+#include <map>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -9,17 +9,23 @@
 #include "nlohmann/json.hpp"
 #include "spdlog/spdlog.h"
 
-#include "spore/codegen/codegen_helpers.hpp"
 #include "spore/codegen/codegen_version.hpp"
+#include "spore/codegen/utils/files.hpp"
 
 namespace spore::codegen
 {
+    enum class codegen_cache_status
+    {
+        up_to_date,
+        new_,
+        dirty,
+    };
+
     struct codegen_cache_entry
     {
         std::string file;
         std::string hash;
-        std::uintmax_t file_size = 0;
-        std::int64_t last_write_time = 0;
+        std::int64_t mtime = 0;
 
         bool operator<(const codegen_cache_entry& other) const
         {
@@ -44,72 +50,78 @@ namespace spore::codegen
 
     struct codegen_cache
     {
-        std::mutex mutex;
         std::string version;
         std::vector<codegen_cache_entry> entries;
 
-        bool check_and_update(const std::string_view& file)
+        codegen_cache_status check_and_update(const std::string& file)
         {
             std::string hash;
-            if (!spore::codegen::hash_file(file, hash))
+            if (!files::hash_file(file, hash))
             {
-                return false;
+                return codegen_cache_status::dirty;
             }
 
-            std::uintmax_t file_size = std::filesystem::file_size(file);
-            std::int64_t file_last_write_time = std::filesystem::last_write_time(file).time_since_epoch().count();
+            std::int64_t mtime = std::filesystem::last_write_time(file).time_since_epoch().count();
 
-            std::lock_guard lock(mutex);
-
-            const auto it = std::find(entries.begin(), entries.end(), file.data());
-            if (it == entries.end())
+            const auto it = std::lower_bound(entries.begin(), entries.end(), file);
+            if (it == entries.end() || it->file != file)
             {
-                codegen_cache_entry& entry = entries.emplace_back();
-                entry.file = file.data();
+                codegen_cache_entry entry;
+                entry.file = file;
                 entry.hash = std::move(hash);
-                entry.file_size = file_size;
-                entry.last_write_time = file_last_write_time;
-                return false;
+                entry.mtime = mtime;
+                entries.insert(it, std::move(entry));
+                return codegen_cache_status::new_;
             }
 
-            if (file_size != it->file_size ||
-                file_last_write_time != it->last_write_time ||
-                hash != it->hash)
+            if (mtime != it->mtime || hash != it->hash)
             {
                 codegen_cache_entry& entry = *it;
                 entry.hash = std::move(hash);
-                entry.file_size = file_size;
-                entry.last_write_time = file_last_write_time;
-                return false;
+                entry.mtime = mtime;
+                return codegen_cache_status::dirty;
             }
 
-            return true;
+            return codegen_cache_status::up_to_date;
+        }
+
+        void reset()
+        {
+            version = SPORE_CODEGEN_VERSION;
+            entries.clear();
+        }
+
+        bool empty() const
+        {
+            return entries.empty();
         }
     };
 
-    void to_json(nlohmann::json& json, const codegen_cache_entry& value)
+    inline void to_json(nlohmann::json& json, const codegen_cache_entry& value)
     {
         json["file"] = value.file;
         json["hash"] = value.hash;
-        json["file_size"] = value.file_size;
-        json["last_write_time"] = value.last_write_time;
+        json["mtime"] = value.mtime;
     }
 
-    void from_json(const nlohmann::json& json, codegen_cache_entry& value)
+    inline void from_json(const nlohmann::json& json, codegen_cache_entry& value)
     {
         json["file"].get_to(value.file);
         json["hash"].get_to(value.hash);
-        json["file_size"].get_to(value.file_size);
-        json["last_write_time"].get_to(value.last_write_time);
+
+        if (json.contains("mtime"))
+        {
+            json["mtime"].get_to(value.mtime);
+        }
     }
 
-    void to_json(nlohmann::json& json, const codegen_cache& value)
+    inline void to_json(nlohmann::json& json, const codegen_cache& value)
     {
         json["version"] = SPORE_CODEGEN_VERSION;
         json["entries"] = value.entries;
     }
 
-    void from_json(const nlohmann::json& json, codegen_cache& value)
+    inline void from_json(const nlohmann::json& json, codegen_cache& value)
     {
         if (json.type() == nlohmann::json::value_t::array)
         {
@@ -119,6 +131,22 @@ namespace spore::codegen
         {
             json["version"].get_to(value.version);
             json["entries"].get_to(value.entries);
+        }
+    }
+
+    inline void to_json(nlohmann::json& json, const codegen_cache_status& value)
+    {
+        static const std::map<codegen_cache_status, std::string_view> name_map {
+            {codegen_cache_status::up_to_date, "up-to-date"},
+            {codegen_cache_status::new_, "new"},
+            {codegen_cache_status::dirty, "dirty"},
+        };
+
+        const auto it_name = name_map.find(value);
+
+        if (it_name != name_map.end())
+        {
+            json = it_name->second;
         }
     }
 }

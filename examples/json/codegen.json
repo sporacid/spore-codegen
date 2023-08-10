@@ -1,10 +1,18 @@
 {
-  "steps": [
+  "version": 1,
+  "stages": [
     {
       "name": "headers",
-      "input": "include/**/*.hpp",
-      "templates": [
-        "templates/json.hpp.inja"
+      "directory": "include",
+      "files": "**/*.hpp",
+      "steps": [
+        {
+          "name": "json",
+          "directory": "include",
+          "templates": [
+            "templates/json.hpp.inja"
+          ]
+        }
       ]
     }
   ]

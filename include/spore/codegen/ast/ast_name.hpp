@@ -3,7 +3,6 @@
 #include <string>
 
 #include "spore/codegen/ast/ast_template.hpp"
-#include "spore/codegen/codegen_helpers.hpp"
 
 namespace spore::codegen
 {
@@ -28,16 +27,26 @@ namespace spore::codegen
             {
                 const auto& has_template_params = static_cast<const ast_value_t&>(*this);
 
-                if (has_template_params.is_template())
+                if (has_template_params.is_template() || has_template_params.is_template_specialization())
                 {
                     full_name += "<";
 
-                    for (const ast_template_param& template_param : has_template_params.template_params)
+                    if (has_template_params.is_template())
                     {
-                        full_name += template_param.name + ", ";
+                        for (const ast_template_param& template_param : has_template_params.template_params)
+                        {
+                            full_name += template_param.name + ", ";
+                        }
+                    }
+                    else if (has_template_params.is_template_specialization())
+                    {
+                        for (const std::string& template_specialization_param : has_template_params.template_specialization_params)
+                        {
+                            full_name += template_specialization_param + ", ";
+                        }
                     }
 
-                    if (spore::codegen::ends_with(full_name, ", "))
+                    if (full_name.ends_with(", "))
                     {
                         full_name.resize(full_name.length() - 2);
                     }
