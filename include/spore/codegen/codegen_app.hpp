@@ -188,7 +188,7 @@ namespace spore::codegen
                             return output;
                         });
 
-                    json_data["outputs"] = user_data_json;
+                    json_data["outputs"] = outputs;
                     json_data["user_data"] = user_data_json;
 
                     int index_template = 0;
