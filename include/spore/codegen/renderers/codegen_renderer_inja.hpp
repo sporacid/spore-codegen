@@ -105,7 +105,8 @@ namespace spore::codegen
                     std::string value = args.at(0)->get<std::string>();
                     std::string from = args.at(1)->get<std::string>();
                     std::string to = args.at(2)->get<std::string>();
-                    return spore::codegen::replace_all(value, from, to);
+                    spore::codegen::replace_all(value, from, to);
+                    return value;
                 });
 
             inja_env.add_callback("abs_path", 1,
