@@ -514,17 +514,26 @@ namespace spore::codegen
             if (cpp_enum_value.value().has_value())
             {
                 const cppast::cpp_expression& cpp_enum_value_expr = cpp_enum_value.value().value();
+                switch (cpp_enum_value_expr.kind())
+                {
+                    case cppast::cpp_expression_kind::literal_t: {
+                        const auto& cpp_enum_value_expr_literal = dynamic_cast<const cppast::cpp_literal_expression&>(cpp_enum_value_expr);
+                        enum_value.value = cpp_enum_value_expr_literal.value();
+                        break;
+                    }
 
-                if (cpp_enum_value_expr.kind() == cppast::cpp_expression_kind::literal_t)
-                {
-                    const auto& cpp_enum_value_expr_literal = dynamic_cast<const cppast::cpp_literal_expression&>(cpp_enum_value_expr);
-                    enum_value.value = cpp_enum_value_expr_literal.value();
-                }
-                else
-                {
-                    type_safe::optional_ref<const cppast::cpp_entity> parent = cpp_enum_value.parent();
-                    std::string parent_name = parent.has_value() ? parent.value().name() : "";
-                    SPDLOG_WARN("unhandled enum value expression, enum={} name={}", parent_name, cpp_enum_value.name());
+                    case cppast::cpp_expression_kind::unexposed_t: {
+                        const auto& cpp_enum_value_expr_unexposed = dynamic_cast<const cppast::cpp_unexposed_expression&>(cpp_enum_value_expr);
+                        enum_value.value = cpp_enum_value_expr_unexposed.expression().as_string();
+                        break;
+                    }
+
+                    default: {
+                        type_safe::optional_ref<const cppast::cpp_entity> parent = cpp_enum_value.parent();
+                        std::string parent_name = parent.has_value() ? parent.value().name() : "";
+                        SPDLOG_WARN("unhandled enum value expression, enum={} name={}", parent_name, cpp_enum_value.name());
+                        break;
+                    }
                 }
             }
 
