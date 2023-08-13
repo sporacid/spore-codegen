@@ -98,6 +98,22 @@ namespace spore::codegen
                     std::string value = args.at(0)->get<std::string>();
                     return details::to_cpp_name(value);
                 });
+
+            inja_env.add_callback("replace", 3,
+                [](inja::Arguments& args) {
+                    std::string value = args.at(0)->get<std::string>();
+                    std::string from = args.at(1)->get<std::string>();
+                    std::string to = args.at(2)->get<std::string>();
+
+                    std::size_t index = 0;
+                    while ((index = value.find(from, index)) != std::string::npos)
+                    {
+                        value.replace(index, from.length(), to);
+                        index += to.length();
+                    }
+
+                    return value;
+                });
         }
 
         bool render_file(const std::string& file, const nlohmann::json& data, std::string& result) override
