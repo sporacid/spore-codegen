@@ -11,6 +11,7 @@
 #include "nlohmann/json.hpp"
 #include "spdlog/spdlog.h"
 
+#include "spore/codegen/codegen_helpers.hpp"
 #include "spore/codegen/renderers/codegen_renderer.hpp"
 
 namespace spore::codegen
@@ -104,15 +105,13 @@ namespace spore::codegen
                     std::string value = args.at(0)->get<std::string>();
                     std::string from = args.at(1)->get<std::string>();
                     std::string to = args.at(2)->get<std::string>();
+                    return spore::codegen::replace_all(value, from, to);
+                });
 
-                    std::size_t index = 0;
-                    while ((index = value.find(from, index)) != std::string::npos)
-                    {
-                        value.replace(index, from.length(), to);
-                        index += to.length();
-                    }
-
-                    return value;
+            inja_env.add_callback("abs_path", 1,
+                [](inja::Arguments& args) {
+                    std::string value = args.at(0)->get<std::string>();
+                    return std::filesystem::absolute(std::filesystem::path(value)).string();
                 });
         }
 
