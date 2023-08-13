@@ -70,10 +70,11 @@ namespace spore::codegen
                 SPDLOG_INFO("ignoring old cache, file={} version={}", cache_file, cache.version);
                 cache.reset();
             }
-            if (!cache.check_and_update(options.config))
+            else if (!cache.check_and_update(options.config))
             {
                 SPDLOG_INFO("ignoring old cache because of new config, file={} config={}", cache_file, options.config);
                 cache.reset();
+                cache.check_and_update(options.config);
             }
             else
             {
