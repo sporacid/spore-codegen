@@ -216,7 +216,7 @@ namespace spore::codegen
                             std::filesystem::path output_ext = std::filesystem::path(template_).stem();
                             std::filesystem::path output_filename = fmt::format("{}.{}", input.stem().string(), output_ext.string());
                             std::filesystem::path output_directory = std::filesystem::path(options.output) / input.parent_path();
-                            std::string output = (output_directory / output_filename).string();
+                            std::string output = std::filesystem::absolute(output_directory / output_filename).string();
                             return output;
                         });
 
