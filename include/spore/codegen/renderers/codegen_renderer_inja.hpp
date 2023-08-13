@@ -100,6 +100,13 @@ namespace spore::codegen
                     return details::to_cpp_name(value);
                 });
 
+            inja_env.add_callback("contains", 2,
+                [](inja::Arguments& args) {
+                    std::string value = args.at(0)->get<std::string>();
+                    std::string str = args.at(1)->get<std::string>();
+                    return value.find(str) != std::string::npos;
+                });
+
             inja_env.add_callback("replace", 3,
                 [](inja::Arguments& args) {
                     std::string value = args.at(0)->get<std::string>();

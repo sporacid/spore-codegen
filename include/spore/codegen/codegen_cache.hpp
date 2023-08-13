@@ -85,6 +85,13 @@ namespace spore::codegen
 
             return true;
         }
+
+        void reset()
+        {
+            std::lock_guard lock(mutex);
+            version = SPORE_CODEGEN_VERSION;
+            entries.clear();
+        }
     };
 
     void to_json(nlohmann::json& json, const codegen_cache_entry& value)
