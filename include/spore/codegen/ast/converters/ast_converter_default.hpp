@@ -140,6 +140,21 @@ namespace spore::codegen
         json["type"] = value.type;
     }
 
+    void to_json(nlohmann::json& json, const ast_class_type& value)
+    {
+        static const std::map<ast_class_type, std::string> value_map {
+            {ast_class_type::unknown, "unknown"},
+            {ast_class_type::class_, "class"},
+            {ast_class_type::struct_, "struct"},
+        };
+
+        const auto it = value_map.find(value);
+        if (it != value_map.end())
+        {
+            json = it->second;
+        }
+    }
+
     void to_json(nlohmann::json& json, const ast_class& value)
     {
         to_json(json, static_cast<const ast_has_name<ast_class>&>(value));
