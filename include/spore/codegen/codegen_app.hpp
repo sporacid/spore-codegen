@@ -9,6 +9,11 @@
 #include "glob/glob.h"
 #include "process.hpp"
 
+#include "spore/codegen/ast/conditions/ast_condition_all.hpp"
+#include "spore/codegen/ast/conditions/ast_condition_any.hpp"
+#include "spore/codegen/ast/conditions/ast_condition_attribute.hpp"
+#include "spore/codegen/ast/conditions/ast_condition_factory.hpp"
+#include "spore/codegen/ast/conditions/ast_condition_none.hpp"
 #include "spore/codegen/ast/converters/ast_converter.hpp"
 #include "spore/codegen/ast/converters/ast_converter_default.hpp"
 #include "spore/codegen/ast/parsers/ast_parser.hpp"
@@ -25,8 +30,23 @@
 
 namespace spore::codegen
 {
+    namespace details
+    {
+        std::once_flag setup_once_flag;
+
+        void setup_once()
+        {
+            ast_condition_factory::instance().register_condition<ast_condition_any>();
+            ast_condition_factory::instance().register_condition<ast_condition_all>();
+            ast_condition_factory::instance().register_condition<ast_condition_none>();
+            ast_condition_factory::instance().register_condition<ast_condition_attribute>();
+        }
+    }
+
     void run_codegen(const codegen_options& options)
     {
+        std::call_once(details::setup_once_flag, &details::setup_once);
+
         codegen_config config;
         codegen_cache cache;
 
@@ -89,6 +109,12 @@ namespace spore::codegen
         for (const codegen_config_step& step : config.steps)
         {
             std::vector<std::filesystem::path> inputs = glob::rglob(step.input);
+
+            std::shared_ptr<ast_condition> condition;
+            if (step.condition)
+            {
+                condition = ast_condition_factory::instance().make_condition(step.condition);
+            }
 
             // search for templates starting at the working directory and then going
             // through configured template prefix paths.
@@ -154,6 +180,12 @@ namespace spore::codegen
                     if (!parser->parse_file(input.string(), file))
                     {
                         throw codegen_error(codegen_error_code::parsing, "failed to parse input, file={}", input.string());
+                    }
+
+                    if (condition && !condition->matches_condition(file))
+                    {
+                        SPDLOG_DEBUG("skipping input because it does not match condition, file={}", input.string());
+                        return;
                     }
 
                     nlohmann::json json_data;

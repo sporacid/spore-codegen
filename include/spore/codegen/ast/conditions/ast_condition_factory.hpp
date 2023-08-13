@@ -26,7 +26,7 @@ namespace spore::codegen
 
         std::map<std::string, factory_func_t> factory_map;
 
-        static const ast_condition_factory& instance()
+        static ast_condition_factory& instance()
         {
             static ast_condition_factory factory;
             return factory;
@@ -35,7 +35,7 @@ namespace spore::codegen
         template <typename condition_t>
         void register_condition()
         {
-            register_condition(condition_t::condition_type(), &condition_t::make_condition);
+            register_condition(condition_t::type().data(), &condition_t::make_condition);
         }
 
         void register_condition(const std::string& type, const factory_func_t& factory_func)
@@ -43,14 +43,14 @@ namespace spore::codegen
             factory_map.emplace(type, factory_func);
         }
 
-        std::shared_ptr<ast_condition> make_condition(const nlohmann::json& json) const
+        [[nodiscard]] std::shared_ptr<ast_condition> make_condition(const nlohmann::json& json) const
         {
             ast_condition_params params;
             from_json(json, params);
             return make_condition(params);
         }
 
-        std::shared_ptr<ast_condition> make_condition(const ast_condition_params& params) const
+        [[nodiscard]] std::shared_ptr<ast_condition> make_condition(const ast_condition_params& params) const
         {
             const auto it = factory_map.find(params.type);
             return it != factory_map.end() ? it->second(params.value) : nullptr;

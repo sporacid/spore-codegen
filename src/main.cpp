@@ -19,7 +19,7 @@ namespace details
         const auto equal_sign = pair.find_first_of("=:");
         std::string name = equal_sign != std::string::npos ? pair.substr(0, equal_sign) : pair;
         std::string value = equal_sign != std::string::npos ? pair.substr(equal_sign + 1) : "";
-        return std::pair(std::move(name), std::move(value));
+        return {std::move(name), std::move(value)};
     }
 }
 

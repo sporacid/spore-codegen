@@ -4,11 +4,11 @@
 
 namespace spore::codegen
 {
-    struct ast_condition_and : ast_condition_logical<ast_condition_and>
+    struct ast_condition_none : ast_condition_logical<ast_condition_none>
     {
         static constexpr std::string_view type()
         {
-            return "and";
+            return "none";
         }
 
         bool matches_condition(const ast_file& file) const override
@@ -17,7 +17,7 @@ namespace spore::codegen
                 return condition && condition->matches_condition(file);
             };
 
-            return std::all_of(conditions.begin(), conditions.end(), predicate);
+            return std::none_of(conditions.begin(), conditions.end(), predicate);
         }
     };
 }

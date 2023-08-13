@@ -4,11 +4,11 @@
 
 namespace spore::codegen
 {
-    struct ast_condition_or : ast_condition_logical<ast_condition_or>
+    struct ast_condition_any : ast_condition_logical<ast_condition_any>
     {
         static constexpr std::string_view type()
         {
-            return "or";
+            return "any";
         }
 
         bool matches_condition(const ast_file& file) const override

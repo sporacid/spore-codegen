@@ -12,6 +12,7 @@ namespace spore::codegen
         std::string name;
         std::string input;
         std::vector<std::string> templates;
+        nlohmann::json condition;
     };
 
     struct codegen_config
@@ -24,6 +25,11 @@ namespace spore::codegen
         json["name"].get_to(value.name);
         json["input"].get_to(value.input);
         json["templates"].get_to(value.templates);
+
+        if (json["condition"])
+        {
+            value.condition = json["condition"];
+        }
     }
 
     void from_json(const nlohmann::json& json, codegen_config& value)
