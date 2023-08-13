@@ -110,12 +110,6 @@ namespace spore::codegen
         {
             std::vector<std::filesystem::path> inputs = glob::rglob(step.input);
 
-            std::shared_ptr<ast_condition> condition;
-            if (step.condition)
-            {
-                condition = ast_condition_factory::instance().make_condition(step.condition);
-            }
-
             // search for templates starting at the working directory and then going
             // through configured template prefix paths.
             SPDLOG_DEBUG("searching for templates");
@@ -162,6 +156,12 @@ namespace spore::codegen
 
             std::mutex mutex;
             std::vector<std::exception_ptr> exceptions;
+
+            std::shared_ptr<ast_condition> condition;
+            if (step.condition.has_value())
+            {
+                condition = ast_condition_factory::instance().make_condition(step.condition.value());
+            }
 
             SPDLOG_DEBUG("processing step, name={}", step.name);
 

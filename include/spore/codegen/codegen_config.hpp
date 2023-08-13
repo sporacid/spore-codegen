@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -12,7 +13,7 @@ namespace spore::codegen
         std::string name;
         std::string input;
         std::vector<std::string> templates;
-        nlohmann::json condition;
+        std::optional<nlohmann::json> condition;
     };
 
     struct codegen_config
@@ -26,9 +27,9 @@ namespace spore::codegen
         json["input"].get_to(value.input);
         json["templates"].get_to(value.templates);
 
-        if (json["condition"])
+        if (json.contains("condition"))
         {
-            value.condition = json["condition"];
+            json["condition"].get_to(value.condition.emplace());
         }
     }
 
