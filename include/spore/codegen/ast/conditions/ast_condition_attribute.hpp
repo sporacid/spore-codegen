@@ -134,7 +134,7 @@ namespace spore::codegen
                 return matches_attribute(file, attribute);
             };
 
-            return std::all_of(attributes.begin(), attributes.end(), predicate);
+            return std::any_of(attributes.begin(), attributes.end(), predicate);
         }
 
         bool matches_attribute(const ast_file& file, const std::string attribute) const
