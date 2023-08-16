@@ -115,174 +115,177 @@ namespace spore::codegen
 
         for (const codegen_config_step& step : config.steps)
         {
-            std::vector<std::filesystem::path> inputs = glob::rglob(step.input);
-
-            // search for templates starting at the working directory and then going
-            // through configured template prefix paths.
-            SPDLOG_DEBUG("searching for templates");
-            std::vector<std::string> templates;
-
-            for (const std::string& template_ : step.templates)
+            for (const codegen_config_pass& pass : step.passes)
             {
-                bool template_found = false;
+                std::vector<std::filesystem::path> inputs = glob::rglob(step.input);
 
-                SPDLOG_DEBUG("  search template, file={}", template_);
-                if (std::filesystem::exists(template_))
+                // search for templates starting at the working directory and then going
+                // through configured template prefix paths.
+                SPDLOG_DEBUG("searching for templates");
+                std::vector<std::string> templates;
+
+                for (const std::string& template_ : pass.templates)
                 {
-                    SPDLOG_DEBUG("  found template, file={}", template_);
-                    templates.push_back(template_);
-                    template_found = true;
-                    continue;
-                }
+                    bool template_found = false;
 
-                for (const std::string& template_path : options.template_paths)
-                {
-                    std::filesystem::path prefix_template = std::filesystem::path(template_path) / template_;
-
-                    SPDLOG_DEBUG("  search template, file={}", prefix_template.string());
-                    if (std::filesystem::exists(prefix_template))
+                    SPDLOG_DEBUG("  search template, file={}", template_);
+                    if (std::filesystem::exists(template_))
                     {
-                        SPDLOG_DEBUG("  found template, file={}", prefix_template.string());
-                        templates.push_back(prefix_template.string());
+                        SPDLOG_DEBUG("  found template, file={}", template_);
+                        templates.push_back(template_);
                         template_found = true;
-                        break;
+                        continue;
+                    }
+
+                    for (const std::string& template_path : options.template_paths)
+                    {
+                        std::filesystem::path prefix_template = std::filesystem::path(template_path) / template_;
+
+                        SPDLOG_DEBUG("  search template, file={}", prefix_template.string());
+                        if (std::filesystem::exists(prefix_template))
+                        {
+                            SPDLOG_DEBUG("  found template, file={}", prefix_template.string());
+                            templates.push_back(prefix_template.string());
+                            template_found = true;
+                            break;
+                        }
+                    }
+
+                    if (!template_found)
+                    {
+                        throw codegen_error(codegen_error_code::configuring, "could not find template file, file={}", template_);
                     }
                 }
 
-                if (!template_found)
+                const bool templates_up_to_date = std::all_of(
+                    templates.begin(), templates.end(),
+                    [&](const std::string& template_) {
+                        return cache.check_and_update(template_);
+                    });
+
+                std::mutex mutex;
+                std::vector<std::exception_ptr> exceptions;
+
+                std::shared_ptr<ast_condition> condition;
+                if (pass.condition.has_value())
                 {
-                    throw codegen_error(codegen_error_code::configuring, "could not find template file, file={}", template_);
+                    condition = ast_condition_factory::instance().make_condition(pass.condition.value());
                 }
-            }
 
-            const bool templates_up_to_date = std::all_of(
-                templates.begin(), templates.end(),
-                [&](const std::string& template_) {
-                    return cache.check_and_update(template_);
-                });
+                SPDLOG_DEBUG("processing step, name={}", step.name);
 
-            std::mutex mutex;
-            std::vector<std::exception_ptr> exceptions;
-
-            std::shared_ptr<ast_condition> condition;
-            if (step.condition.has_value())
-            {
-                condition = ast_condition_factory::instance().make_condition(step.condition.value());
-            }
-
-            SPDLOG_DEBUG("processing step, name={}", step.name);
-
-            const auto action = [&](const std::filesystem::path& input) {
-                SPDLOG_DEBUG("processing input, file={}", input.string());
-                try
-                {
-                    const bool input_up_to_date = cache.check_and_update(input.string());
-                    if (input_up_to_date && templates_up_to_date)
+                const auto action = [&](const std::filesystem::path& input) {
+                    SPDLOG_DEBUG("processing input, file={}", input.string());
+                    try
                     {
-                        SPDLOG_DEBUG("skipping input because it has not changed, file={}", input.string());
-                        return;
-                    }
-
-                    ast_file file;
-                    if (!parser->parse_file(input.string(), file))
-                    {
-                        throw codegen_error(codegen_error_code::parsing, "failed to parse input, file={}", input.string());
-                    }
-
-                    if (condition && !condition->matches_condition(file))
-                    {
-                        SPDLOG_DEBUG("skipping input because it does not match condition, file={}", input.string());
-                        return;
-                    }
-
-                    nlohmann::json json_data;
-                    if (!converter->convert_file(file, json_data))
-                    {
-                        throw codegen_error(codegen_error_code::rendering, "failed to convert input data to json, file={}", input.string());
-                    }
-
-                    if (options.dump_ast)
-                    {
-                        std::filesystem::path output_filename = fmt::format("{}.json", input.stem().string());
-                        std::filesystem::path output_directory = std::filesystem::path(*options.dump_ast) / input.parent_path();
-                        std::string output = (output_directory / output_filename).string();
-
-                        if (!spore::codegen::write_file(output, json_data.dump(2)))
+                        const bool input_up_to_date = cache.check_and_update(input.string());
+                        if (input_up_to_date && templates_up_to_date)
                         {
-                            SPDLOG_WARN("failed to write dump file, file={}", output);
-                        }
-                    }
-
-                    std::vector<std::string> outputs;
-                    outputs.reserve(templates.size());
-
-                    std::transform(
-                        templates.begin(), templates.end(),
-                        std::back_inserter(outputs),
-                        [&](const std::string& template_) {
-                            std::filesystem::path output_ext = std::filesystem::path(template_).stem();
-                            std::filesystem::path output_filename = fmt::format("{}.{}", input.stem().string(), output_ext.string());
-                            std::filesystem::path output_directory = std::filesystem::path(options.output) / input.parent_path();
-                            std::string output = std::filesystem::absolute(output_directory / output_filename).string();
-                            return output;
-                        });
-
-                    json_data["outputs"] = outputs;
-                    json_data["user_data"] = user_data_json;
-
-                    int index_template = 0;
-                    for (const std::string& template_ : templates)
-                    {
-                        std::string result;
-                        if (!renderer->render_file(template_, json_data, result))
-                        {
-                            throw codegen_error(codegen_error_code::rendering, "failed to render input, file={} template={}", input.string(), template_);
+                            SPDLOG_DEBUG("skipping input because it has not changed, file={}", input.string());
+                            return;
                         }
 
-                        const std::string& output = outputs[index_template];
-                        SPDLOG_INFO("generating output, file={}", output);
-
-                        if (!spore::codegen::write_file(output, result))
+                        ast_file file;
+                        if (!parser->parse_file(input.string(), file))
                         {
-                            throw codegen_error(codegen_error_code::io, "failed to write output, file={}", output);
+                            throw codegen_error(codegen_error_code::parsing, "failed to parse input, file={}", input.string());
                         }
 
-                        if (!options.reformat.empty())
+                        if (condition && !condition->matches_condition(file))
                         {
-                            std::string command = fmt::format("{} {}", options.reformat, output);
-                            TinyProcessLib::Process process {command};
+                            SPDLOG_DEBUG("skipping input because it does not match condition, file={}", input.string());
+                            return;
+                        }
 
-                            if (process.get_exit_status() != 0)
+                        nlohmann::json json_data;
+                        if (!converter->convert_file(file, json_data))
+                        {
+                            throw codegen_error(codegen_error_code::rendering, "failed to convert input data to json, file={}", input.string());
+                        }
+
+                        if (options.dump_ast)
+                        {
+                            std::filesystem::path output_filename = fmt::format("{}.json", input.stem().string());
+                            std::filesystem::path output_directory = std::filesystem::path(*options.dump_ast) / input.parent_path();
+                            std::string output = (output_directory / output_filename).string();
+
+                            if (!spore::codegen::write_file(output, json_data.dump(2)))
                             {
-                                SPDLOG_WARN("failed to reformat output, file={}", output);
+                                SPDLOG_WARN("failed to write dump file, file={}", output);
                             }
                         }
 
-                        ++index_template;
+                        std::vector<std::string> outputs;
+                        outputs.reserve(templates.size());
+
+                        std::transform(
+                            templates.begin(), templates.end(),
+                            std::back_inserter(outputs),
+                            [&](const std::string& template_) {
+                                std::filesystem::path output_ext = std::filesystem::path(template_).stem();
+                                std::filesystem::path output_filename = fmt::format("{}.{}", input.stem().string(), output_ext.string());
+                                std::filesystem::path output_directory = std::filesystem::path(options.output) / input.parent_path();
+                                std::string output = std::filesystem::absolute(output_directory / output_filename).string();
+                                return output;
+                            });
+
+                        json_data["outputs"] = outputs;
+                        json_data["user_data"] = user_data_json;
+
+                        int index_template = 0;
+                        for (const std::string& template_ : templates)
+                        {
+                            std::string result;
+                            if (!renderer->render_file(template_, json_data, result))
+                            {
+                                throw codegen_error(codegen_error_code::rendering, "failed to render input, file={} template={}", input.string(), template_);
+                            }
+
+                            const std::string& output = outputs[index_template];
+                            SPDLOG_INFO("generating output, file={}", output);
+
+                            if (!spore::codegen::write_file(output, result))
+                            {
+                                throw codegen_error(codegen_error_code::io, "failed to write output, file={}", output);
+                            }
+
+                            if (!options.reformat.empty())
+                            {
+                                std::string command = fmt::format("{} {}", options.reformat, output);
+                                TinyProcessLib::Process process {command};
+
+                                if (process.get_exit_status() != 0)
+                                {
+                                    SPDLOG_WARN("failed to reformat output, file={}", output);
+                                }
+                            }
+
+                            ++index_template;
+                        }
                     }
-                }
-                catch (...)
-                {
-                    std::lock_guard lock(mutex);
-                    exceptions.emplace_back(std::current_exception());
-                }
-            };
+                    catch (...)
+                    {
+                        std::lock_guard lock(mutex);
+                        exceptions.emplace_back(std::current_exception());
+                    }
+                };
 
-            if (options.sequential)
-            {
-                std::for_each(std::execution::seq, inputs.begin(), inputs.end(), action);
-            }
-            else
-            {
-                std::for_each(std::execution::par, inputs.begin(), inputs.end(), action);
-            }
-
-            std::lock_guard lock(mutex);
-            if (!exceptions.empty())
-            {
-                for (const std::exception_ptr& exception : exceptions)
+                if (options.sequential)
                 {
-                    std::rethrow_exception(exception);
+                    std::for_each(std::execution::seq, inputs.begin(), inputs.end(), action);
+                }
+                else
+                {
+                    std::for_each(std::execution::par, inputs.begin(), inputs.end(), action);
+                }
+
+                std::lock_guard lock(mutex);
+                if (!exceptions.empty())
+                {
+                    for (const std::exception_ptr& exception : exceptions)
+                    {
+                        std::rethrow_exception(exception);
+                    }
                 }
             }
         }
