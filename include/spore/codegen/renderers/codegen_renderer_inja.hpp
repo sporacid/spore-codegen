@@ -126,7 +126,7 @@ namespace spore::codegen
                 [&](inja::Arguments& args) {
                     std::string template_ = args.at(0)->get<std::string>();
                     const nlohmann::json& data = *args.at(1);
-                    return inja_env.render(template_, data);
+                    return inja_env.render_file(template_, data);
                 });
         }
 
