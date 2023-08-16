@@ -70,13 +70,9 @@ namespace spore::codegen
 
         for (const ast_attribute& attribute : value)
         {
-            std::string json_path = attribute.full_name();
-            json_path.insert(json_path.begin(), '/');
-
-            spore::codegen::replace_all(json_path, "::", "/");
-
-            nlohmann::json::json_pointer json_ptr(json_path);
-            json[json_ptr] = attribute;
+            std::string json_name = attribute.full_name();
+            spore::codegen::replace_all(json_name, "::", ".");
+            json[json_name] = attribute;
         }
     }
 

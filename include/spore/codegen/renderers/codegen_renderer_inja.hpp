@@ -76,7 +76,7 @@ namespace spore::codegen
     {
         inja::Environment inja_env;
 
-        codegen_renderer_inja()
+        explicit codegen_renderer_inja()
         {
             inja_env.set_trim_blocks(true);
             inja_env.set_lstrip_blocks(true);
@@ -124,9 +124,10 @@ namespace spore::codegen
 
             inja_env.add_callback("include", 2,
                 [&](inja::Arguments& args) {
-                    std::string template_ = args.at(0)->get<std::string>();
+                    std::string template_path = args.at(0)->get<std::string>();
+                    std::string template_ = fmt::format("{% include \"{}\" %}", template_path);
                     const nlohmann::json& data = *args.at(1);
-                    return inja_env.render_file(template_, data);
+                    return inja_env.render(template_, data);
                 });
         }
 
