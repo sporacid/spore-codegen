@@ -121,6 +121,13 @@ namespace spore::codegen
                     std::string value = args.at(0)->get<std::string>();
                     return std::filesystem::absolute(std::filesystem::path(value)).string();
                 });
+
+            inja_env.add_callback("include", 2,
+                [&](inja::Arguments& args) {
+                    std::string template_ = args.at(0)->get<std::string>();
+                    const nlohmann::json& data = *args.at(1);
+                    return inja_env.render(template_, data);
+                });
         }
 
         bool render_file(const std::string& file, const nlohmann::json& data, std::string& result) override
