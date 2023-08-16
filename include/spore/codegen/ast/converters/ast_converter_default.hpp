@@ -70,7 +70,9 @@ namespace spore::codegen
 
         for (const ast_attribute& attribute : value)
         {
-            json[attribute.full_name()] = attribute;
+            std::string json_name = attribute.full_name();
+            spore::codegen::replace_all(json_name, "::", "_");
+            json[json_name] = attribute;
         }
     }
 
