@@ -18,22 +18,35 @@ add_library(
   INTERFACE
 )
 
+find_path(INJA_INCLUDE_DIRS "inja.hpp")
+find_path(PICOSHA2_INCLUDE_DIRS "picosha2.h")
+
 target_include_directories(
   ${SPORE_CODEGEN_LIBRARY_TARGET}
   INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_SOURCE_DIR}/include
+    ${PICOSHA2_INCLUDE_DIRS}
+    ${INJA_INCLUDE_DIRS}
 )
+
+find_package(LLVM CONFIG REQUIRED)
+find_package(argparse CONFIG REQUIRED)
+find_package(fmt CONFIG REQUIRED)
+find_package(inja CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
+
+include(FetchContent_cppast)
+include(FetchContent_glob)
 
 target_link_libraries(
   ${SPORE_CODEGEN_LIBRARY_TARGET}
   INTERFACE
-    cppast
-    fmt
     Glob
-    inja
-    nlohmann_json
-    picosha2
-    spdlog
+    cppast
+    fmt::fmt
+    nlohmann_json::nlohmann_json
+    spdlog::spdlog
 )
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR
@@ -48,7 +61,7 @@ endif ()
 
 file(
   GLOB_RECURSE SPORE_CODEGEN_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/**.hpp
+    ${CMAKE_SOURCE_DIR}/include/**.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/**.cpp
 )
 
@@ -68,5 +81,5 @@ target_link_libraries(
   ${SPORE_CODEGEN_BINARY_TARGET}
   PRIVATE
     ${SPORE_CODEGEN_LIBRARY_TARGET}
-    argparse
+    argparse::argparse
 )

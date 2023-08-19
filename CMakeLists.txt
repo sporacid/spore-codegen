@@ -12,16 +12,14 @@ set(CMAKE_CXX_STANDARD 17)
 
 if (WITH_COMPILE_COMMANDS)
   set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-endif()
+endif ()
 
-list(
-  APPEND CMAKE_MODULE_PATH
-   ${CMAKE_CURRENT_SOURCE_DIR}/cmake
-)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 if (NOT SPORE_VERSION)
-  include(spore_version)
-  spore_get_version(SPORE_VERSION)
+  include(FetchContent_spore_semver)
+  include(spore_semver)
+  spore_semver(SPORE_VERSION)
 endif ()
 
 project(spore.codegen VERSION ${SPORE_VERSION})
@@ -53,16 +51,6 @@ elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
   )
 endif ()
 
-include(FetchContent_argparse)
-include(FetchContent_catch2)
-include(FetchContent_cppast)
-include(FetchContent_fmt)
-include(FetchContent_glob)
-include(FetchContent_nlohmann_json)
-include(FetchContent_picosha2)
-include(FetchContent_inja)
-include(FetchContent_spdlog)
-
 add_subdirectory(src)
 
 if (WITH_TESTS)
@@ -76,9 +64,9 @@ endif ()
 if (WITH_COMPILE_COMMANDS)
   set(COPY_COMPILE_COMMANDS_FILE "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json")
 
-  if(EXISTS "${COPY_COMPILE_COMMANDS_FILE}")
+  if (EXISTS "${COPY_COMPILE_COMMANDS_FILE}")
     file(
       COPY "${COPY_COMPILE_COMMANDS_FILE}"
       DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}")
-  endif()
-endif()
+  endif ()
+endif ()

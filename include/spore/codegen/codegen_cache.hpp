@@ -48,7 +48,7 @@ namespace spore::codegen
         std::string version;
         std::vector<codegen_cache_entry> entries;
 
-        bool check_and_update(const std::string_view& file)
+        bool check_and_update(const std::string& file)
         {
             std::string hash;
             if (!spore::codegen::hash_file(file, hash))
@@ -61,7 +61,7 @@ namespace spore::codegen
 
             std::lock_guard lock(mutex);
 
-            const auto it = std::find(entries.begin(), entries.end(), file.data());
+            const auto it = std::find(entries.begin(), entries.end(), file);
             if (it == entries.end())
             {
                 codegen_cache_entry& entry = entries.emplace_back();

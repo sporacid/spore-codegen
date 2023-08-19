@@ -11,9 +11,9 @@ at [this repository](https://github.com/sporacid/spore-codegen-example).
 
 ## Requirements
 
-### LLVM
+### vcpkg
 
-`LLVM` and `libclang` are required to parse the C++ AST.
+`vcpkg` is required to fetch the required dependencies.
 
 #### Windows
 
@@ -22,15 +22,33 @@ set VCPKG_DEFAULT_TRIPLET="x64-windows"
 git clone https://github.com/microsoft/vcpkg
 cd vcpkg
 ./bootstrap-vcpkg.bat
-./vcpkg.exe install llvm
-set LLVM_CONFIG_BINARY="%cd%/installed/%VCPKG_DEFAULT_TRIPLET%/tools/llvm/llvm-config.exe"
+set VCPKG_ROOT="%cd%"
 ```
 
 #### Ubuntu
 
-```sh
-sudo apt-get -qq update
-sudo apt-get install -y llvm clang clang-format libclang-dev
+```shell
+export VCPKG_DEFAULT_TRIPLET="x64-linux"
+git clone https://github.com/microsoft/vcpkg
+cd vcpkg
+sudo sh bootstrap-vcpkg.sh
+export VCPKG_ROOT=$(cwd)
+```
+
+## How to build
+
+### Windows
+
+```cmd
+cmake -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%/scripts/buildsystems/vcpkg.cmake -B.cmake -G 'Ninja'
+cmake --build .cmake --config Release
+```
+
+### Ubuntu
+
+```shell
+cmake -DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake -B.cmake -G 'Ninja'
+cmake --build .cmake --config Release
 ```
 
 ## How to use

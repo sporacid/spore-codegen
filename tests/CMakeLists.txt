@@ -3,6 +3,8 @@ set(
   CACHE STRING "Target for the codegen unit tests"
 )
 
+find_package(Catch2 CONFIG REQUIRED)
+
 file(
   GLOB_RECURSE SPORE_CODEGEN_TESTS_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/**.hpp

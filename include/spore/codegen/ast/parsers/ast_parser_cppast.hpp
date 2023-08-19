@@ -150,6 +150,7 @@ namespace spore::codegen
                     }
                     break;
                 }
+
                 case cppast::cpp_entity_kind::non_type_template_parameter_t: {
                     const auto& cpp_template_value_param = dynamic_cast<const cppast::cpp_non_type_template_parameter&>(cpp_template_param);
                     template_param.type = cppast::to_string(cpp_template_value_param.type());
@@ -162,6 +163,7 @@ namespace spore::codegen
 
                     break;
                 }
+
                 default: {
                     type_safe::optional_ref<const cppast::cpp_entity> parent = cpp_template_param.parent();
                     std::string parent_name = parent.has_value() ? parent.value().name() : "";

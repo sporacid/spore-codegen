@@ -1,8 +1,8 @@
 include(FetchContent)
 
-set(CONTENT_NAME "argparse")
-set(CONTENT_URL "https://github.com/p-ranav/argparse.git")
-set(CONTENT_TAG "v2.9")
+set(CONTENT_NAME "spore-semver")
+set(CONTENT_URL "https://github.com/sporacid/spore-semver.git")
+set(CONTENT_TAG "main")
 set(CONTENT_DOWNLOAD_DIR "${CMAKE_CURRENT_BINARY_DIR}/content/${CONTENT_NAME}")
 
 message(STATUS
@@ -20,3 +20,5 @@ FetchContent_Declare(
 )
 
 FetchContent_MakeAvailable(${CONTENT_NAME})
+
+list(APPEND CMAKE_MODULE_PATH "${CONTENT_DOWNLOAD_DIR}/cmake")

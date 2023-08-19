@@ -3,6 +3,7 @@
 #include <execution>
 #include <filesystem>
 #include <optional>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -85,7 +86,6 @@ namespace spore::codegen
         cppast::libclang_compile_config cppast_config;
         cppast_config.set_flags(spore::codegen::parse_cpp_standard(options.cpp_standard));
         cppast_config.define_macro("SPORE_CODEGEN", "1");
-        // cppast_config.fast_preprocessing(true);
 
         for (const std::string& include : options.includes)
         {
@@ -124,17 +124,15 @@ namespace spore::codegen
 
             for (const std::string& template_ : step.templates)
             {
-                bool template_found = false;
-
                 SPDLOG_DEBUG("  search template, file={}", template_);
                 if (std::filesystem::exists(template_))
                 {
                     SPDLOG_DEBUG("  found template, file={}", template_);
                     templates.push_back(template_);
-                    template_found = true;
                     continue;
                 }
 
+                bool template_found = false;
                 for (const std::string& template_path : options.template_paths)
                 {
                     std::filesystem::path prefix_template = std::filesystem::path(template_path) / template_;
@@ -155,11 +153,12 @@ namespace spore::codegen
                 }
             }
 
-            const bool templates_up_to_date = std::all_of(
-                templates.begin(), templates.end(),
-                [&](const std::string& template_) {
-                    return cache.check_and_update(template_);
-                });
+            bool templates_up_to_date = true;
+            for (const std::string& template_ : templates)
+            {
+                const bool template_up_to_date = cache.check_and_update(template_);
+                templates_up_to_date = templates_up_to_date && template_up_to_date;
+            }
 
             std::mutex mutex;
             std::vector<std::exception_ptr> exceptions;
@@ -240,7 +239,7 @@ namespace spore::codegen
                         }
 
                         const std::string& output = outputs[index_template];
-                        SPDLOG_INFO("generating output, file={}", output);
+                        SPDLOG_DEBUG("generating output, file={}", output);
 
                         if (!spore::codegen::write_file(output, result))
                         {
