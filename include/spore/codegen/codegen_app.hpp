@@ -105,7 +105,7 @@ namespace spore::codegen
 
         std::shared_ptr<ast_parser> parser = std::make_shared<ast_parser_cppast>(std::move(cppast_config));
         std::shared_ptr<ast_converter> converter = std::make_shared<ast_converter_default>();
-        std::shared_ptr<codegen_renderer> renderer = std::make_shared<codegen_renderer_composite>(std::make_shared<codegen_renderer_inja>());
+        std::shared_ptr<codegen_renderer> renderer = std::make_shared<codegen_renderer_composite>(std::make_shared<codegen_renderer_inja>(options.template_paths));
 
         nlohmann::json user_data_json;
         for (const std::pair<std::string, std::string>& pair : options.user_data)

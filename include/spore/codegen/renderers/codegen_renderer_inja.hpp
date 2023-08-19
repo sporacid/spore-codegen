@@ -76,7 +76,7 @@ namespace spore::codegen
     {
         inja::Environment inja_env;
 
-        explicit codegen_renderer_inja()
+        explicit codegen_renderer_inja(const std::vector<std::string>& template_paths)
         {
             inja_env.set_trim_blocks(true);
             inja_env.set_lstrip_blocks(true);
@@ -123,11 +123,18 @@ namespace spore::codegen
                 });
 
             inja_env.add_callback("include", 2,
-                [&](inja::Arguments& args) {
-                    std::string template_path = args.at(0)->get<std::string>();
-                    std::string template_ = fmt::format("{% include \"{}\" %}", template_path);
-                    const nlohmann::json& data = *args.at(1);
-                    return inja_env.render(template_, data);
+                [&, template_paths](inja::Arguments& args) {
+                    std::string template_file = args.at(0)->get<std::string>();
+                    for (const std::string& template_path : template_paths)
+                    {
+                        std::filesystem::path template_file_abs = std::filesystem::path(template_path) / template_file;
+                        if (std::filesystem::exists(template_file_abs))
+                        {
+                            const nlohmann::json& data = *args.at(1);
+                            return inja_env.render_file(template_file_abs.string(), data);
+                        }
+                    }
+                    throw codegen_error(codegen_error_code::rendering, "cannot find include template, file={}", template_file);
                 });
         }
 
