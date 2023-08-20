@@ -7,14 +7,9 @@
     "catch2",
     "fmt",
     "inja",
+    "llvm",
     "nlohmann-json",
     "picosha2",
-    "spdlog",
-    {
-      "name": "llvm",
-      "features": [
-        "clang"
-      ]
-    }
+    "spdlog"
   ]
 }
