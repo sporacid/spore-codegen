@@ -28,9 +28,9 @@ jobs:
       - name: Run CMake consuming CMakePreset.json and run vcpkg to build dependencies
         uses: lukka/run-cmake@v10
         with:
-          configurePreset: 'ninja-multi-vcpkg'
-          buildPreset: 'ninja-vcpkg-debug'
-          testPreset: 'test-debug'
+          configurePreset: 'ninja-vcpkg'
+          buildPreset: 'ninja-vcpkg-release'
+          testPreset: 'ninja-vcpkg-test-release'
       # - name: Setup Dependencies
       #   run: |
       #     sudo apt-get -qq update &&
