@@ -12,26 +12,27 @@ set(
   SPORE_CODEGEN_BINARY_NAME "spore-codegen"
   CACHE STRING "Output name for the main codegen application"
 )
-
+#
 add_library(
   ${SPORE_CODEGEN_LIBRARY_TARGET}
   INTERFACE
 )
 
-find_path(INJA_INCLUDE_DIRS "inja.hpp" PATH_SUFFIXES "inja")
-find_path(PICOSHA2_INCLUDE_DIRS "picosha2.h")
+# find_path(INJA_INCLUDE_DIRS "inja.hpp" PATH_SUFFIXES "inja")
+# find_path(PICOSHA2_INCLUDE_DIRS "picosha2.h")
 
-target_include_directories(
-  ${SPORE_CODEGEN_LIBRARY_TARGET}
-  INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include
-    ${INJA_INCLUDE_DIRS}
-    ${PICOSHA2_INCLUDE_DIRS}
-)
+#target_include_directories(
+#  ${SPORE_CODEGEN_LIBRARY_TARGET}
+#  INTERFACE
+#    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+#    ${INJA_INCLUDE_DIRS}
+#    ${PICOSHA2_INCLUDE_DIRS}
+#)
 
-find_package(LLVM CONFIG REQUIRED)
+find_package(argparse CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(inja CONFIG REQUIRED)
+find_package(LLVM CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 
@@ -48,8 +49,15 @@ target_link_libraries(
     spdlog::spdlog
 )
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR
-  CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+target_include_directories(
+  ${SPORE_CODEGEN_LIBRARY_TARGET}
+  INTERFACE
+    ${PROJECT_SOURCE_DIR}/include
+    # ${PICOSHA2_INCLUDE_DIRS}
+    # ${INJA_INCLUDE_DIRS}
+)
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   find_package(TBB REQUIRED)
   target_link_libraries(
     ${SPORE_CODEGEN_LIBRARY_TARGET}
@@ -60,8 +68,8 @@ endif ()
 
 file(
   GLOB_RECURSE SPORE_CODEGEN_FILES
-  ${CMAKE_CURRENT_SOURCE_DIR}/../include/**.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/**.cpp
+  ${PROJECT_SOURCE_DIR}/include/**.hpp
+  ${PROJECT_SOURCE_DIR}/src/**.cpp
 )
 
 add_executable(
@@ -72,11 +80,9 @@ add_executable(
 set_target_properties(
   ${SPORE_CODEGEN_BINARY_TARGET}
   PROPERTIES
-  LINKER_LANGUAGE CXX
-  OUTPUT_NAME ${SPORE_CODEGEN_BINARY_NAME}
+    LINKER_LANGUAGE CXX
+    OUTPUT_NAME ${SPORE_CODEGEN_BINARY_NAME}
 )
-
-find_package(argparse CONFIG REQUIRED)
 
 target_link_libraries(
   ${SPORE_CODEGEN_BINARY_TARGET}
@@ -85,12 +91,22 @@ target_link_libraries(
     argparse::argparse
 )
 
-target_include_directories(
-  ${SPORE_CODEGEN_BINARY_TARGET}
-  PRIVATE
-    ${PICOSHA2_INCLUDE_DIRS}
-    ${INJA_INCLUDE_DIRS}
-)
+#target_include_directories(
+#  ${SPORE_CODEGEN_BINARY_TARGET}
+#  PUBLIC
+#    ${PROJECT_SOURCE_DIR}/include
+#    ${PICOSHA2_INCLUDE_DIRS}
+#    ${INJA_INCLUDE_DIRS}
+#)
+
+#if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+#  find_package(TBB REQUIRED)
+#  target_link_libraries(
+#    ${SPORE_CODEGEN_BINARY_TARGET}
+#    INTERFACE
+#    TBB::tbb
+#  )
+#endif ()
 
 #include(CMakePackageConfigHelpers)
 #
@@ -118,10 +134,15 @@ install(
   TARGETS ${SPORE_CODEGEN_BINARY_TARGET}
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
-  ARCHIVE DESTINATION lib/static
-  # PUBLIC_HEADER DESTINATION include
+  ARCHIVE DESTINATION lib
+  PUBLIC_HEADER DESTINATION include
 )
 
+#install(
+#  TARGETS cppast Glob
+#  LIBRARY DESTINATION lib
+#  ARCHIVE DESTINATION lib
+#)
 #install(
 #  TARGETS ${SPORE_CODEGEN_LIBRARY_TARGET}
 #  EXPORT ${SPORE_CODEGEN_LIBRARY_TARGET}.export

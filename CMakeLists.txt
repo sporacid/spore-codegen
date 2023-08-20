@@ -5,7 +5,7 @@ cmake_policy(SET CMP0077 NEW)
 cmake_policy(SET CMP0079 NEW)
 
 option(WITH_EXAMPLES "Whether to include examples" ON)
-option(WITH_TESTS "Whether to include tests" ON)
+option(WITH_TESTS "Whether to include tests" OFF)
 option(WITH_COMPILE_COMMANDS "Whether to generate a compilation database" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
