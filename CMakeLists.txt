@@ -72,16 +72,7 @@ if (WITH_COMPILE_COMMANDS)
   endif ()
 endif ()
 
-file(
-  WRITE ${CMAKE_CURRENT_SOURCE_DIR}/.version ${SPORE_VERSION}
-)
-
-# install(
-#   FILES ${CMAKE_CURRENT_SOURCE_DIR}/.version
-#   DESTINATION ${CMAKE_INSTALL_PREFIX}
-# )
-
 install(
   FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake/spore_codegen.cmake
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/share/spore
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake/spore
 )
