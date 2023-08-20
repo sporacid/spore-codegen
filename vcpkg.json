@@ -7,9 +7,18 @@
     "catch2",
     "fmt",
     "inja",
-    "llvm",
     "nlohmann-json",
     "picosha2",
-    "spdlog"
+    "spdlog",
+    {
+      "name": "llvm",
+      "features": [
+        "clang"
+      ]
+    },
+    {
+      "name": "spore-semver",
+      "host": true
+    }
   ]
 }

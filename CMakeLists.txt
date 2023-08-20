@@ -14,15 +14,16 @@ if (WITH_COMPILE_COMMANDS)
   set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 endif ()
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+project(spore.codegen)
 
 if (NOT SPORE_VERSION)
-  include(FetchContent_spore_semver)
-  include(spore_semver)
+  find_file(SPORE_SEMVER_FILE "spore_semver.cmake" PATH_SUFFIXES "share/spore")
+  include(${SPORE_SEMVER_FILE})
   spore_semver(SPORE_VERSION)
 endif ()
 
-project(spore.codegen VERSION ${SPORE_VERSION})
+set(CMAKE_PROJECT_VERSION ${SPORE_VERSION} CACHE STATIC "" FORCE)
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/include/spore/codegen/codegen_version.hpp.in

@@ -1,0 +1,12 @@
+{
+  "registries": [
+    {
+      "kind": "git",
+      "repository": "https://github.com/sporacid/spore-vcpkg",
+      "baseline": "50d5dc0d259f5d7b593165b2d77c3e2c4626261c",
+      "packages": [
+        "spore-semver"
+      ]
+    }
+  ]
+}
