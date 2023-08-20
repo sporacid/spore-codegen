@@ -1,6 +1,6 @@
 {
   "name": "spore-codegen",
-  "version": "1.0",
+  "version": "latest",
   "builtin-baseline": "c95000e1b5bb62884de08d5e952993c8bced9db6",
   "dependencies": [
     "argparse",
