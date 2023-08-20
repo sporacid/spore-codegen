@@ -29,10 +29,12 @@ target_include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/.codegen/include
 )
 
+find_package(nlohmann_json CONFIG REQUIRED)
+
 target_link_libraries(
   ${SPORE_CODEGEN_EXAMPLES_JSON_TARGET}
   PRIVATE
-    nlohmann_json
+    nlohmann_json::nlohmann_json
 )
 
 spore_codegen(

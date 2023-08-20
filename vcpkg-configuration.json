@@ -3,9 +3,9 @@
     {
       "kind": "git",
       "repository": "https://github.com/sporacid/spore-vcpkg",
-      "baseline": "50d5dc0d259f5d7b593165b2d77c3e2c4626261c",
+      "baseline": "5d704c1cf261d49a21bcc79bfd6328a4c33fd9eb",
       "packages": [
-        "spore-semver"
+        "spore-*"
       ]
     }
   ]

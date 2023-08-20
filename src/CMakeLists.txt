@@ -18,19 +18,18 @@ add_library(
   INTERFACE
 )
 
-find_path(INJA_INCLUDE_DIRS "inja.hpp")
+find_path(INJA_INCLUDE_DIRS "inja.hpp" PATH_SUFFIXES "inja")
 find_path(PICOSHA2_INCLUDE_DIRS "picosha2.h")
 
 target_include_directories(
   ${SPORE_CODEGEN_LIBRARY_TARGET}
   INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
-    ${PICOSHA2_INCLUDE_DIRS}
     ${INJA_INCLUDE_DIRS}
+    ${PICOSHA2_INCLUDE_DIRS}
 )
 
 find_package(LLVM CONFIG REQUIRED)
-find_package(argparse CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(inja CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
@@ -50,7 +49,7 @@ target_link_libraries(
 )
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR
-    CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   find_package(TBB REQUIRED)
   target_link_libraries(
     ${SPORE_CODEGEN_LIBRARY_TARGET}
@@ -61,8 +60,8 @@ endif ()
 
 file(
   GLOB_RECURSE SPORE_CODEGEN_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/**.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/**.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/../include/**.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/**.cpp
 )
 
 add_executable(
@@ -73,9 +72,11 @@ add_executable(
 set_target_properties(
   ${SPORE_CODEGEN_BINARY_TARGET}
   PROPERTIES
-    LINKER_LANGUAGE CXX
-    OUTPUT_NAME ${SPORE_CODEGEN_BINARY_NAME}
+  LINKER_LANGUAGE CXX
+  OUTPUT_NAME ${SPORE_CODEGEN_BINARY_NAME}
 )
+
+find_package(argparse CONFIG REQUIRED)
 
 target_link_libraries(
   ${SPORE_CODEGEN_BINARY_TARGET}
@@ -83,3 +84,55 @@ target_link_libraries(
     ${SPORE_CODEGEN_LIBRARY_TARGET}
     argparse::argparse
 )
+
+target_include_directories(
+  ${SPORE_CODEGEN_BINARY_TARGET}
+  PRIVATE
+    ${PICOSHA2_INCLUDE_DIRS}
+    ${INJA_INCLUDE_DIRS}
+)
+
+#include(CMakePackageConfigHelpers)
+#
+#configure_package_config_file(
+#  spore_codegen_config.cmake.in
+#  ${CMAKE_CURRENT_BINARY_DIR}/spore_codegen_config.cmake
+#  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/spore
+#  PATH_VARS INCLUDE_INSTALL_DIR SYSCONFIG_INSTALL_DIR
+#)
+#
+#write_basic_package_version_file(
+#  ${CMAKE_CURRENT_BINARY_DIR}/spore_codegen_config_version.cmake
+#  VERSION ${SPORE_VERSION}
+#  COMPATIBILITY SameMajorVersion
+#)
+
+#install(
+#  FILES
+#    ${CMAKE_CURRENT_BINARY_DIR}/spore_codegen_config.cmake
+#    ${CMAKE_CURRENT_BINARY_DIR}/spore_codegen_config_version.cmake
+#  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/spore
+#)
+
+install(
+  TARGETS ${SPORE_CODEGEN_BINARY_TARGET}
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib/static
+  # PUBLIC_HEADER DESTINATION include
+)
+
+#install(
+#  TARGETS ${SPORE_CODEGEN_LIBRARY_TARGET}
+#  EXPORT ${SPORE_CODEGEN_LIBRARY_TARGET}.export
+#  LIBRARY DESTINATION lib COMPONENT Runtime
+#  ARCHIVE DESTINATION lib COMPONENT Development
+#  RUNTIME DESTINATION bin COMPONENT Runtime
+#  PUBLIC_HEADER DESTINATION include COMPONENT Development
+#  BUNDLE DESTINATION bin COMPONENT Runtime
+#)
+#
+#install(
+#  EXPORT ${SPORE_CODEGEN_LIBRARY_TARGET}.export
+#  DESTINATION ${CMAKE_INSTALL_PREFIX}
+#)

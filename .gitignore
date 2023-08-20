@@ -76,3 +76,4 @@ CMakeUserPresets.json
 .codegen/
 .dumps/
 .cache
+.version
