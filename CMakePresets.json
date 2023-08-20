@@ -8,7 +8,7 @@
   "configurePresets": [
     {
       "name": "ninja-vcpkg",
-      "displayName": "Ninja Multi-Config",
+      "displayName": "Ninja vcpkg",
       "description": "Configure with vcpkg toolchain and generate Ninja project files for all configurations",
       "binaryDir": "${sourceDir}/.cmake/${presetName}",
       "generator": "Ninja",
