@@ -24,7 +24,7 @@ find_path(PICOSHA2_INCLUDE_DIRS "picosha2.h")
 target_include_directories(
   ${SPORE_CODEGEN_LIBRARY_TARGET}
   INTERFACE
-    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
     ${PICOSHA2_INCLUDE_DIRS}
     ${INJA_INCLUDE_DIRS}
 )
@@ -61,7 +61,7 @@ endif ()
 
 file(
   GLOB_RECURSE SPORE_CODEGEN_FILES
-    ${CMAKE_SOURCE_DIR}/include/**.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/**.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/**.cpp
 )
 
