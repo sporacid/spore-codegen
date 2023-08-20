@@ -10,15 +10,12 @@
     "nlohmann-json",
     "picosha2",
     "spdlog",
+    "spore-semver",
     {
       "name": "llvm",
       "features": [
         "clang"
       ]
-    },
-    {
-      "name": "spore-semver",
-      "host": true
     }
   ]
 }
