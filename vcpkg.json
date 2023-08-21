@@ -6,16 +6,12 @@
     "argparse",
     "catch2",
     "fmt",
+    "foonathan-cppast",
     "inja",
     "nlohmann-json",
+    "p-ranav-glob",
     "picosha2",
     "spdlog",
-    "spore-semver",
-    {
-      "name": "llvm",
-      "features": [
-        "clang"
-      ]
-    }
+    "spore-semver"
   ]
 }

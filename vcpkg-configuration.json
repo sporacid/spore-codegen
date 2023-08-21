@@ -3,9 +3,11 @@
     {
       "kind": "git",
       "repository": "https://github.com/sporacid/spore-vcpkg",
-      "baseline": "5d704c1cf261d49a21bcc79bfd6328a4c33fd9eb",
+      "baseline": "28610aaf50f2dc772e3c4c006f39d01540b3695a",
       "packages": [
-        "spore-*"
+        "spore-*",
+        "foonathan-*",
+        "p-ranav-*"
       ]
     }
   ]

@@ -1,5 +1,7 @@
 #pragma once
 
+#undef UNICODE
+
 #include <execution>
 #include <filesystem>
 #include <optional>
@@ -249,6 +251,7 @@ namespace spore::codegen
                         if (!options.reformat.empty())
                         {
                             std::string command = fmt::format("{} {}", options.reformat, output);
+
                             TinyProcessLib::Process process {command};
 
                             if (process.get_exit_status() != 0)

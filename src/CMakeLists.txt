@@ -12,7 +12,7 @@ set(
   SPORE_CODEGEN_BINARY_NAME "spore-codegen"
   CACHE STRING "Output name for the main codegen application"
 )
-#
+
 add_library(
   ${SPORE_CODEGEN_LIBRARY_TARGET}
   INTERFACE
@@ -29,23 +29,23 @@ add_library(
 #    ${PICOSHA2_INCLUDE_DIRS}
 #)
 
+# find_package(LLVM CONFIG REQUIRED)
 find_package(argparse CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
+find_package(foonathan-cppast CONFIG REQUIRED)
 find_package(inja CONFIG REQUIRED)
-find_package(LLVM CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
-
-include(FetchContent_cppast)
-include(FetchContent_glob)
+find_package(p-ranav-glob CONFIG REQUIRED)
 
 target_link_libraries(
   ${SPORE_CODEGEN_LIBRARY_TARGET}
   INTERFACE
-    Glob
-    cppast
     fmt::fmt
+    foonathan::cppast
     nlohmann_json::nlohmann_json
+    pantor::inja
+    p-ranav::glob
     spdlog::spdlog
 )
 
@@ -53,8 +53,6 @@ target_include_directories(
   ${SPORE_CODEGEN_LIBRARY_TARGET}
   INTERFACE
     ${PROJECT_SOURCE_DIR}/include
-    # ${PICOSHA2_INCLUDE_DIRS}
-    # ${INJA_INCLUDE_DIRS}
 )
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
