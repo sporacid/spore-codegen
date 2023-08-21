@@ -12,7 +12,7 @@ function(spore_codegen SPORE_TARGET_NAME)
   endif ()
 
   if (NOT SPORE_CODEGEN_TARGET_NAME)
-    set(SPORE_CODEGEN_TARGET_NAME "${SPORE_TARGET_NAME}.codegen")
+    set(SPORE_CODEGEN_TARGET_NAME "${SPORE_TARGET_NAME}-codegen")
   endif ()
 
   if (NOT SPORE_CODEGEN_CXX_STANDARD)

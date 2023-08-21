@@ -14,7 +14,7 @@ if (WITH_COMPILE_COMMANDS)
   set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 endif ()
 
-project(spore.codegen)
+project(spore-codegen)
 
 if (NOT SPORE_VERSION)
   find_file(SPORE_SEMVER_FILE "spore_semver.cmake" PATH_SUFFIXES "share/spore")
@@ -55,6 +55,7 @@ endif ()
 add_subdirectory(src)
 
 if (WITH_TESTS)
+  enable_testing()
   add_subdirectory(tests)
 endif ()
 
@@ -73,6 +74,6 @@ if (WITH_COMPILE_COMMANDS)
 endif ()
 
 install(
-  FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake/spore_codegen.cmake
+  FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake/SporeCodegen.cmake
   DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake/spore
 )

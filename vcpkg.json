@@ -12,6 +12,7 @@
     "p-ranav-glob",
     "picosha2",
     "spdlog",
-    "spore-semver"
+    "spore-semver",
+    "tiny-process-library"
   ]
 }

@@ -1,9 +1,7 @@
 set(
-  SPORE_CODEGEN_TESTS_TARGET "${PROJECT_NAME}.tests"
+  SPORE_CODEGEN_TESTS_TARGET "${PROJECT_NAME}-tests"
   CACHE STRING "Target for the codegen unit tests"
 )
-
-find_package(Catch2 CONFIG REQUIRED)
 
 file(
   GLOB_RECURSE SPORE_CODEGEN_TESTS_FILES
@@ -34,9 +32,9 @@ list(
     ${CMAKE_CURRENT_BINARY_DIR}/content/catch2/extras
 )
 
+find_package(Catch2 CONFIG REQUIRED)
+
 include(CTest)
 include(Catch)
-
-enable_testing()
 
 catch_discover_tests(${SPORE_CODEGEN_TESTS_TARGET})

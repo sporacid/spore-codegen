@@ -1,9 +1,7 @@
 set(
-  SPORE_CODEGEN_EXAMPLES_JSON_TARGET "${PROJECT_NAME}.examples.json.bin"
+  SPORE_CODEGEN_EXAMPLES_JSON_TARGET "${PROJECT_NAME}-examples-json-bin"
   CACHE STRING "Target for the JSON serialziation example"
 )
-
-include(spore_codegen)
 
 file(
   GLOB_RECURSE SPORE_CODEGEN_EXAMPLES_JSON_FILES
@@ -37,6 +35,7 @@ target_link_libraries(
     nlohmann_json::nlohmann_json
 )
 
+include(SporeCodegen)
 spore_codegen(
   ${SPORE_CODEGEN_EXAMPLES_JSON_TARGET}
 )

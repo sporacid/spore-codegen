@@ -1,10 +1,10 @@
 set(
-  SPORE_CODEGEN_BINARY_TARGET "${PROJECT_NAME}.bin"
+  SPORE_CODEGEN_BINARY_TARGET "${PROJECT_NAME}-bin"
   CACHE STRING "Target for the main codegen application"
 )
 
 set(
-  SPORE_CODEGEN_LIBRARY_TARGET "${PROJECT_NAME}.lib"
+  SPORE_CODEGEN_LIBRARY_TARGET "${PROJECT_NAME}-lib"
   CACHE STRING "Target for the main codegen library"
 )
 
@@ -18,25 +18,16 @@ add_library(
   INTERFACE
 )
 
-# find_path(INJA_INCLUDE_DIRS "inja.hpp" PATH_SUFFIXES "inja")
-# find_path(PICOSHA2_INCLUDE_DIRS "picosha2.h")
+find_path(SPORE_PICOSHA2_INCLUDE_DIRS "picosha2.h")
 
-#target_include_directories(
-#  ${SPORE_CODEGEN_LIBRARY_TARGET}
-#  INTERFACE
-#    ${CMAKE_CURRENT_SOURCE_DIR}/../include
-#    ${INJA_INCLUDE_DIRS}
-#    ${PICOSHA2_INCLUDE_DIRS}
-#)
-
-# find_package(LLVM CONFIG REQUIRED)
 find_package(argparse CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(foonathan-cppast CONFIG REQUIRED)
 find_package(inja CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
-find_package(spdlog CONFIG REQUIRED)
 find_package(p-ranav-glob CONFIG REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
+find_package(tiny-process-library CONFIG REQUIRED)
 
 target_link_libraries(
   ${SPORE_CODEGEN_LIBRARY_TARGET}
@@ -47,12 +38,14 @@ target_link_libraries(
     pantor::inja
     p-ranav::glob
     spdlog::spdlog
+    tiny-process-library::tiny-process-library
 )
 
 target_include_directories(
   ${SPORE_CODEGEN_LIBRARY_TARGET}
   INTERFACE
     ${PROJECT_SOURCE_DIR}/include
+    ${SPORE_PICOSHA2_INCLUDE_DIRS}
 )
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
@@ -82,51 +75,13 @@ set_target_properties(
     OUTPUT_NAME ${SPORE_CODEGEN_BINARY_NAME}
 )
 
+
 target_link_libraries(
   ${SPORE_CODEGEN_BINARY_TARGET}
   PRIVATE
     ${SPORE_CODEGEN_LIBRARY_TARGET}
     argparse::argparse
 )
-
-#target_include_directories(
-#  ${SPORE_CODEGEN_BINARY_TARGET}
-#  PUBLIC
-#    ${PROJECT_SOURCE_DIR}/include
-#    ${PICOSHA2_INCLUDE_DIRS}
-#    ${INJA_INCLUDE_DIRS}
-#)
-
-#if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-#  find_package(TBB REQUIRED)
-#  target_link_libraries(
-#    ${SPORE_CODEGEN_BINARY_TARGET}
-#    INTERFACE
-#    TBB::tbb
-#  )
-#endif ()
-
-#include(CMakePackageConfigHelpers)
-#
-#configure_package_config_file(
-#  spore_codegen_config.cmake.in
-#  ${CMAKE_CURRENT_BINARY_DIR}/spore_codegen_config.cmake
-#  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/spore
-#  PATH_VARS INCLUDE_INSTALL_DIR SYSCONFIG_INSTALL_DIR
-#)
-#
-#write_basic_package_version_file(
-#  ${CMAKE_CURRENT_BINARY_DIR}/spore_codegen_config_version.cmake
-#  VERSION ${SPORE_VERSION}
-#  COMPATIBILITY SameMajorVersion
-#)
-
-#install(
-#  FILES
-#    ${CMAKE_CURRENT_BINARY_DIR}/spore_codegen_config.cmake
-#    ${CMAKE_CURRENT_BINARY_DIR}/spore_codegen_config_version.cmake
-#  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/spore
-#)
 
 install(
   TARGETS ${SPORE_CODEGEN_BINARY_TARGET}
@@ -135,23 +90,3 @@ install(
   ARCHIVE DESTINATION lib
   PUBLIC_HEADER DESTINATION include
 )
-
-#install(
-#  TARGETS cppast Glob
-#  LIBRARY DESTINATION lib
-#  ARCHIVE DESTINATION lib
-#)
-#install(
-#  TARGETS ${SPORE_CODEGEN_LIBRARY_TARGET}
-#  EXPORT ${SPORE_CODEGEN_LIBRARY_TARGET}.export
-#  LIBRARY DESTINATION lib COMPONENT Runtime
-#  ARCHIVE DESTINATION lib COMPONENT Development
-#  RUNTIME DESTINATION bin COMPONENT Runtime
-#  PUBLIC_HEADER DESTINATION include COMPONENT Development
-#  BUNDLE DESTINATION bin COMPONENT Runtime
-#)
-#
-#install(
-#  EXPORT ${SPORE_CODEGEN_LIBRARY_TARGET}.export
-#  DESTINATION ${CMAKE_INSTALL_PREFIX}
-#)
