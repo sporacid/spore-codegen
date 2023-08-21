@@ -99,3 +99,10 @@ install(
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
   FILES_MATCHING PATTERN "**.hpp"
 )
+
+install(
+  FILES
+    ${PROJECT_SOURCE_DIR}/cmake/SporeCodegen.cmake
+    ${PROJECT_SOURCE_DIR}/cmake/FindClangFormat.cmake
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake
+)

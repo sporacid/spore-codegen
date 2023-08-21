@@ -72,8 +72,3 @@ if (SPORE_COMPILE_COMMANDS)
       DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}")
   endif ()
 endif ()
-
-install(
-  FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake/SporeCodegen.cmake
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake/spore
-)
