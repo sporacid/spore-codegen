@@ -4,9 +4,9 @@ cmake_policy(SET CMP0048 NEW)
 cmake_policy(SET CMP0077 NEW)
 cmake_policy(SET CMP0079 NEW)
 
-option(WITH_EXAMPLES "Whether to include examples" ON)
-option(WITH_TESTS "Whether to include tests" OFF)
-option(WITH_COMPILE_COMMANDS "Whether to generate a compilation database" OFF)
+option(SPORE_BUILD_EXAMPLES "Whether to include examples" ON)
+option(SPORE_BUILD_TESTS "Whether to include tests" OFF)
+option(SPORE_COMPILE_COMMANDS "Whether to generate a compilation database" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -54,16 +54,16 @@ endif ()
 
 add_subdirectory(src)
 
-if (WITH_TESTS)
+if (SPORE_BUILD_EXAMPLES)
+  add_subdirectory(examples)
+endif ()
+
+if (SPORE_BUILD_TESTS)
   enable_testing()
   add_subdirectory(tests)
 endif ()
 
-if (WITH_EXAMPLES)
-  add_subdirectory(examples)
-endif ()
-
-if (WITH_COMPILE_COMMANDS)
+if (SPORE_COMPILE_COMMANDS)
   set(COPY_COMPILE_COMMANDS_FILE "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json")
 
   if (EXISTS "${COPY_COMPILE_COMMANDS_FILE}")
