@@ -12,7 +12,10 @@
     "p-ranav-glob",
     "picosha2",
     "spdlog",
-    "spore-semver",
-    "tiny-process-library"
+    "tiny-process-library",
+    {
+      "name": "spore-cmake",
+      "host": true
+    }
   ]
 }

@@ -6,24 +6,26 @@ cmake_policy(SET CMP0079 NEW)
 
 option(SPORE_BUILD_EXAMPLES "Whether to include examples" ON)
 option(SPORE_BUILD_TESTS "Whether to include tests" OFF)
-option(SPORE_COMPILE_COMMANDS "Whether to generate a compilation database" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
 
-if (WITH_COMPILE_COMMANDS)
-  set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-endif ()
-
 project(spore-codegen)
 
-if (NOT SPORE_VERSION)
-  find_file(SPORE_SEMVER_FILE "spore_semver.cmake" PATH_SUFFIXES "share/spore")
-  include(${SPORE_SEMVER_FILE})
-  spore_semver(SPORE_VERSION)
+find_package(spore-cmake CONFIG)
+
+if (SPORE_CMAKE_FOUND)
+  list(APPEND CMAKE_MODULE_PATH ${SPORE_CMAKE_SCRIPTS})
+  if (NOT SPORE_VERSION)
+    include(SporeVersion)
+    spore_get_version(SPORE_VERSION)
+  endif ()
 endif ()
 
-set(CMAKE_PROJECT_VERSION ${SPORE_VERSION} CACHE STATIC "" FORCE)
-set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+if (SPORE_VERSION)
+  set(CMAKE_PROJECT_VERSION ${SPORE_VERSION} CACHE STATIC "" FORCE)
+endif ()
+
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/include/spore/codegen/codegen_version.hpp.in
@@ -63,12 +65,3 @@ if (SPORE_BUILD_TESTS)
   add_subdirectory(tests)
 endif ()
 
-if (SPORE_COMPILE_COMMANDS)
-  set(COPY_COMPILE_COMMANDS_FILE "${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json")
-
-  if (EXISTS "${COPY_COMPILE_COMMANDS_FILE}")
-    file(
-      COPY "${COPY_COMPILE_COMMANDS_FILE}"
-      DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}")
-  endif ()
-endif ()
