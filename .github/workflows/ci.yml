@@ -19,7 +19,9 @@ jobs:
       - name: Setup Dependencies
         run: |
           sudo apt-get -qq update &&
-          sudo apt-get install -y build-essential libtbb-dev ninja-build
+          sudo apt-get install -y build-essential llvm clang libclang-dev libtbb-dev ninja-build jq &&
+          jq '.registries[0].packages += ["llvm"]' vcpkg-configuration.json > vcpkg-configuration.json.tmp &&
+          move vcpkg-configuration.json.tmp vcpkg-configuration.json
       - uses: lukka/get-cmake@latest
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
