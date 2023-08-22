@@ -33,6 +33,7 @@ jobs:
           configurePreset: 'ninja-vcpkg'
           buildPreset: 'ninja-vcpkg-release'
           testPreset: 'ninja-vcpkg-test-release'
+          testPresetAdditionalArgs: "['--no-tests=error','--output-on-failure','--verbose']"
         # env:
         #   CC: clang
         #   CXX: clang++

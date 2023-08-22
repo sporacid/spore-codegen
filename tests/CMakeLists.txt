@@ -5,8 +5,8 @@ set(
 
 file(
   GLOB_RECURSE SPORE_CODEGEN_TESTS_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/**.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/**.cpp
+    ${PROJECT_SOURCE_DIR}/include/**.hpp
+    ${PROJECT_SOURCE_DIR}/tests/**.cpp
 )
 
 add_executable(
