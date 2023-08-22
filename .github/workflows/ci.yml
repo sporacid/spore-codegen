@@ -33,6 +33,9 @@ jobs:
           configurePreset: 'ninja-vcpkg'
           buildPreset: 'ninja-vcpkg-release'
           testPreset: 'ninja-vcpkg-test-release'
+        env:
+          CC: clang
+          CXX: clang++
       # - name: Setup Dependencies
       #   run: |
       #     sudo apt-get -qq update &&
