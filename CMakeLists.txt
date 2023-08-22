@@ -4,8 +4,8 @@ cmake_policy(SET CMP0048 NEW)
 cmake_policy(SET CMP0077 NEW)
 cmake_policy(SET CMP0079 NEW)
 
-option(SPORE_BUILD_EXAMPLES "Whether to include examples" ON)
-option(SPORE_BUILD_TESTS "Whether to include tests" OFF)
+option(SPORE_BUILD_EXAMPLES "Whether to build examples" ON)
+option(SPORE_BUILD_TESTS "Whether to build tests" ON)
 
 set(CMAKE_CXX_STANDARD 17)
 
