@@ -23,11 +23,11 @@ jobs:
           jq '.registries[0].packages += ["llvm"]' vcpkg-configuration.json > vcpkg-configuration.json.tmp &&
           mv vcpkg-configuration.json.tmp vcpkg-configuration.json
       - uses: lukka/get-cmake@latest
-      - name: Setup vcpkg
+      - name: Setup Vcpkg
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgGitCommitId: 'c95000e1b5bb62884de08d5e952993c8bced9db6'
-      - name: Run CMake consuming CMakePreset.json and run vcpkg to build dependencies
+      - name: Run CMake
         uses: lukka/run-cmake@v10
         with:
           configurePreset: 'ninja-vcpkg'
