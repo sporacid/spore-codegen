@@ -1,10 +1,8 @@
 #pragma once
 
-#undef UNICODE
-
+#include <chrono>
 #include <execution>
 #include <filesystem>
-#include <optional>
 #include <optional>
 #include <string>
 #include <vector>
@@ -177,6 +175,7 @@ namespace spore::codegen
                 SPDLOG_DEBUG("processing input, file={}", input.string());
                 try
                 {
+                    const auto then = std::chrono::steady_clock::now();
                     const bool input_up_to_date = cache.check_and_update(input.string());
                     if (input_up_to_date && templates_up_to_date)
                     {
@@ -262,6 +261,10 @@ namespace spore::codegen
 
                         ++index_template;
                     }
+
+                    const auto now = std::chrono::steady_clock::now();
+                    const std::chrono::duration<std::float_t> duration = now - then;
+                    SPDLOG_INFO("codegen for input file completed, file={} time={:.2f}s", input.string(), duration.count());
                 }
                 catch (...)
                 {
