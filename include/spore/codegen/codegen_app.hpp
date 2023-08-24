@@ -24,6 +24,7 @@
 #include "spore/codegen/codegen_error.hpp"
 #include "spore/codegen/codegen_helpers.hpp"
 #include "spore/codegen/codegen_options.hpp"
+#include "spore/codegen/codegen_thread_pool.hpp"
 #include "spore/codegen/codegen_version.hpp"
 #include "spore/codegen/renderers/codegen_renderer.hpp"
 #include "spore/codegen/renderers/codegen_renderer_composite.hpp"
@@ -73,8 +74,9 @@ namespace spore::codegen
         std::shared_ptr<ast_parser> parser;
         std::shared_ptr<ast_converter> converter;
         std::shared_ptr<codegen_renderer> renderer;
-        std::vector<std::unique_ptr<TinyProcessLib::Process>> processes;
+
         std::mutex mutex;
+        std::vector<std::unique_ptr<TinyProcessLib::Process>> processes;
 
         inline explicit codegen_app(codegen_options in_options)
             : options(std::move(in_options))
@@ -121,6 +123,7 @@ namespace spore::codegen
             cppast::libclang_compile_config cppast_config;
             cppast_config.set_flags(spore::codegen::parse_cpp_standard(options.cpp_standard));
             cppast_config.define_macro(SPORE_CODEGEN_MACRO, "1");
+            cppast_config.fast_preprocessing(true);
 
             for (const std::string& include : options.includes)
             {
@@ -183,15 +186,15 @@ namespace spore::codegen
             std::vector<ast_file> files;
             files.resize(file_paths.size());
 
-            const auto try_rethrow = [&]() {
-                std::lock_guard lock(mutex);
-                if (!exceptions.empty())
-                {
-                    std::rethrow_exception(*exceptions.begin());
-                }
-            };
+//            const auto try_rethrow = [&]() {
+//                std::lock_guard lock(mutex);
+//                if (!exceptions.empty())
+//                {
+//                    std::rethrow_exception(*exceptions.begin());
+//                }
+//            };
 
-            const auto transform = [&](const std::filesystem::path& file_path) {
+            const auto generate = [&](const std::filesystem::path& file_path) {
                 ast_file file;
                 try
                 {
@@ -202,9 +205,14 @@ namespace spore::codegen
                         throw codegen_error(codegen_error_code::parsing, "failed to parse input, file={}", file_path.string());
                     }
 
+                    for (const codegen_config_step& step : stage.steps)
+                    {
+                        run_step(step, file);
+                    }
+
                     const auto now = std::chrono::steady_clock::now();
                     const std::chrono::duration<std::float_t> duration = now - then;
-                    SPDLOG_DEBUG("parse file completed, file={} duration={}s", file_path.string(), duration.count());
+                    SPDLOG_DEBUG("generate file completed, file={} duration={}s", file.path, duration.count());
                 }
                 catch (...)
                 {
@@ -215,51 +223,54 @@ namespace spore::codegen
                 return file;
             };
 
-            if (options.sequential)
-            {
-                std::transform(std::execution::seq, file_paths.begin(), file_paths.end(), files.begin(), transform);
-            }
-            else
-            {
-                std::transform(std::execution::par, file_paths.begin(), file_paths.end(), files.begin(), transform);
-            }
-
-            try_rethrow();
-
-            const auto action = [&](const ast_file& file) {
-                try
-                {
-                    const auto then = std::chrono::steady_clock::now();
-
-                    for (const codegen_config_step& step : stage.steps)
-                    {
-                        run_step(stage, step, file);
-                    }
-
-                    const auto now = std::chrono::steady_clock::now();
-                    const std::chrono::duration<std::float_t> duration = now - then;
-                    SPDLOG_DEBUG("render file completed, file={} duration={}s", file.path, duration.count());
-                }
-                catch (...)
-                {
-                    std::lock_guard lock(mutex);
-                    exceptions.emplace_back(std::current_exception());
-                }
+            codegen_thread_pool thread_pool(std::thread::hardware_concurrency());
+            const auto add_task = [&](const std::filesystem::path& file_path) mutable {
+                thread_pool.add_task([&]() { generate(file_path); });
             };
 
-            if (options.sequential)
+            std::for_each(file_paths.begin(), file_paths.end(), add_task);
+            thread_pool.end_execution();
+
+            std::lock_guard lock(mutex);
+            if (!exceptions.empty())
             {
-                std::for_each(std::execution::seq, files.begin(), files.end(), action);
-            }
-            else
-            {
-                std::for_each(std::execution::par, files.begin(), files.end(), action);
+                std::rethrow_exception(*exceptions.begin());
             }
 
-            try_rethrow();
+//            const auto action = [&](const ast_file& file) {
+//                try
+//                {
+//                    const auto then = std::chrono::steady_clock::now();
+//
+//                    for (const codegen_config_step& step : stage.steps)
+//                    {
+//                        run_step(stage, step, file);
+//                    }
+//
+//                    const auto now = std::chrono::steady_clock::now();
+//                    const std::chrono::duration<std::float_t> duration = now - then;
+//                    SPDLOG_DEBUG("render file completed, file={} duration={}s", file.path, duration.count());
+//                }
+//                catch (...)
+//                {
+//                    std::lock_guard lock(mutex);
+//                    exceptions.emplace_back(std::current_exception());
+//                }
+//            };
+//
+//            if (options.sequential)
+//            {
+//                std::for_each(std::execution::seq, files.begin(), files.end(), action);
+//            }
+//            else
+//            {
+//                std::for_each(std::execution::par, files.begin(), files.end(), action);
+//            }
+//
+//            try_rethrow();
         }
 
-        inline void run_step(const codegen_config_stage& stage, const codegen_config_step& step, const ast_file& file)
+        inline void run_step(const codegen_config_step& step, const ast_file& file)
         {
             std::filesystem::path file_path(file.path);
             std::vector<std::string> templates = step.templates;

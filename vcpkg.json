@@ -5,6 +5,7 @@
   "dependencies": [
     "argparse",
     "catch2",
+    "concurrentqueue",
     "fmt",
     "foonathan-cppast",
     "inja",
