@@ -26,8 +26,8 @@ namespace details
 
 int main(int argc, const char* argv[])
 {
-    std::shared_ptr<spdlog::logger> logger = spdlog::stdout_color_st<spdlog::async_factory>("default");
-    spdlog::set_default_logger(logger);
+    // std::shared_ptr<spdlog::logger> logger = spdlog::stdout_color_st<spdlog::async_factory>("default");
+    // spdlog::set_default_logger(logger);
     spdlog::set_pattern("%l: %v");
 
     argparse::ArgumentParser arg_parser {
