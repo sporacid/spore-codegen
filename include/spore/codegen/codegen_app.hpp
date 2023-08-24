@@ -178,7 +178,7 @@ namespace spore::codegen
 
         inline void run_stage(const codegen_config_stage& stage)
         {
-            details::current_path_scope directory_scope(stage.directory);
+            details::current_path_scope directory_scope(std::filesystem::current_path() / stage.directory);
 
             std::vector<std::filesystem::path> file_paths = glob::rglob(stage.files);
             std::vector<std::exception_ptr> exceptions;
