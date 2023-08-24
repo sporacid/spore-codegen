@@ -223,7 +223,7 @@ namespace spore::codegen
                 return file;
             };
 
-            codegen_thread_pool thread_pool(std::thread::hardware_concurrency());
+            codegen_thread_pool thread_pool(options.parallelism);
             const auto add_task = [&](const std::filesystem::path& file_path) mutable {
                 thread_pool.add_task([&]() { generate(file_path); });
             };
