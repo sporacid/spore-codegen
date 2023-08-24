@@ -1,6 +1,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "argparse/argparse.hpp"
@@ -99,19 +100,20 @@ int main(int argc, const char* argv[])
         });
 
     arg_parser
-        .add_argument("-F", "--force")
-        .help("force generation for all input files even if files haven't changed")
-        .default_value(false)
-        .implicit_value(true);
-
-    arg_parser
         .add_argument("--dump-ast")
         .help("dump internal json representation of the AST being passed into the templates");
 
     arg_parser
         .add_argument("-p", "--parallelism")
         .help("level of parallelism for codegen tasks")
-        .default_value(std::thread::hardware_concurrency());
+        .default_value(std::thread::hardware_concurrency())
+        .scan<'i', std::uint32_t>();
+
+    arg_parser
+        .add_argument("-F", "--force")
+        .help("force generation for all input files even if files haven't changed")
+        .default_value(false)
+        .implicit_value(true);
 
     arg_parser
         .add_argument("-g", "--debug")
