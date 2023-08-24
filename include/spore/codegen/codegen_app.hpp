@@ -409,14 +409,16 @@ namespace spore::codegen
                         const std::string& template_ = step_templates.at(index_template);
                         const bool template_up_to_date = step_templates_up_to_date.at(index_template);
 
-                        std::filesystem::path output_ext = std::filesystem::path(template_).stem();
-                        std::filesystem::path output_filename = fmt::format("{}.{}", file.stem().string(), output_ext.string());
-                        std::filesystem::path output_directory = std::filesystem::path(options.output) / step.directory / file.parent_path();
-                        std::string output = std::filesystem::absolute(output_directory / output_filename).string();
-                        const bool output_up_to_date = cache.check_and_update(output);
+                        // TODO can't check whether output is up to date because of conditions
+                        // const bool output_up_to_date = cache.check_and_update(output);
 
-                        if (!file_up_to_date || !template_up_to_date || !output_up_to_date)
+                        if (!file_up_to_date || !template_up_to_date)
                         {
+                            std::filesystem::path output_ext = std::filesystem::path(template_).stem();
+                            std::filesystem::path output_filename = fmt::format("{}.{}", file.stem().string(), output_ext.string());
+                            std::filesystem::path output_directory = std::filesystem::path(options.output) / step.directory / file.parent_path();
+                            std::string output = std::filesystem::absolute(output_directory / output_filename).string();
+
                             codegen_file_task& file_task = file_step.file_tasks.emplace_back();
                             file_task.template_ = template_;
                             file_task.output = std::move(output);

@@ -57,14 +57,15 @@ namespace spore::codegen
             std::uintmax_t size = std::filesystem::file_size(file);
             std::int64_t mtime = std::filesystem::last_write_time(file).time_since_epoch().count();
 
-            const auto it = std::find(entries.begin(), entries.end(), file);
-            if (it == entries.end())
+            const auto it = std::lower_bound(entries.begin(), entries.end(), file);
+            if (it == entries.end() || it->file != file)
             {
-                codegen_cache_entry& entry = entries.emplace_back();
+                codegen_cache_entry entry;
                 entry.file = file;
                 entry.hash = std::move(hash);
                 entry.size = size;
                 entry.mtime = mtime;
+                entries.insert(it, std::move(entry));
                 return false;
             }
 
