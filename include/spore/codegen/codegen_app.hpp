@@ -198,18 +198,16 @@ namespace spore::codegen
             }
 
             std::lock_guard lock(mutex);
-
-            const auto predicate = [](const std::unique_ptr<TinyProcessLib::Process>& process) {
-                int exit_status = 0;
-                return process->try_get_exit_status(exit_status);
-            };
-
-            while (!std::all_of(processes.begin(), processes.end(), predicate))
+            if (!processes.empty())
             {
                 SPDLOG_DEBUG("waiting on pending processes");
-            }
+                for (const std::unique_ptr<TinyProcessLib::Process>& process : processes)
+                {
+                    process->get_exit_status();
+                }
 
-            processes.clear();
+                processes.clear();
+            }
 
             const auto now = std::chrono::steady_clock::now();
             const std::chrono::duration<std::float_t> duration = now - then;
