@@ -1,7 +1,6 @@
 #pragma once
 
 #include <filesystem>
-#include <mutex>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -18,8 +17,8 @@ namespace spore::codegen
     {
         std::string file;
         std::string hash;
-        std::uintmax_t file_size = 0;
-        std::int64_t last_write_time = 0;
+        std::int64_t mtime = 0;
+        std::uintmax_t size = 0;
 
         bool operator<(const codegen_cache_entry& other) const
         {
@@ -44,7 +43,6 @@ namespace spore::codegen
 
     struct codegen_cache
     {
-        std::mutex mutex;
         std::string version;
         std::vector<codegen_cache_entry> entries;
 
@@ -56,30 +54,26 @@ namespace spore::codegen
                 return false;
             }
 
-            std::uintmax_t file_size = std::filesystem::file_size(file);
-            std::int64_t file_last_write_time = std::filesystem::last_write_time(file).time_since_epoch().count();
-
-            std::lock_guard lock(mutex);
+            std::uintmax_t size = std::filesystem::file_size(file);
+            std::int64_t mtime = std::filesystem::last_write_time(file).time_since_epoch().count();
 
             const auto it = std::find(entries.begin(), entries.end(), file);
             if (it == entries.end())
             {
                 codegen_cache_entry& entry = entries.emplace_back();
-                entry.file = file.data();
+                entry.file = file;
                 entry.hash = std::move(hash);
-                entry.file_size = file_size;
-                entry.last_write_time = file_last_write_time;
+                entry.size = size;
+                entry.mtime = mtime;
                 return false;
             }
 
-            if (file_size != it->file_size ||
-                file_last_write_time != it->last_write_time ||
-                hash != it->hash)
+            if (size != it->size || mtime != it->mtime || hash != it->hash)
             {
                 codegen_cache_entry& entry = *it;
                 entry.hash = std::move(hash);
-                entry.file_size = file_size;
-                entry.last_write_time = file_last_write_time;
+                entry.size = size;
+                entry.mtime = mtime;
                 return false;
             }
 
@@ -88,7 +82,6 @@ namespace spore::codegen
 
         void reset()
         {
-            std::lock_guard lock(mutex);
             version = SPORE_CODEGEN_VERSION;
             entries.clear();
         }
@@ -98,16 +91,34 @@ namespace spore::codegen
     {
         json["file"] = value.file;
         json["hash"] = value.hash;
-        json["file_size"] = value.file_size;
-        json["last_write_time"] = value.last_write_time;
+        json["size"] = value.size;
+        json["mtime"] = value.mtime;
     }
 
     void from_json(const nlohmann::json& json, codegen_cache_entry& value)
     {
         json["file"].get_to(value.file);
         json["hash"].get_to(value.hash);
-        json["file_size"].get_to(value.file_size);
-        json["last_write_time"].get_to(value.last_write_time);
+
+        if (json.contains("file_size"))
+        {
+            json["file_size"].get_to(value.size);
+        }
+
+        if (json.contains("size"))
+        {
+            json["size"].get_to(value.size);
+        }
+
+        if (json.contains("last_write_time"))
+        {
+            json["last_write_time"].get_to(value.mtime);
+        }
+
+        if (json.contains("mtime"))
+        {
+            json["mtime"].get_to(value.mtime);
+        }
     }
 
     void to_json(nlohmann::json& json, const codegen_cache& value)
