@@ -109,14 +109,13 @@ int main(int argc, const char* argv[])
         .help("dump internal json representation of the AST being passed into the templates");
 
     arg_parser
-        .add_argument("-g", "--debug")
-        .help("sets output verbosity to debug")
-        .default_value(false)
-        .implicit_value(true);
+        .add_argument("-p", "--parallelism")
+        .help("level of parallelism for codegen tasks")
+        .default_value(std::thread::hardware_concurrency());
 
     arg_parser
-        .add_argument("-S", "--sequential")
-        .help("process input files sequentially instead of in parallel")
+        .add_argument("-g", "--debug")
+        .help("sets output verbosity to debug")
         .default_value(false)
         .implicit_value(true);
 
@@ -147,8 +146,8 @@ int main(int argc, const char* argv[])
     options.features = arg_parser.get<std::vector<std::string>>("--features");
     options.definitions = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--definitions");
     options.user_data = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--user-data");
+    options.parallelism = arg_parser.get<std::uint32_t>("--parallelism");
     options.force = arg_parser.get<bool>("--force");
-    options.sequential = arg_parser.get<bool>("--sequential");
 
     if (arg_parser.present("--dump-ast"))
     {
