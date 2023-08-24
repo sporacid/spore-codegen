@@ -278,18 +278,6 @@ namespace spore::codegen
         {
             std::filesystem::path file_path(file.path);
 
-            std::shared_ptr<ast_condition> condition;
-            if (step.condition.has_value())
-            {
-                condition = ast_condition_factory::instance().make_condition(step.condition.value());
-            }
-
-            if (condition && !condition->matches_condition(file))
-            {
-                SPDLOG_DEBUG("skipping input because it does not match condition, file={}", file.path);
-                return;
-            }
-
             std::vector<resolved_template> dirty_templates;
             dirty_templates.reserve(templates.size());
 
@@ -303,6 +291,18 @@ namespace spore::codegen
             if (dirty_templates.empty())
             {
                 SPDLOG_DEBUG("skipping input because everything is up-to-date, file={}", file.path);
+                return;
+            }
+
+            std::shared_ptr<ast_condition> condition;
+            if (step.condition.has_value())
+            {
+                condition = ast_condition_factory::instance().make_condition(step.condition.value());
+            }
+
+            if (condition && !condition->matches_condition(file))
+            {
+                SPDLOG_DEBUG("skipping input because it does not match condition, file={}", file.path);
                 return;
             }
 
