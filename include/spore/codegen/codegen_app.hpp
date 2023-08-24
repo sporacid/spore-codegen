@@ -69,6 +69,25 @@ namespace spore::codegen
             current_path_scope& operator=(current_path_scope&&) = delete;
         };
     }
+
+    struct codegen_file_task
+    {
+        std::string template_;
+        std::string output;
+    };
+
+    struct codegen_file_step
+    {
+        std::shared_ptr<ast_condition> condition;
+        std::vector<codegen_file_task> file_tasks;
+    };
+
+    struct codegen_file_stage
+    {
+        std::string file;
+        std::vector<codegen_file_step> file_steps;
+    };
+
     struct codegen_app
     {
         codegen_config config;
@@ -212,6 +231,52 @@ namespace spore::codegen
                 return;
             }
 
+            details::current_path_scope directory_scope(stage_directory);
+            std::vector<codegen_file_stage> file_stages = make_file_stages(stage);
+            std::vector<std::exception_ptr> exceptions;
+
+            const auto action = [&](const codegen_file_stage& file_stage) {
+                try
+                {
+                    const auto then = std::chrono::steady_clock::now();
+
+                    run_file_stage(file_stage);
+
+                    const auto now = std::chrono::steady_clock::now();
+                    const std::chrono::duration<std::float_t> duration = now - then;
+
+                    SPDLOG_INFO("codegen completed for file, file={} duration={}s", file_stage.file, duration.count());
+                }
+                catch (...)
+                {
+                    std::lock_guard lock(mutex);
+                    exceptions.emplace_back(std::current_exception());
+                }
+            };
+
+            if (options.sequential)
+            {
+                std::for_each(std::execution::seq, file_stages.begin(), file_stages.end(), action);
+            }
+            else
+            {
+                std::for_each(std::execution::par, file_stages.begin(), file_stages.end(), action);
+            }
+
+            std::lock_guard lock(mutex);
+            if (!exceptions.empty())
+            {
+                std::rethrow_exception(*exceptions.begin());
+            }
+
+#if 0
+            std::filesystem::path stage_directory = std::filesystem::current_path() / stage.directory;
+            if (!std::filesystem::exists(stage_directory))
+            {
+                SPDLOG_DEBUG("skipping stage because directory does not exist, directory={}", stage_directory.string());
+                return;
+            }
+
             std::vector<std::vector<resolved_template>> stage_templates;
             stage_templates.reserve(stage.steps.size());
 
@@ -272,8 +337,86 @@ namespace spore::codegen
             {
                 std::rethrow_exception(*exceptions.begin());
             }
+#endif
         }
 
+        inline void run_file_stage(const codegen_file_stage& file_stage)
+        {
+            ast_file file;
+            if (!parser->parse_file(file_stage.file, file))
+            {
+                throw codegen_error(codegen_error_code::parsing, "failed to parse input, file={}", file_stage.file);
+            }
+
+            nlohmann::json json_data;
+            if (!converter->convert_file(file, json_data))
+            {
+                throw codegen_error(codegen_error_code::rendering, "failed to convert input data to json, file={}", file.path);
+            }
+
+            std::filesystem::path file_path(file_stage.file);
+            if (options.dump_ast)
+            {
+                std::filesystem::path output_filename = fmt::format("{}.json", file_path.stem().string());
+                std::filesystem::path output_directory = std::filesystem::path(*options.dump_ast) / file_path.parent_path();
+                std::string output = (output_directory / output_filename).string();
+
+                if (!spore::codegen::write_file(output, json_data.dump(2)))
+                {
+                    SPDLOG_WARN("failed to write dump file, file={}", output);
+                }
+            }
+
+            // TODO this sucks
+            std::vector<std::string> outputs;
+            for (const codegen_file_step& file_step : file_stage.file_steps)
+            {
+                for (const codegen_file_task& file_task : file_step.file_tasks)
+                {
+                    outputs.emplace_back(file_task.output);
+                }
+            }
+
+            nlohmann::json json_context;
+            json_context["outputs"] = outputs;
+            json_context["user_data"] = json_user_data;
+            json_data["$"] = json_context;
+
+            for (const codegen_file_step& file_step : file_stage.file_steps)
+            {
+                if (file_step.condition && !file_step.condition->matches_condition(file))
+                {
+                    SPDLOG_DEBUG("skipping input because it does not match condition, file={}", file.path);
+                    continue;
+                }
+
+                for (const codegen_file_task& file_task : file_step.file_tasks)
+                {
+                    SPDLOG_DEBUG("rendering output, file={} template={}", file.path, file_task.template_);
+
+                    std::string result;
+                    if (!renderer->render_file(file_task.template_, json_data, result))
+                    {
+                        throw codegen_error(codegen_error_code::rendering, "failed to render input, file={} template={}", file.path, file_task.template_);
+                    }
+
+                    SPDLOG_DEBUG("writing output, file={}", file_task.output);
+                    if (!spore::codegen::write_file(file_task.output, result))
+                    {
+                        throw codegen_error(codegen_error_code::io, "failed to write output, file={}", file_task.output);
+                    }
+
+                    if (!options.reformat.empty())
+                    {
+                        std::lock_guard lock(mutex);
+                        std::string command = fmt::format("{} {}", options.reformat, file_task.output);
+                        processes.emplace_back(std::make_unique<TinyProcessLib::Process>(command));
+                    }
+                }
+            }
+        }
+
+#if 0
         inline void run_step(const codegen_config_step& step, const ast_file& file, const std::vector<resolved_template>& templates)
         {
             std::filesystem::path file_path(file.path);
@@ -369,51 +512,175 @@ namespace spore::codegen
                 ++index_template;
             }
         }
+#endif
 
-        inline std::vector<resolved_template> resolve_templates(const std::vector<std::string>& templates)
+        inline std::vector<codegen_file_stage> make_file_stages(const codegen_config_stage& stage)
         {
-            const auto transform = [&](const std::string& template_) {
-                resolved_template resolved_template;
+            std::vector<std::shared_ptr<ast_condition>> conditions;
+            conditions.reserve(stage.steps.size());
 
-                SPDLOG_DEBUG("  search template, file={}", template_);
-                if (std::filesystem::exists(template_))
+            for (const codegen_config_step& step : stage.steps)
+            {
+                std::shared_ptr<ast_condition>& condition = conditions.emplace_back();
+                if (step.condition.has_value())
                 {
-                    resolved_template.path = std::filesystem::absolute(template_).string();
-                    SPDLOG_DEBUG("  found template, file={}", template_);
+                    condition = ast_condition_factory::instance().make_condition(step.condition.value());
                 }
-                else
+            }
+
+            std::vector<std::vector<std::string>> templates;
+            templates.reserve(stage.steps.size());
+
+            std::vector<std::vector<bool>> templates_up_to_date;
+            templates_up_to_date.reserve(stage.steps.size());
+
+            for (const codegen_config_step& step : stage.steps)
+            {
+                std::vector<std::string>& step_templates = templates.emplace_back(step.templates);
+                resolve_templates(step_templates);
+
+                const auto transform = [&](const std::string& template_) {
+                    return cache.check_and_update(template_);
+                };
+
+                std::transform(step_templates.begin(), step_templates.end(), std::back_inserter(templates_up_to_date.emplace_back()), transform);
+            }
+
+            std::vector<std::filesystem::path> files = glob::rglob(stage.files);
+            std::vector<codegen_file_stage> file_stages;
+            file_stages.reserve(files.size());
+
+            for (const std::filesystem::path& file : files)
+            {
+                codegen_file_stage file_stage;
+                file_stage.file = file.string();
+
+                const bool file_up_to_date = cache.check_and_update(file.string());
+                for (std::size_t index_step = 0; index_step < stage.steps.size(); ++index_step)
                 {
-                    const auto action_predicate = [&](const std::string& template_path) {
-                        std::filesystem::path possible_template = std::filesystem::path(template_path) / template_;
+                    const codegen_config_step& step = stage.steps.at(index_step);
+                    const std::vector<std::string>& step_templates = templates.at(index_step);
+                    const std::vector<bool>& step_templates_up_to_date = templates_up_to_date.at(index_step);
+                    const std::shared_ptr<ast_condition>& step_condition = conditions.at(index_step);
 
-                        SPDLOG_DEBUG("  search template, file={}", possible_template.string());
-                        if (std::filesystem::exists(possible_template))
-                        {
-                            resolved_template.path = std::filesystem::absolute(possible_template).string();
-                            SPDLOG_DEBUG("  found template, file={}", possible_template.string());
-                            return true;
-                        }
+                    codegen_file_step file_step;
+                    file_step.condition = step_condition;
 
-                        return false;
-                    };
-
-                    if (!std::any_of(options.template_paths.begin(), options.template_paths.end(), action_predicate))
+                    for (std::size_t index_template = 0; index_template < step_templates.size(); ++index_template)
                     {
-                        throw codegen_error(codegen_error_code::configuring, "could not find template file, file={}", template_);
+                        const std::string& template_ = step_templates.at(index_template);
+                        const bool template_up_to_date = step_templates_up_to_date.at(index_template);
+
+                        if (!file_up_to_date || !template_up_to_date)
+                        {
+                            std::filesystem::path output_ext = std::filesystem::path(template_).stem();
+                            std::filesystem::path output_filename = fmt::format("{}.{}", file.stem().string(), output_ext.string());
+                            std::filesystem::path output_directory = std::filesystem::path(options.output) / step.directory / file.parent_path();
+                            std::string output = std::filesystem::absolute(output_directory / output_filename).string();
+
+                            codegen_file_task& file_task = file_step.file_tasks.emplace_back();
+                            file_task.template_ = template_;
+                            file_task.output = std::move(output);
+                        }
+                    }
+
+                    if (!file_step.file_tasks.empty())
+                    {
+                        file_stage.file_steps.emplace_back(std::move(file_step));
                     }
                 }
 
-                resolved_template.up_to_date = cache.check_and_update(resolved_template.path);
-                return resolved_template;
-            };
+                if (!file_stage.file_steps.empty())
+                {
+                    file_stages.emplace_back(std::move(file_stage));
+                }
+                else
+                {
+                    SPDLOG_DEBUG("skipping file because everything is up-to-date, file={}", file.string());
+                }
+            }
 
-            std::vector<resolved_template> resolved_templates;
-            resolved_templates.reserve(templates.size());
-
-            SPDLOG_DEBUG("searching for templates");
-            std::transform(templates.begin(), templates.end(), std::back_inserter(resolved_templates), transform);
-
-            return resolved_templates;
+            return file_stages;
         }
+
+        inline void resolve_templates(std::vector<std::string>& templates)
+        {
+            SPDLOG_DEBUG("searching for templates");
+            for (std::string& template_ : templates)
+            {
+                SPDLOG_DEBUG("  search template, file={}", template_);
+                if (std::filesystem::exists(template_))
+                {
+                    template_ = std::filesystem::absolute(template_).string();
+                    SPDLOG_DEBUG("  found template, file={}", template_);
+                    continue;
+                }
+
+                const auto action_predicate = [&](const std::string& template_path) {
+                    std::filesystem::path possible_template = std::filesystem::path(template_path) / template_;
+
+                    SPDLOG_DEBUG("  search template, file={}", possible_template.string());
+                    if (std::filesystem::exists(possible_template))
+                    {
+                        template_ = std::filesystem::absolute(possible_template).string();
+                        SPDLOG_DEBUG("  found template, file={}", possible_template.string());
+                        return true;
+                    }
+
+                    return false;
+                };
+
+                if (!std::any_of(options.template_paths.begin(), options.template_paths.end(), action_predicate))
+                {
+                    throw codegen_error(codegen_error_code::configuring, "could not find template file, file={}", template_);
+                }
+            }
+        }
+
+        //        inline std::vector<resolved_template> resolve_templates(const std::vector<std::string>& templates)
+        //        {
+        //            const auto transform = [&](const std::string& template_) {
+        //                resolved_template resolved_template;
+        //
+        //                SPDLOG_DEBUG("  search template, file={}", template_);
+        //                if (std::filesystem::exists(template_))
+        //                {
+        //                    resolved_template.path = std::filesystem::absolute(template_).string();
+        //                    SPDLOG_DEBUG("  found template, file={}", template_);
+        //                }
+        //                else
+        //                {
+        //                    const auto action_predicate = [&](const std::string& template_path) {
+        //                        std::filesystem::path possible_template = std::filesystem::path(template_path) / template_;
+        //
+        //                        SPDLOG_DEBUG("  search template, file={}", possible_template.string());
+        //                        if (std::filesystem::exists(possible_template))
+        //                        {
+        //                            resolved_template.path = std::filesystem::absolute(possible_template).string();
+        //                            SPDLOG_DEBUG("  found template, file={}", possible_template.string());
+        //                            return true;
+        //                        }
+        //
+        //                        return false;
+        //                    };
+        //
+        //                    if (!std::any_of(options.template_paths.begin(), options.template_paths.end(), action_predicate))
+        //                    {
+        //                        throw codegen_error(codegen_error_code::configuring, "could not find template file, file={}", template_);
+        //                    }
+        //                }
+        //
+        //                resolved_template.up_to_date = cache.check_and_update(resolved_template.path);
+        //                return resolved_template;
+        //            };
+        //
+        //            std::vector<resolved_template> resolved_templates;
+        //            resolved_templates.reserve(templates.size());
+        //
+        //            SPDLOG_DEBUG("searching for templates");
+        //            std::transform(templates.begin(), templates.end(), std::back_inserter(resolved_templates), transform);
+        //
+        //            return resolved_templates;
+        //        }
     };
 }
