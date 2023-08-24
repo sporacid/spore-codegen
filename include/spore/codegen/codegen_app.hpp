@@ -89,29 +89,34 @@ namespace spore::codegen
                 throw codegen_error(codegen_error_code::io, "unable to read config, file={}", options.config);
             }
 
+            std::filesystem::path cache_path(options.cache);
+            if (!std::filesystem::path(options.cache).is_absolute())
+            {
+                cache_path = std::filesystem::path(options.output) / cache_path;
+                options.cache = cache_path.string();
+            }
+
             nlohmann::json::parse(config_data).get_to(config);
 
             std::string cache_data;
-            std::string cache_file = (std::filesystem::path(options.output) / options.cache).string();
-
-            if (!options.force && spore::codegen::read_file(cache_file, cache_data))
+            if (!options.force && spore::codegen::read_file(options.cache, cache_data))
             {
                 nlohmann::json::parse(cache_data).get_to(cache);
 
                 if (cache.version != SPORE_CODEGEN_VERSION)
                 {
-                    SPDLOG_INFO("ignoring old cache, file={} version={}", cache_file, cache.version);
+                    SPDLOG_INFO("ignoring old cache, file={} version={}", options.cache, cache.version);
                     cache.reset();
                 }
                 else if (!cache.check_and_update(options.config))
                 {
-                    SPDLOG_INFO("ignoring old cache because of new config, file={} config={}", cache_file, options.config);
+                    SPDLOG_INFO("ignoring old cache because of new config, file={} config={}", options.cache, options.config);
                     cache.reset();
                     cache.check_and_update(options.config);
                 }
                 else
                 {
-                    SPDLOG_DEBUG("using cache, file={}", cache_file);
+                    SPDLOG_DEBUG("using cache, file={}", options.cache);
                 }
             }
 
