@@ -157,7 +157,7 @@ int main(int argc, const char* argv[])
 
     try
     {
-        spore::codegen::run_codegen(options);
+        spore::codegen::codegen_app(options).run();
     }
     catch (const spore::codegen::codegen_error& e)
     {

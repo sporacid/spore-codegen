@@ -9,23 +9,14 @@ option(SPORE_BUILD_TESTS "Whether to build tests" ON)
 
 set(CMAKE_CXX_STANDARD 17)
 
-project(spore-codegen)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
-find_package(spore-cmake CONFIG)
-
-if (SPORE_CMAKE_FOUND)
-  list(APPEND CMAKE_MODULE_PATH ${SPORE_CMAKE_SCRIPTS})
-  if (NOT SPORE_VERSION)
-    include(SporeVersion)
-    spore_get_version(SPORE_VERSION)
-  endif ()
+if (NOT SPORE_VERSION)
+  include(SporeVersion)
+  spore_get_version(SPORE_VERSION)
 endif ()
 
-if (SPORE_VERSION)
-  set(CMAKE_PROJECT_VERSION ${SPORE_VERSION} CACHE STATIC "" FORCE)
-endif ()
-
-list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
+project(spore-codegen VERSION ${SPORE_VERSION})
 
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/include/spore/codegen/codegen_version.hpp.in
