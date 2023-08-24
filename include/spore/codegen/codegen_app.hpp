@@ -24,7 +24,6 @@
 #include "spore/codegen/codegen_error.hpp"
 #include "spore/codegen/codegen_helpers.hpp"
 #include "spore/codegen/codegen_options.hpp"
-#include "spore/codegen/codegen_thread_pool.hpp"
 #include "spore/codegen/codegen_version.hpp"
 #include "spore/codegen/renderers/codegen_renderer.hpp"
 #include "spore/codegen/renderers/codegen_renderer_composite.hpp"
@@ -172,6 +171,7 @@ namespace spore::codegen
 
         inline void run()
         {
+            const auto then = std::chrono::steady_clock::now();
             const auto action = [&](const codegen_config_stage& stage) {
                 run_stage(stage);
             };
@@ -193,10 +193,14 @@ namespace spore::codegen
 
             while (!std::all_of(processes.begin(), processes.end(), predicate))
             {
-                // no-op
+                SPDLOG_DEBUG("waiting on pending processes");
             }
 
             processes.clear();
+
+            const auto now = std::chrono::steady_clock::now();
+            const std::chrono::duration<std::float_t> duration = now - then;
+            SPDLOG_INFO("codegen completed, duration={}s", duration.count());
         }
 
         inline void run_stage(const codegen_config_stage& stage)
@@ -243,7 +247,7 @@ namespace spore::codegen
 
                     const auto now = std::chrono::steady_clock::now();
                     const std::chrono::duration<std::float_t> duration = now - then;
-                    SPDLOG_DEBUG("generate file completed, file={} duration={}s", file.path, duration.count());
+                    SPDLOG_INFO("codegen completed for file, file={} duration={}s", file.path, duration.count());
                 }
                 catch (...)
                 {
@@ -254,13 +258,14 @@ namespace spore::codegen
                 return file;
             };
 
-            codegen_thread_pool thread_pool(options.parallelism);
-            const auto add_task = [&](const std::filesystem::path& file_path) mutable {
-                thread_pool.add_task([&]() { generate(file_path); });
-            };
-
-            std::for_each(file_paths.begin(), file_paths.end(), add_task);
-            thread_pool.end_execution();
+            if (options.sequential)
+            {
+                std::for_each(std::execution::seq, file_paths.begin(), file_paths.end(), generate);
+            }
+            else
+            {
+                std::for_each(std::execution::par, file_paths.begin(), file_paths.end(), generate);
+            }
 
             std::lock_guard lock(mutex);
             if (!exceptions.empty())
@@ -409,258 +414,6 @@ namespace spore::codegen
             std::transform(templates.begin(), templates.end(), std::back_inserter(resolved_templates), transform);
 
             return resolved_templates;
-
-            //            SPDLOG_DEBUG("searching for templates");
-            //            for (std::string& template_ : templates)
-            //            {
-            //                SPDLOG_DEBUG("  search template, file={}", template_);
-            //                if (std::filesystem::exists(template_))
-            //                {
-            //                    template_ = std::filesystem::absolute(template_).string();
-            //                    SPDLOG_DEBUG("  found template, file={}", template_);
-            //                    continue;
-            //                }
-            //
-            //                const auto action_predicate = [&](const std::string& template_path) {
-            //                    std::filesystem::path possible_template = std::filesystem::path(template_path) / template_;
-            //
-            //                    SPDLOG_DEBUG("  search template, file={}", possible_template.string());
-            //                    if (std::filesystem::exists(possible_template))
-            //                    {
-            //                        template_ = std::filesystem::absolute(possible_template).string();
-            //                        SPDLOG_DEBUG("  found template, file={}", possible_template.string());
-            //                        return true;
-            //                    }
-            //
-            //                    return false;
-            //                };
-            //
-            //                if (!std::any_of(options.template_paths.begin(), options.template_paths.end(), action_predicate))
-            //                {
-            //                    throw codegen_error(codegen_error_code::configuring, "could not find template file, file={}", template_);
-            //                }
-            //            }
-            //
-            //            return resolved_templates;
         }
     };
-#if 0
-    void run_codegen(const codegen_options& options)
-    {
-        std::call_once(details::setup_once_flag, &details::setup_once);
-
-        codegen_config config;
-        codegen_cache cache;
-
-        std::string config_data;
-        if (!spore::codegen::read_file(options.config, config_data))
-        {
-            throw codegen_error(codegen_error_code::io, "unable to read config, file={}", options.config);
-        }
-
-        nlohmann::json::parse(config_data).get_to(config);
-
-        std::string cache_data;
-        std::string cache_file = (std::filesystem::path(options.output) / options.cache).string();
-
-        if (!options.force && spore::codegen::read_file(cache_file, cache_data))
-        {
-            nlohmann::json::parse(cache_data).get_to(cache);
-
-            if (cache.version != SPORE_CODEGEN_VERSION)
-            {
-                SPDLOG_INFO("ignoring old cache, file={} version={}", cache_file, cache.version);
-                cache.reset();
-            }
-            else if (!cache.check_and_update(options.config))
-            {
-                SPDLOG_INFO("ignoring old cache because of new config, file={} config={}", cache_file, options.config);
-                cache.reset();
-                cache.check_and_update(options.config);
-            }
-            else
-            {
-                SPDLOG_DEBUG("using cache, file={}", cache_file);
-            }
-        }
-
-        cppast::libclang_compile_config cppast_config;
-        cppast_config.set_flags(spore::codegen::parse_cpp_standard(options.cpp_standard));
-        cppast_config.define_macro("SPORE_CODEGEN", "1");
-
-        for (const std::string& include : options.includes)
-        {
-            cppast_config.add_include_dir(include);
-        }
-
-        // TODO re-enable once it has been figured out why it fails with -fcxx_std_17
-        // for (const std::string& feature : options.features)
-        // {
-        //     cppast_config.enable_feature(feature);
-        // }
-
-        for (const std::pair<std::string, std::string>& definition : options.definitions)
-        {
-            cppast_config.define_macro(definition.first, definition.second);
-        }
-
-        std::shared_ptr<ast_parser> parser = std::make_shared<ast_parser_cppast>(std::move(cppast_config));
-        std::shared_ptr<ast_converter> converter = std::make_shared<ast_converter_default>();
-        std::shared_ptr<codegen_renderer> renderer = std::make_shared<codegen_renderer_composite>(std::make_shared<codegen_renderer_inja>(options.template_paths));
-
-        nlohmann::json user_data_json;
-        for (const std::pair<std::string, std::string>& pair : options.user_data)
-        {
-            user_data_json[pair.first] = pair.second;
-        }
-
-        for (const codegen_config_step& step : config.steps)
-        {
-            bool templates_up_to_date = true;
-            for (const std::string& template_ : templates)
-            {
-                const bool template_up_to_date = cache.check_and_update(template_);
-                templates_up_to_date = templates_up_to_date && template_up_to_date;
-            }
-
-            std::mutex mutex;
-            std::vector<std::exception_ptr> exceptions;
-
-            std::shared_ptr<ast_condition> condition;
-            if (step.condition.has_value())
-            {
-                condition = ast_condition_factory::instance().make_condition(step.condition.value());
-            }
-
-            SPDLOG_DEBUG("processing step, name={}", step.name);
-
-            const auto action = [&](const std::filesystem::path& input) {
-                SPDLOG_DEBUG("processing input, file={}", input.string());
-                try
-                {
-                    const auto then = std::chrono::steady_clock::now();
-                    const bool input_up_to_date = cache.check_and_update(input.string());
-                    if (input_up_to_date && templates_up_to_date)
-                    {
-                        SPDLOG_DEBUG("skipping input because it has not changed, file={}", input.string());
-                        return;
-                    }
-
-                    ast_file file;
-                    if (!parser->parse_file(input.string(), file))
-                    {
-                        throw codegen_error(codegen_error_code::parsing, "failed to parse input, file={}", input.string());
-                    }
-
-                    if (condition && !condition->matches_condition(file))
-                    {
-                        SPDLOG_DEBUG("skipping input because it does not match condition, file={}", input.string());
-                        return;
-                    }
-
-                    nlohmann::json json_data;
-                    if (!converter->convert_file(file, json_data))
-                    {
-                        throw codegen_error(codegen_error_code::rendering, "failed to convert input data to json, file={}", input.string());
-                    }
-
-                    if (options.dump_ast)
-                    {
-                        std::filesystem::path output_filename = fmt::format("{}.json", input.stem().string());
-                        std::filesystem::path output_directory = std::filesystem::path(*options.dump_ast) / input.parent_path();
-                        std::string output = (output_directory / output_filename).string();
-
-                        if (!spore::codegen::write_file(output, json_data.dump(2)))
-                        {
-                            SPDLOG_WARN("failed to write dump file, file={}", output);
-                        }
-                    }
-
-                    std::vector<std::string> outputs;
-                    outputs.reserve(templates.size());
-
-                    std::transform(
-                        templates.begin(), templates.end(),
-                        std::back_inserter(outputs),
-                        [&](const std::string& template_) {
-                            std::filesystem::path output_ext = std::filesystem::path(template_).stem();
-                            std::filesystem::path output_filename = fmt::format("{}.{}", input.stem().string(), output_ext.string());
-                            std::filesystem::path output_directory = std::filesystem::path(options.output) / input.parent_path();
-                            std::string output = std::filesystem::absolute(output_directory / output_filename).string();
-                            return output;
-                        });
-
-                    json_data["outputs"] = outputs;
-                    json_data["user_data"] = user_data_json;
-
-                    int index_template = 0;
-                    for (const std::string& template_ : templates)
-                    {
-                        std::string result;
-                        if (!renderer->render_file(template_, json_data, result))
-                        {
-                            throw codegen_error(codegen_error_code::rendering, "failed to render input, file={} template={}", input.string(), template_);
-                        }
-
-                        const std::string& output = outputs[index_template];
-                        SPDLOG_DEBUG("generating output, file={}", output);
-
-                        if (!spore::codegen::write_file(output, result))
-                        {
-                            throw codegen_error(codegen_error_code::io, "failed to write output, file={}", output);
-                        }
-
-                        if (!options.reformat.empty())
-                        {
-                            std::string command = fmt::format("{} {}", options.reformat, output);
-
-                            TinyProcessLib::Process process {command};
-
-                            if (process.get_exit_status() != 0)
-                            {
-                                SPDLOG_WARN("failed to reformat output, file={}", output);
-                            }
-                        }
-
-                        ++index_template;
-                    }
-
-                    const auto now = std::chrono::steady_clock::now();
-                    const std::chrono::duration<std::float_t> duration = now - then;
-                    SPDLOG_INFO("codegen for input file completed, file={} time={:.2f}s", input.string(), duration.count());
-                }
-                catch (...)
-                {
-                    std::lock_guard lock(mutex);
-                    exceptions.emplace_back(std::current_exception());
-                }
-            };
-
-            if (options.sequential)
-            {
-                std::for_each(std::execution::seq, inputs.begin(), inputs.end(), action);
-            }
-            else
-            {
-                std::for_each(std::execution::par, inputs.begin(), inputs.end(), action);
-            }
-
-            std::lock_guard lock(mutex);
-            if (!exceptions.empty())
-            {
-                for (const std::exception_ptr& exception : exceptions)
-                {
-                    std::rethrow_exception(exception);
-                }
-            }
-        }
-
-        cache_data = nlohmann::json(cache).dump(2);
-
-        if (!spore::codegen::write_file(cache_file, cache_data))
-        {
-            SPDLOG_WARN("failed to write cache, file={}", cache_file);
-        }
-    }
-#endif
 }

@@ -28,7 +28,6 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(p-ranav-glob CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(tiny-process-library CONFIG REQUIRED)
-find_package(unofficial-concurrentqueue CONFIG REQUIRED)
 
 target_link_libraries(
   ${SPORE_CODEGEN_LIBRARY_TARGET}
@@ -40,7 +39,6 @@ target_link_libraries(
     p-ranav::glob
     spdlog::spdlog
     tiny-process-library::tiny-process-library
-    unofficial::concurrentqueue::concurrentqueue
 )
 
 target_include_directories(

@@ -19,8 +19,8 @@ namespace spore::codegen
         std::vector<std::string> template_paths;
         std::vector<std::pair<std::string, std::string>> definitions;
         std::vector<std::pair<std::string, std::string>> user_data;
-        std::uint32_t parallelism = std::thread::hardware_concurrency();
         std::optional<std::string> dump_ast = std::nullopt;
+        bool sequential = false;
         bool force = false;
     };
 }

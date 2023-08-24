@@ -26,8 +26,8 @@ namespace details
 
 int main(int argc, const char* argv[])
 {
-    // std::shared_ptr<spdlog::logger> logger = spdlog::stdout_color_st<spdlog::async_factory>("default");
-    // spdlog::set_default_logger(logger);
+    std::shared_ptr<spdlog::logger> logger = spdlog::stdout_color_st<spdlog::async_factory>("default");
+    spdlog::set_default_logger(logger);
     spdlog::set_pattern("%l: %v");
 
     argparse::ArgumentParser arg_parser {
@@ -121,6 +121,12 @@ int main(int argc, const char* argv[])
         .default_value(false)
         .implicit_value(true);
 
+    arg_parser
+        .add_argument("-S", "--sequential")
+        .help("process input files sequentially instead of in parallel")
+        .default_value(false)
+        .implicit_value(true);
+
     try
     {
         arg_parser.parse_args(argc, argv);
@@ -148,7 +154,7 @@ int main(int argc, const char* argv[])
     options.features = arg_parser.get<std::vector<std::string>>("--features");
     options.definitions = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--definitions");
     options.user_data = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--user-data");
-    options.parallelism = arg_parser.get<std::uint32_t>("--parallelism");
+    options.sequential = arg_parser.get<bool>("--sequential");
     options.force = arg_parser.get<bool>("--force");
 
     if (arg_parser.present("--dump-ast"))
