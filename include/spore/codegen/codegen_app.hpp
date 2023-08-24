@@ -38,9 +38,9 @@ namespace spore::codegen
 {
     namespace details
     {
-        std::once_flag setup_once_flag;
+        inline std::once_flag setup_once_flag;
 
-        void setup_once()
+        inline void setup_once()
         {
             ast_condition_factory::instance().register_condition<ast_condition_any>();
             ast_condition_factory::instance().register_condition<ast_condition_all>();
@@ -62,6 +62,12 @@ namespace spore::codegen
             {
                 std::filesystem::current_path(old_path);
             }
+
+            current_path_scope(const current_path_scope&) = delete;
+            current_path_scope(current_path_scope&&) = delete;
+
+            current_path_scope& operator=(const current_path_scope&) = delete;
+            current_path_scope& operator=(current_path_scope&&) = delete;
         };
     }
 
@@ -183,7 +189,14 @@ namespace spore::codegen
 
         inline void run_stage(const codegen_config_stage& stage)
         {
-            details::current_path_scope directory_scope(std::filesystem::current_path() / stage.directory);
+            std::filesystem::path stage_directory = std::filesystem::current_path() / stage.directory;
+            if (!std::filesystem::exists(stage_directory))
+            {
+                SPDLOG_DEBUG("skipping stage because directory does not exist, directory={}", stage_directory.string());
+                return;
+            }
+
+            details::current_path_scope directory_scope(stage_directory);
 
             std::vector<std::filesystem::path> file_paths = glob::rglob(stage.files);
             std::vector<std::exception_ptr> exceptions;
@@ -394,6 +407,8 @@ namespace spore::codegen
                         SPDLOG_DEBUG("  found template, file={}", possible_template.string());
                         return true;
                     }
+
+                    return false;
                 };
 
                 if (!std::any_of(options.template_paths.begin(), options.template_paths.end(), action_predicate))
