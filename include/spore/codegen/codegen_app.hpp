@@ -68,6 +68,19 @@ namespace spore::codegen
             current_path_scope& operator=(const current_path_scope&) = delete;
             current_path_scope& operator=(current_path_scope&&) = delete;
         };
+
+        struct defer
+        {
+            const std::function<void()>& func;
+
+            ~defer()
+            {
+                if (func)
+                {
+                    func();
+                }
+            }
+        };
     }
 
     struct codegen_file_task
@@ -185,33 +198,38 @@ namespace spore::codegen
         inline void run()
         {
             const auto then = std::chrono::steady_clock::now();
+
+            const auto finally = [&]() {
+                nlohmann::json cache_data = nlohmann::json(cache).dump(2);
+                if (!spore::codegen::write_file(options.cache, cache_data))
+                {
+                    SPDLOG_WARN("failed to write cache, file={}", options.cache);
+                }
+
+                std::lock_guard lock(mutex);
+                if (!processes.empty())
+                {
+                    SPDLOG_DEBUG("waiting on pending processes");
+                    for (const std::unique_ptr<TinyProcessLib::Process>& process : processes)
+                    {
+                        process->get_exit_status();
+                    }
+
+                    processes.clear();
+                }
+
+                const auto now = std::chrono::steady_clock::now();
+                const std::chrono::duration<std::float_t> duration = now - then;
+                SPDLOG_INFO("codegen completed, duration={}s", duration.count());
+            };
+
+            details::defer defer_finally {finally};
+
             const auto action = [&](const codegen_config_stage& stage) {
                 run_stage(stage);
             };
 
             std::for_each(config.stages.begin(), config.stages.end(), action);
-
-            nlohmann::json cache_data = nlohmann::json(cache).dump(2);
-            if (!spore::codegen::write_file(options.cache, cache_data))
-            {
-                SPDLOG_WARN("failed to write cache, file={}", options.cache);
-            }
-
-            std::lock_guard lock(mutex);
-            if (!processes.empty())
-            {
-                SPDLOG_DEBUG("waiting on pending processes");
-                for (const std::unique_ptr<TinyProcessLib::Process>& process : processes)
-                {
-                    process->get_exit_status();
-                }
-
-                processes.clear();
-            }
-
-            const auto now = std::chrono::steady_clock::now();
-            const std::chrono::duration<std::float_t> duration = now - then;
-            SPDLOG_INFO("codegen completed, duration={}s", duration.count());
         }
 
         inline void run_stage(const codegen_config_stage& stage)

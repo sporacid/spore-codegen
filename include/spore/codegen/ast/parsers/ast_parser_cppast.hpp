@@ -175,10 +175,77 @@ namespace spore::codegen
             return template_param;
         }
 
+        ast_flags add_flags(ast_flags flags, cppast::cpp_reference cpp_ref)
+        {
+            switch (cpp_ref)
+            {
+                case cppast::cpp_reference::cpp_ref_lvalue: {
+                    return flags | ast_flags::lvalue_ref;
+                }
+
+                case cppast::cpp_reference::cpp_ref_rvalue: {
+                    return flags | ast_flags::rvalue_ref;
+                }
+
+                default: {
+                    return flags;
+                }
+            }
+        }
+
+        ast_flags add_flags(ast_flags flags, cppast::cpp_cv cpp_cv)
+        {
+            switch (cpp_cv)
+            {
+                case cppast::cpp_cv_const: {
+                    return flags | ast_flags::const_;
+                }
+
+                case cppast::cpp_cv_volatile: {
+                    return flags | ast_flags::volatile_;
+                }
+
+                case cppast::cpp_cv_const_volatile: {
+                    return flags | ast_flags::const_ | ast_flags::volatile_;
+                }
+
+                default: {
+                    return flags;
+                }
+            }
+        }
+
         ast_ref parse_ref(const cppast::cpp_type& cpp_type)
         {
             ast_ref ref;
             ref.name = cppast::to_string(cpp_type);
+
+            const cppast::cpp_type* cpp_type_ptr = &cpp_type;
+            while (cpp_type_ptr != nullptr)
+            {
+                switch (cpp_type_ptr->kind())
+                {
+                    case cppast::cpp_type_kind::cv_qualified_t: {
+                        const auto& cpp_cv_type = dynamic_cast<const cppast::cpp_cv_qualified_type&>(*cpp_type_ptr);
+                        ref.flags = add_flags(ref.flags, cpp_cv_type.cv_qualifier());
+                        cpp_type_ptr = nullptr;
+                        break;
+                    }
+
+                    case cppast::cpp_type_kind::reference_t: {
+                        const auto& cpp_ref_type = dynamic_cast<const cppast::cpp_reference_type&>(*cpp_type_ptr);
+                        ref.flags = add_flags(ref.flags, cpp_ref_type.reference_kind());
+                        cpp_type_ptr = &cpp_ref_type.referee();
+                        break;
+                    }
+
+                    default: {
+                        cpp_type_ptr = nullptr;
+                        break;
+                    }
+                }
+            }
+
             return ref;
         }
 
