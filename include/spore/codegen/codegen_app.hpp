@@ -320,10 +320,15 @@ namespace spore::codegen
                 }
             }
 
-            // TODO this sucks
+            // TODO find out a better way to achieve the same thing
             std::vector<std::string> outputs;
             for (const codegen_file_step& file_step : file_stage.file_steps)
             {
+                if (file_step.condition && !file_step.condition->matches_condition(file))
+                {
+                    continue;
+                }
+
                 for (const codegen_file_task& file_task : file_step.file_tasks)
                 {
                     outputs.emplace_back(file_task.output);
