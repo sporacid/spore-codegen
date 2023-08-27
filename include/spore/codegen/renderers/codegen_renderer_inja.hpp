@@ -70,6 +70,42 @@ namespace spore::codegen
 
             return cpp_name;
         }
+
+        std::string render_include_template(inja::Environment& env, const inja::Arguments& args, const std::vector<std::string>& template_paths)
+        {
+            if (args.empty())
+            {
+                throw codegen_error(codegen_error_code::rendering, "cannot include template, missing file");
+            }
+
+            nlohmann::json json_data;
+            if (args.size() == 2)
+            {
+                json_data = *args.at(1);
+            }
+            else if (args.size() > 2)
+            {
+                std::vector<nlohmann::json> json_values;
+                for (std::size_t index = 1; index < args.size(); index += 2)
+                {
+                    json_values.emplace_back(*args.at(index));
+                }
+
+                json_data = std::move(json_values);
+            }
+
+            std::string template_file = args.at(0)->get<std::string>();
+            for (const std::string& template_path : template_paths)
+            {
+                std::filesystem::path template_file_abs = std::filesystem::path(template_path) / template_file;
+                if (std::filesystem::exists(template_file_abs))
+                {
+                    return env.render_file(template_file_abs.string(), json_data);
+                }
+            }
+
+            throw codegen_error(codegen_error_code::rendering, "cannot find include template, file={}", template_file);
+        }
     }
 
     struct codegen_renderer_inja : codegen_renderer
@@ -122,24 +158,9 @@ namespace spore::codegen
                     return std::filesystem::absolute(std::filesystem::path(value)).string();
                 });
 
-            inja_env.add_callback("include", 2,
-                [&, template_paths](inja::Arguments& args) {
-                    std::string template_file = args.at(0)->get<std::string>();
-                    for (const std::string& template_path : template_paths)
-                    {
-                        std::filesystem::path template_file_abs = std::filesystem::path(template_path) / template_file;
-                        if (std::filesystem::exists(template_file_abs))
-                        {
-                            const nlohmann::json& data = *args.at(1);
-                            return inja_env.render_file(template_file_abs.string(), data);
-                        }
-                    }
-                    throw codegen_error(codegen_error_code::rendering, "cannot find include template, file={}", template_file);
-                });
-
             inja_env.add_callback("include",
                 [&, template_paths](inja::Arguments& args) {
-                    return include_template(args, template_paths);
+                    return details::render_include_template(inja_env, args, template_paths);
                 });
         }
 
@@ -160,33 +181,6 @@ namespace spore::codegen
         bool can_render_file(const std::string& file) const override
         {
             return ".inja" == std::filesystem::path(file).extension();
-        }
-
-        std::string include_template(const inja::Arguments& args, const std::vector<std::string>& template_paths)
-        {
-            if (args.size() < 1)
-            {
-                throw codegen_error(codegen_error_code::rendering, "cannot include template, missing file");
-            }
-
-            nlohmann::json json_data;
-            for (std::size_t index = 1; index < args.size(); index += 2)
-            {
-                std::string json_name = args.at(index)->get<std::string>();
-                json_data[json_name] = args.at(index + 1)->get<nlohmann::json>();
-            }
-
-            std::string template_file = args.at(0)->get<std::string>();
-            for (const std::string& template_path : template_paths)
-            {
-                std::filesystem::path template_file_abs = std::filesystem::path(template_path) / template_file;
-                if (std::filesystem::exists(template_file_abs))
-                {
-                    return inja_env.render_file(template_file_abs.string(), json_data);
-                }
-            }
-
-            throw codegen_error(codegen_error_code::rendering, "cannot find include template, file={}", template_file);
         }
     };
 }

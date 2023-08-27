@@ -47,7 +47,9 @@ namespace spore::codegen
     void to_json(nlohmann::json& json, const ast_has_template_params<ast_object_t>& value)
     {
         json["is_template"] = value.is_template();
+        json["is_template_specialization"] = value.is_template_specialization();
         json["template_params"] = value.template_params;
+        json["template_specialization_params"] = value.template_specialization_params;
     }
 
     template <typename ast_object_t>

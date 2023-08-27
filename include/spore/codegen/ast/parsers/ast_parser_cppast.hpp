@@ -133,6 +133,30 @@ namespace spore::codegen
             }
         }
 
+        std::string parse_template_arg(const cppast::cpp_template_argument& cpp_template_arg)
+        {
+            if (cpp_template_arg.type().has_value())
+            {
+                const cppast::cpp_type& cpp_type = cpp_template_arg.type().value();
+                return cppast::to_string(cpp_type);
+            }
+
+            if (cpp_template_arg.expression().has_value())
+            {
+                const cppast::cpp_expression& cpp_expr = cpp_template_arg.expression().value();
+                return parse_expression(cpp_expr);
+            }
+
+            if (cpp_template_arg.template_ref().has_value())
+            {
+                const cppast::cpp_template_ref& cpp_template = cpp_template_arg.template_ref().value();
+                return cpp_template.name();
+            }
+
+            SPDLOG_WARN("unknown template specialization argument type");
+            return std::string();
+        }
+
         ast_template_param parse_template_param(const cppast::cpp_template_parameter& cpp_template_param)
         {
             ast_template_param template_param;
@@ -558,7 +582,7 @@ namespace spore::codegen
                 }
             }
 
-            classes.insert(classes.begin() + insert_index, std::move(class_));
+            classes.insert(classes.begin() + static_cast<std::ptrdiff_t>(insert_index), std::move(class_));
         }
 
         void parse_classes(const cppast::cpp_class_template& cpp_class, std::vector<ast_class>& classes)
@@ -568,6 +592,33 @@ namespace spore::codegen
             parse_classes(cpp_class.class_(), classes);
 
             ast_class& class_ = classes.at(insert_index);
+
+            std::transform(cpp_class.parameters().begin(), cpp_class.parameters().end(), std::back_inserter(class_.template_params),
+                [&](const cppast::cpp_template_parameter& cpp_template_param) {
+                    return parse_template_param(cpp_template_param);
+                });
+        }
+
+        void parse_classes(const cppast::cpp_class_template_specialization& cpp_class, std::vector<ast_class>& classes)
+        {
+            const std::size_t insert_index = classes.size();
+
+            parse_classes(cpp_class.class_(), classes);
+
+            ast_class& class_ = classes.at(insert_index);
+
+            if (cpp_class.arguments_exposed())
+            {
+                std::transform(cpp_class.arguments().begin(), cpp_class.arguments().end(), std::back_inserter(class_.template_specialization_params),
+                    [&](const cppast::cpp_template_argument& cpp_template_argument) {
+                        return parse_template_arg(cpp_template_argument);
+                    });
+            }
+            else
+            {
+                const cppast::cpp_token_string& cpp_token = cpp_class.unexposed_arguments();
+                class_.template_specialization_params.emplace_back(cpp_token.as_string());
+            }
 
             std::transform(cpp_class.parameters().begin(), cpp_class.parameters().end(), std::back_inserter(class_.template_params),
                 [&](const cppast::cpp_template_parameter& cpp_template_param) {
@@ -659,11 +710,12 @@ namespace spore::codegen
         {
             ast_file file;
             file.path = cpp_file.name();
+            spore::codegen::replace_all(file.path, "\\", "/");
 
             const auto predicate = [&](const cppast::cpp_entity& cpp_entity) {
                 const bool is_definition = cppast::is_definition(cpp_entity);
                 const bool is_enum = is_definition && cpp_entity.kind() == cppast::cpp_entity_kind::enum_t;
-                const bool is_class = is_definition && (cpp_entity.kind() == cppast::cpp_entity_kind::class_t || cpp_entity.kind() == cppast::cpp_entity_kind::class_template_t);
+                const bool is_class = is_definition && (cpp_entity.kind() == cppast::cpp_entity_kind::class_t || cpp_entity.kind() == cppast::cpp_entity_kind::class_template_t || cpp_entity.kind() == cppast::cpp_entity_kind::class_template_specialization_t);
                 const bool is_function = is_definition && (cpp_entity.kind() == cppast::cpp_entity_kind::function_t || cpp_entity.kind() == cppast::cpp_entity_kind::function_template_t);
                 const bool is_include = cpp_entity.kind() == cppast::cpp_entity_kind::include_directive_t;
                 return is_enum || is_class || is_function || is_include;
@@ -682,6 +734,11 @@ namespace spore::codegen
                         case cppast::cpp_entity_kind::class_template_t: {
                             const auto& cpp_class_template = dynamic_cast<const cppast::cpp_class_template&>(cpp_entity);
                             parse_classes(cpp_class_template, file.classes);
+                            break;
+                        }
+                        case cppast::cpp_entity_kind::class_template_specialization_t: {
+                            const auto& cpp_class_template_spec = dynamic_cast<const cppast::cpp_class_template_specialization&>(cpp_entity);
+                            parse_classes(cpp_class_template_spec, file.classes);
                             break;
                         }
                         case cppast::cpp_entity_kind::class_t: {
@@ -725,10 +782,7 @@ namespace spore::codegen
 
         explicit ast_parser_cppast(const cppast::libclang_compile_config& cppast_config)
             : cppast_config(cppast_config),
-              cppast_parser {
-                  type_safe::ref(cppast_index),
-                  type_safe::ref(cppast_logger),
-              }
+              cppast_parser(type_safe::ref(cppast_index), type_safe::ref(cppast_logger))
         {
         }
 

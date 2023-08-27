@@ -34,7 +34,6 @@ list(
 
 find_package(Catch2 CONFIG REQUIRED)
 
-include(CTest)
 include(Catch)
 
 catch_discover_tests(${SPORE_CODEGEN_TESTS_TARGET})

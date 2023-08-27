@@ -17,10 +17,16 @@ namespace spore::codegen
     struct ast_has_template_params
     {
         std::vector<ast_template_param> template_params;
+        std::vector<std::string> template_specialization_params;
 
         [[nodiscard]] bool is_template() const
         {
             return !template_params.empty();
+        }
+
+        [[nodiscard]] bool is_template_specialization() const
+        {
+            return !template_specialization_params.empty();
         }
     };
 }
