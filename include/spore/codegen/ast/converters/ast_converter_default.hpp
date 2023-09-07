@@ -74,7 +74,16 @@ namespace spore::codegen
         {
             std::string json_name = attribute.full_name();
             spore::codegen::replace_all(json_name, "::", "_");
-            json[json_name] = attribute;
+
+            if (json.contains(json_name))
+            {
+                constexpr bool merge = true;
+                json[json_name].update(attribute, merge);
+            }
+            else
+            {
+                json[json_name] = attribute;
+            }
         }
     }
 

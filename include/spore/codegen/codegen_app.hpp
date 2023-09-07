@@ -248,6 +248,7 @@ namespace spore::codegen
             make_file_stages(stage, file_stages);
 
             const auto action = [&](const codegen_file_stage& file_stage) {
+                std::atomic_thread_fence(std::memory_order_acquire);
                 try
                 {
                     const auto then = std::chrono::steady_clock::now();

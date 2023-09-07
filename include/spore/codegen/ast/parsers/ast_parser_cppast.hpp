@@ -475,15 +475,16 @@ namespace spore::codegen
             return constructor;
         }
 
-        void parse_classes(const cppast::cpp_class_template& cpp_class, std::vector<ast_class>& classes);
+        void parse_classes(const cppast::cpp_class_template& cpp_class, std::vector<ast_class>& classes, bool is_inner_class = false);
 
-        void parse_classes(const cppast::cpp_class& cpp_class, std::vector<ast_class>& classes)
+        void parse_classes(const cppast::cpp_class& cpp_class, std::vector<ast_class>& classes, bool is_inner_class = false)
         {
             const std::size_t insert_index = classes.size();
 
             ast_class class_;
             class_.name = cpp_class.name();
             class_.scope = find_scope(cpp_class);
+            class_.is_inner = is_inner_class;
 
             switch (cpp_class.class_kind())
             {
@@ -518,13 +519,13 @@ namespace spore::codegen
                 {
                     case cppast::cpp_entity_kind::class_t: {
                         const auto& cpp_class_inner = dynamic_cast<const cppast::cpp_class&>(cpp_entity);
-                        parse_classes(cpp_class_inner, classes);
+                        parse_classes(cpp_class_inner, classes, true /* is_inner_class */);
                         break;
                     }
 
                     case cppast::cpp_entity_kind::class_template_t: {
                         const auto& cpp_class_inner = dynamic_cast<const cppast::cpp_class_template&>(cpp_entity);
-                        parse_classes(cpp_class_inner, classes);
+                        parse_classes(cpp_class_inner, classes, true /* is_inner_class */);
                         break;
                     }
 
@@ -585,11 +586,11 @@ namespace spore::codegen
             classes.insert(classes.begin() + static_cast<std::ptrdiff_t>(insert_index), std::move(class_));
         }
 
-        void parse_classes(const cppast::cpp_class_template& cpp_class, std::vector<ast_class>& classes)
+        void parse_classes(const cppast::cpp_class_template& cpp_class, std::vector<ast_class>& classes, bool is_inner_class)
         {
             const std::size_t insert_index = classes.size();
 
-            parse_classes(cpp_class.class_(), classes);
+            parse_classes(cpp_class.class_(), classes, is_inner_class);
 
             ast_class& class_ = classes.at(insert_index);
 
