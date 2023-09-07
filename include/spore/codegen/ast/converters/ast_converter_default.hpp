@@ -173,6 +173,7 @@ namespace spore::codegen
         json["bases"] = value.bases;
         json["fields"] = value.fields;
         json["functions"] = value.functions;
+        json["is_inner"] = value.is_inner;
     }
 
     void to_json(nlohmann::json& json, const ast_enum_value& value)
