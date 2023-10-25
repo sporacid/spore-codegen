@@ -173,6 +173,7 @@ namespace spore::codegen
         json["bases"] = value.bases;
         json["fields"] = value.fields;
         json["functions"] = value.functions;
+        json["constructors"] = value.constructors;
         json["is_inner"] = value.is_inner;
     }
 
