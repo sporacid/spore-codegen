@@ -275,12 +275,20 @@ namespace spore::codegen
             }
             else
             {
-                std::size_t partition_size = (file_stages.size() / parallelism) + 1;
+                std::vector<std::size_t> indices;
+                indices.resize(parallelism);
+
+                std::iota(indices.begin(), indices.end(), 0);
+
+                std::size_t partition_size = file_stages.size() / parallelism;
+                std::size_t partition_remainder = file_stages.size() % parallelism;
 
                 const auto parallel_action = [&](std::size_t index) {
-                    std::size_t index_begin = index * partition_size;
-                    std::size_t index_end = (index + 1) * partition_size;
-                    index_end = index_end > file_stages.size() ? file_stages.size() : index_end;
+                    std::size_t index_begin_offset = index < partition_remainder ? index : partition_remainder;
+                    std::size_t index_begin = (index * partition_size) + index_begin_offset;
+
+                    std::size_t index_end_offset = index < partition_remainder ? 1 : 0;
+                    std::size_t index_end = index_begin + partition_size + index_end_offset;
 
                     const auto it_begin = file_stages.begin() + static_cast<std::ptrdiff_t>(index_begin);
                     const auto it_end = file_stages.begin() + static_cast<std::ptrdiff_t>(index_end);
@@ -288,10 +296,6 @@ namespace spore::codegen
                     std::for_each(std::execution::seq, it_begin, it_end, action);
                 };
 
-                std::vector<std::size_t> indices;
-                indices.resize(parallelism);
-
-                std::iota(indices.begin(), indices.end(), 0);
                 std::for_each(std::execution::par, indices.begin(), indices.end(), parallel_action);
             }
 
