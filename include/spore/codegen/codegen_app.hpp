@@ -4,6 +4,7 @@
 #include <execution>
 #include <filesystem>
 #include <optional>
+#include <ranges>
 #include <string>
 #include <vector>
 
@@ -247,7 +248,7 @@ namespace spore::codegen
             std::vector<codegen_file_stage> file_stages;
             make_file_stages(stage, file_stages);
 
-            auto action = [&](const codegen_file_stage& file_stage) {
+            const auto action = [&](const codegen_file_stage& file_stage) {
                 std::atomic_thread_fence(std::memory_order_acquire);
                 try
                 {
@@ -267,49 +268,31 @@ namespace spore::codegen
                 }
             };
 
-            if (options.sequential)
+            std::size_t parallelism = options.parallelism > 1 ? options.parallelism : 1;
+            if (file_stages.size() < parallelism)
             {
-                std::for_each(std::execution::seq, file_stages.begin(), file_stages.end(), action);
+                std::for_each(std::execution::par, file_stages.begin(), file_stages.end(), action);
             }
             else
             {
-                std::size_t parallelism = std::thread::hardware_concurrency();
                 std::size_t partition_size = (file_stages.size() / parallelism) + 1;
 
-                if (partition_size < parallelism)
-                {
-                    std::for_each(std::execution::par, file_stages.begin(), file_stages.end(), action);
-                }
-                else
-                {
-                    std::vector<std::vector<codegen_file_stage>> file_stage_partitions;
-                    file_stage_partitions.resize(parallelism);
+                const auto parallel_action = [&](std::size_t index) {
+                    std::size_t index_begin = index * partition_size;
+                    std::size_t index_end = (index + 1) * partition_size;
+                    index_end = index_end > file_stages.size() ? file_stages.size() : index_end;
 
-                    for (std::size_t index = 0; index < parallelism; ++index)
-                    {
-                        std::vector<codegen_file_stage>& file_stage_partition = file_stage_partitions[index];
-                        file_stage_partition.reserve(partition_size);
+                    const auto it_begin = file_stages.begin() + static_cast<std::ptrdiff_t>(index_begin);
+                    const auto it_end = file_stages.begin() + static_cast<std::ptrdiff_t>(index_end);
 
-                        std::size_t index_begin = index * partition_size;
-                        std::size_t index_end = (index + 1) * partition_size;
+                    std::for_each(std::execution::seq, it_begin, it_end, action);
+                };
 
-                        if (index_end > file_stages.size())
-                        {
-                            index_end = file_stages.size();
-                        }
+                std::vector<std::size_t> indices;
+                indices.resize(parallelism);
 
-                        const auto it_begin = file_stages.begin() + static_cast<std::ptrdiff_t>(index_begin);
-                        const auto it_end = file_stages.end() + static_cast<std::ptrdiff_t>(index_end);
-
-                        std::move(it_begin, it_end, file_stage_partition.begin());
-                    }
-
-                    const auto parallel_action = [action = std::move(action)](const std::vector<codegen_file_stage>& file_stage_partition) {
-                        std::for_each(std::execution::seq, file_stage_partition.begin(), file_stage_partition.end(), action);
-                    };
-
-                    std::for_each(std::execution::par, file_stage_partitions.begin(), file_stage_partitions.end(), parallel_action);
-                }
+                std::iota(indices.begin(), indices.end(), 0);
+                std::for_each(std::execution::par, indices.begin(), indices.end(), parallel_action);
             }
 
             std::lock_guard lock(mutex);

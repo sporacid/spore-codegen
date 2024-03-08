@@ -20,7 +20,7 @@ namespace spore::codegen
         std::vector<std::pair<std::string, std::string>> definitions;
         std::vector<std::pair<std::string, std::string>> user_data;
         std::optional<std::string> dump_ast = std::nullopt;
-        bool sequential = false;
+        std::size_t parallelism = 0;
         bool force = false;
     };
 }
