@@ -6,7 +6,6 @@
       "baseline": "be7d57c2003674c5c9731d39341f60f22a5d5ae1",
       "packages": [
         "spore-*",
-        "foonathan-*",
         "p-ranav-*"
       ]
     }

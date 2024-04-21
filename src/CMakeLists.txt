@@ -22,23 +22,38 @@ find_path(SPORE_PICOSHA2_INCLUDE_DIRS "picosha2.h")
 
 find_package(argparse CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
-find_package(foonathan-cppast CONFIG REQUIRED)
 find_package(inja CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(p-ranav-glob CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(tiny-process-library CONFIG REQUIRED)
+find_package(Clang CONFIG REQUIRED)
+
+# message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+# message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+# list(
+#   APPEND CMAKE_MODULE_PATH
+#   ${LLVM_CMAKE_DIR}
+# )
+# include(HandleLLVMOptions)
+
+# clang_map_components_to_libnames(
+#  SPORE_CODEGEN_LLVM_LIBS
+#  all
+# )
+
+message(STATUS ${SPORE_CODEGEN_LLVM_LIBS})
 
 target_link_libraries(
   ${SPORE_CODEGEN_LIBRARY_TARGET}
   INTERFACE
     fmt::fmt
-    foonathan::cppast
     nlohmann_json::nlohmann_json
     pantor::inja
     p-ranav::glob
     spdlog::spdlog
     tiny-process-library::tiny-process-library
+    libclang
 )
 
 target_include_directories(
@@ -46,7 +61,14 @@ target_include_directories(
   INTERFACE
     ${PROJECT_SOURCE_DIR}/include
     ${SPORE_PICOSHA2_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
 )
+
+# target_compile_definitions(
+#   ${SPORE_CODEGEN_LIBRARY_TARGET}
+#   INTERFACE
+#    ${LLVM_DEFINITIONS}
+# )
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   find_package(TBB REQUIRED)

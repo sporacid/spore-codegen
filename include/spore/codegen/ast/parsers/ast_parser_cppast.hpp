@@ -1,5 +1,5 @@
 #pragma once
-
+#if 0
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -816,3 +816,4 @@ namespace spore::codegen
         cppast::simple_file_parser<cppast::libclang_parser> cppast_parser;
     };
 }
+#endif

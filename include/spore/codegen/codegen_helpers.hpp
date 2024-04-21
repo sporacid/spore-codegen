@@ -8,7 +8,9 @@
 #include <string>
 #include <string_view>
 
+#if 0
 #include "cppast/compile_config.hpp"
+#endif
 #include "fmt/format.h"
 #include "picosha2.h"
 
@@ -54,6 +56,7 @@ namespace spore::codegen
         return true;
     }
 
+#if 0
     cppast::cpp_standard parse_cpp_standard(const std::string_view& string)
     {
         static const std::map<std::string_view, cppast::cpp_standard> cpp_standard_map {
@@ -70,6 +73,7 @@ namespace spore::codegen
         const auto it = cpp_standard_map.find(string);
         return it != cpp_standard_map.end() ? it->second : cppast::cpp_standard::cpp_latest;
     }
+#endif
 
     bool starts_with(const std::string& string, const std::string& prefix)
     {

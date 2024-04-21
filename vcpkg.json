@@ -6,7 +6,6 @@
     "argparse",
     "catch2",
     "fmt",
-    "foonathan-cppast",
     "inja",
     "nlohmann-json",
     "p-ranav-glob",
@@ -16,6 +15,14 @@
     {
       "name": "spore-cmake",
       "host": true
+    },
+    {
+      "name": "llvm",
+      "default-features": false,
+      "features": [
+        "clang",
+        "target-x86"
+      ]
     }
   ]
 }

@@ -7,7 +7,7 @@ cmake_policy(SET CMP0079 NEW)
 option(SPORE_BUILD_EXAMPLES "Whether to build examples" ON)
 option(SPORE_BUILD_TESTS "Whether to build tests" ON)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 

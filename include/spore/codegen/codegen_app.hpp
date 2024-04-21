@@ -19,7 +19,7 @@
 #include "spore/codegen/ast/converters/ast_converter.hpp"
 #include "spore/codegen/ast/converters/ast_converter_default.hpp"
 #include "spore/codegen/ast/parsers/ast_parser.hpp"
-#include "spore/codegen/ast/parsers/ast_parser_cppast.hpp"
+#include "spore/codegen/ast/parsers/ast_parser_clang.hpp"
 #include "spore/codegen/codegen_cache.hpp"
 #include "spore/codegen/codegen_config.hpp"
 #include "spore/codegen/codegen_error.hpp"
@@ -169,28 +169,7 @@ namespace spore::codegen
                 json_user_data[pair.first] = pair.second;
             }
 
-            cppast::libclang_compile_config cppast_config;
-            cppast_config.set_flags(spore::codegen::parse_cpp_standard(options.cpp_standard));
-            cppast_config.define_macro(SPORE_CODEGEN_MACRO, "1");
-            cppast_config.fast_preprocessing(true);
-
-            for (const std::string& include : options.includes)
-            {
-                cppast_config.add_include_dir(include);
-            }
-
-            // TODO re-enable once it has been figured out why it fails with -fcxx_std_17
-            // for (const std::string& feature : options.features)
-            // {
-            //     cppast_config.enable_feature(feature);
-            // }
-
-            for (const std::pair<std::string, std::string>& definition : options.definitions)
-            {
-                cppast_config.define_macro(definition.first, definition.second);
-            }
-
-            parser = std::make_shared<ast_parser_cppast>(std::move(cppast_config));
+            parser = std::make_shared<ast_parser_clang>();
             converter = std::make_shared<ast_converter_default>();
             renderer = std::make_shared<codegen_renderer_composite>(
                 std::make_shared<codegen_renderer_inja>(options.template_paths));
