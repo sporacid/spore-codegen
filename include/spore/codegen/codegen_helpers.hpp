@@ -94,4 +94,22 @@ namespace spore::codegen
             start_pos += to.length();
         }
     }
+
+    template <typename container_t, typename projection_t>
+    std::string join(std::string_view separator, const container_t& values, const projection_t& projection)
+    {
+        std::string string;
+        for (const auto& value : values)
+        {
+            string += projection(value);
+            string += separator;
+        }
+
+        if (string.size() >= separator.size())
+        {
+            string.resize(string.size() - separator.size());
+        }
+
+        return string;
+    }
 }

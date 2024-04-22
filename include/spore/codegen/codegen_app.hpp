@@ -26,6 +26,7 @@
 #include "spore/codegen/codegen_helpers.hpp"
 #include "spore/codegen/codegen_options.hpp"
 #include "spore/codegen/codegen_version.hpp"
+#include "spore/codegen/misc/defer.hpp"
 #include "spore/codegen/renderers/codegen_renderer.hpp"
 #include "spore/codegen/renderers/codegen_renderer_composite.hpp"
 #include "spore/codegen/renderers/codegen_renderer_inja.hpp"
@@ -68,19 +69,6 @@ namespace spore::codegen
 
             current_path_scope& operator=(const current_path_scope&) = delete;
             current_path_scope& operator=(current_path_scope&&) = delete;
-        };
-
-        struct defer
-        {
-            const std::function<void()>& func;
-
-            ~defer()
-            {
-                if (func)
-                {
-                    func();
-                }
-            }
         };
     }
 
@@ -169,7 +157,7 @@ namespace spore::codegen
                 json_user_data[pair.first] = pair.second;
             }
 
-            parser = std::make_shared<ast_parser_clang>();
+            parser = std::make_shared<ast_parser_clang>(options);
             converter = std::make_shared<ast_converter_default>();
             renderer = std::make_shared<codegen_renderer_composite>(
                 std::make_shared<codegen_renderer_inja>(options.template_paths));
@@ -203,7 +191,7 @@ namespace spore::codegen
                 SPDLOG_INFO("codegen completed, duration={}s", duration.count());
             };
 
-            details::defer defer_finally {finally};
+            defer defer_finally {finally};
 
             const auto action = [&](const codegen_config_stage& stage) {
                 run_stage(stage);

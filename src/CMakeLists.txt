@@ -47,21 +47,22 @@ message(STATUS ${SPORE_CODEGEN_LLVM_LIBS})
 target_link_libraries(
   ${SPORE_CODEGEN_LIBRARY_TARGET}
   INTERFACE
-    fmt::fmt
-    nlohmann_json::nlohmann_json
-    pantor::inja
-    p-ranav::glob
-    spdlog::spdlog
-    tiny-process-library::tiny-process-library
-    libclang
+  fmt::fmt
+  nlohmann_json::nlohmann_json
+  pantor::inja
+  p-ranav::glob
+  spdlog::spdlog
+  tiny-process-library::tiny-process-library
+  # libclang
+  "C:\\Program Files\\LLVM\\lib\\libclang.lib"
 )
 
 target_include_directories(
   ${SPORE_CODEGEN_LIBRARY_TARGET}
   INTERFACE
-    ${PROJECT_SOURCE_DIR}/include
-    ${SPORE_PICOSHA2_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
+  ${PROJECT_SOURCE_DIR}/include
+  ${SPORE_PICOSHA2_INCLUDE_DIRS}
+  ${CLANG_INCLUDE_DIRS}
 )
 
 # target_compile_definitions(
@@ -75,7 +76,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clan
   target_link_libraries(
     ${SPORE_CODEGEN_LIBRARY_TARGET}
     INTERFACE
-      TBB::tbb
+    TBB::tbb
   )
 endif ()
 
@@ -98,15 +99,15 @@ add_executable(
 set_target_properties(
   ${SPORE_CODEGEN_BINARY_TARGET}
   PROPERTIES
-    LINKER_LANGUAGE CXX
-    OUTPUT_NAME ${SPORE_CODEGEN_BINARY_NAME}
+  LINKER_LANGUAGE CXX
+  OUTPUT_NAME ${SPORE_CODEGEN_BINARY_NAME}
 )
 
 target_link_libraries(
   ${SPORE_CODEGEN_BINARY_TARGET}
   PRIVATE
-    ${SPORE_CODEGEN_LIBRARY_TARGET}
-    argparse::argparse
+  ${SPORE_CODEGEN_LIBRARY_TARGET}
+  argparse::argparse
 )
 
 include(GNUInstallDirs)
@@ -124,7 +125,7 @@ install(
 
 install(
   FILES
-    ${PROJECT_SOURCE_DIR}/cmake/SporeCodegen.cmake
-    ${PROJECT_SOURCE_DIR}/cmake/FindClangFormat.cmake
+  ${PROJECT_SOURCE_DIR}/cmake/SporeCodegen.cmake
+  ${PROJECT_SOURCE_DIR}/cmake/FindClangFormat.cmake
   DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake
 )

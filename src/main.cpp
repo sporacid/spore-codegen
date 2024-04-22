@@ -98,6 +98,11 @@ int main(int argc, const char* argv[])
         });
 
     arg_parser
+        .add_argument("-X", "--clang")
+        .help("path to clang++ executable")
+        .default_value(std::string {"clang++"});
+
+    arg_parser
         .add_argument("--dump-ast")
         .help("dump internal json representation of the AST being passed into the templates");
 
@@ -141,6 +146,7 @@ int main(int argc, const char* argv[])
     options.cache = arg_parser.get<std::string>("--cache");
     options.cpp_standard = arg_parser.get<std::string>("--cpp-standard");
     options.reformat = arg_parser.get<std::string>("--reformat");
+    options.clang = arg_parser.get<std::string>("--clang");
     options.includes = arg_parser.get<std::vector<std::string>>("--includes");
     options.template_paths = arg_parser.get<std::vector<std::string>>("--template-paths");
     options.features = arg_parser.get<std::vector<std::string>>("--features");

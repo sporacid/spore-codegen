@@ -14,6 +14,7 @@ namespace spore::codegen
         std::string cache;
         std::string cpp_standard;
         std::string reformat;
+        std::string clang;
         std::vector<std::string> includes;
         std::vector<std::string> features;
         std::vector<std::string> template_paths;
