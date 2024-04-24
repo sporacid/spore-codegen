@@ -4,7 +4,7 @@
 #include <functional>
 #include <regex>
 #include <string>
-#include <variant>
+#include <string_view>
 #include <vector>
 
 #include "fmt/format.h"
@@ -115,13 +115,13 @@ namespace spore::codegen
             return to_string(string);
         }
 
-        void remove_prefix(std::string_view& value, std::string_view chars)
+        void trim_chars(std::string_view& value, std::string_view chars)
         {
             std::size_t index = value.find_first_not_of(chars);
             value.remove_prefix(std::min(index, value.size()));
         }
 
-        void remove_suffix(std::string_view& value, std::string_view chars)
+        void trim_end_chars(std::string_view& value, std::string_view chars)
         {
             std::size_t index = value.find_last_not_of(chars);
             value = value.substr(0, std::max(index + 1, std::size_t {0}));
@@ -132,10 +132,11 @@ namespace spore::codegen
             constexpr std::string_view prefix = "[[";
             constexpr std::string_view suffix = "]]";
             constexpr std::string_view colon = ":";
+            constexpr std::string_view comma = ",";
             constexpr std::string_view using_stmt = "using";
             constexpr std::string_view whitespaces = " \t\r\n";
 
-            remove_prefix(source, whitespaces);
+            trim_chars(source, whitespaces);
 
             if (source.starts_with(prefix))
             {
@@ -147,13 +148,13 @@ namespace spore::codegen
                 source = std::string_view {source.begin(), source.end() - suffix.size()};
             }
 
-            remove_prefix(source, whitespaces);
+            trim_chars(source, whitespaces);
 
             std::string_view base_scope;
             if (source.starts_with(using_stmt))
             {
                 source = std::string_view {source.begin() + using_stmt.size(), source.end()};
-                remove_prefix(source, whitespaces);
+                trim_chars(source, whitespaces);
 
                 std::size_t scope_index = source.find_first_of(colon);
                 base_scope = source.substr(0, scope_index);
@@ -169,15 +170,14 @@ namespace spore::codegen
 
             while (source.size() > 0)
             {
-                constexpr std::string_view chars_begin = "(,";
-                constexpr std::string_view chars_end = ")],";
+                constexpr std::string_view name_delimiter = "(,";
+                constexpr std::string_view values_delimiter = ")";
 
-                remove_prefix(source, whitespaces);
+                trim_chars(source, whitespaces);
 
-                std::size_t index_begin = source.find_first_of(chars_begin);
-                std::size_t index_end = source.find_first_of(chars_end);
-                std::string_view name = source.substr(0, index_begin);
-                std::string_view values = source.substr(index_begin + 1, index_end - index_begin - 1);
+                std::size_t index_name = source.find_first_of(name_delimiter);
+                std::string_view name = source.substr(0, index_name);
+                source = source.substr(index_name);
 
                 constexpr std::string_view scope_delimiter = "::";
 
@@ -195,36 +195,63 @@ namespace spore::codegen
                     name = name.substr(index_scope + scope_delimiter.size());
                 }
 
-                ast_attribute attribute;
-                attribute.scope = std::move(scope);
-                attribute.name = std::string(name);
+                std::map<std::string, std::string> value_map;
+                std::string_view values;
+
+                if (!source.empty() && source.at(0) == '(')
+                {
+                    std::size_t index_values = source.find(values_delimiter);
+                    values = source.substr(1, index_values - 1);
+                    source = source.substr(index_values + 1);
+                }
 
                 while (values.size() > 0)
                 {
                     constexpr std::string_view key_delimiter = "=,";
                     constexpr std::string_view value_delimiter = ",";
 
+                    trim_chars(values, whitespaces);
+
                     std::size_t index_key = values.find_first_of(key_delimiter);
                     std::string_view key = values.substr(0, index_key);
-                    std::string_view value;
+                    trim_end_chars(key, whitespaces);
 
-                    if (source.at(index_key) == '=')
+                    std::string_view value = "true";
+                    if (index_key == std::string_view::npos)
+                    {
+                        values = std::string_view {};
+                    }
+                    else if (values.at(index_key) == '=')
                     {
                         std::size_t index_value = values.find_first_of(value_delimiter);
-                        value = values.substr(index_key + 1, index_value);
-                        values = values.substr(index_value);
+                        if (index_value == std::string_view::npos)
+                        {
+                            value = values.substr(index_key + 1);
+                            values = std::string_view {};
+                        }
+                        else
+                        {
+                            value = values.substr(index_key + 1, index_value - index_key - 1);
+                            values = values.substr(index_value);
+                        }
+
+                        trim_chars(value, whitespaces);
                     }
                     else
                     {
                         values = values.substr(index_key);
                     }
 
-                    attribute.values.emplace(key, value);
+                    value_map.emplace(key, value);
+                    trim_chars(values, key_delimiter);
                 }
 
-                attributes.emplace_back(std::move(attribute));
-                source = source.substr(index_end + 1);
-                remove_prefix(source, chars_end);
+                ast_attribute& attribute = attributes.emplace_back();
+                attribute.scope = std::move(scope);
+                attribute.name = std::string(name);
+                attribute.values = std::move(value_map);
+
+                trim_chars(source, comma);
             }
         }
 
@@ -245,7 +272,7 @@ namespace spore::codegen
 
             std::string_view preamble {data.source.data(), offset};
 
-            remove_suffix(preamble, whitespaces);
+            trim_end_chars(preamble, whitespaces);
 
             while (preamble.ends_with(attribute_end))
             {
@@ -255,25 +282,8 @@ namespace spore::codegen
                 make_attributes(attribute, attributes);
 
                 preamble = preamble.substr(0, index_begin);
-                remove_suffix(preamble, whitespaces);
+                trim_end_chars(preamble, whitespaces);
             }
-#if 0
-            std::string preamble {data.source.data(), offset};
-
-            std::regex regex {R"(\s*(\]\].*\[\[)+)"};
-
-            std::match_results<std::string::const_reverse_iterator> matches;
-
-            if (std::regex_search(preamble.crbegin(), preamble.crend(), matches, regex))
-            {
-                for (std::size_t index = 1; index < matches.size(); ++index)
-                {
-                    std::string match = matches[index].str();
-                    std::reverse(match.begin(), match.end());
-                    make_attributes(match, attributes);
-                }
-            }
-#endif
         }
 
         ast_attribute make_attribute(CXCursor cursor, detail::clang_data<ast_file>& data)
