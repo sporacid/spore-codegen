@@ -11,6 +11,7 @@
 #include "nlohmann/json.hpp"
 #include "process.hpp"
 #include "spdlog/spdlog.h"
+#include "clang-c/CXSourceLocation.h"
 #include "clang-c/Index.h"
 #include "clang/Lex/Preprocessor.h"
 
@@ -27,6 +28,7 @@ namespace spore::codegen
         struct clang_data
         {
             value_t& value;
+            std::string& source;
             std::vector<std::string>& scopes;
 
             std::string full_scope() const
@@ -101,12 +103,186 @@ namespace spore::codegen
             return CXChildVisit_Break;
         }
 #endif
+        std::string to_string(CXString value)
+        {
+            defer _ = [&] { clang_disposeString(value); };
+            return clang_getCString(value);
+        }
+
         std::string get_name(CXCursor cursor)
         {
             CXString string = clang_getCursorDisplayName(cursor);
-            // CXString string = clang_getCursorUSR(cursor);
-            defer _ = [&] { clang_disposeString(string); };
-            return clang_getCString(string);
+            return to_string(string);
+        }
+
+        void remove_prefix(std::string_view& value, std::string_view chars)
+        {
+            std::size_t index = value.find_first_not_of(chars);
+            value.remove_prefix(std::min(index, value.size()));
+        }
+
+        void remove_suffix(std::string_view& value, std::string_view chars)
+        {
+            std::size_t index = value.find_last_not_of(chars);
+            value = value.substr(0, std::max(index + 1, std::size_t {0}));
+        }
+
+        void make_attributes(std::string_view source, std::vector<ast_attribute>& attributes)
+        {
+            constexpr std::string_view prefix = "[[";
+            constexpr std::string_view suffix = "]]";
+            constexpr std::string_view colon = ":";
+            constexpr std::string_view using_stmt = "using";
+            constexpr std::string_view whitespaces = " \t\r\n";
+
+            remove_prefix(source, whitespaces);
+
+            if (source.starts_with(prefix))
+            {
+                source = std::string_view {source.begin() + prefix.size(), source.end()};
+            }
+
+            if (source.ends_with(suffix))
+            {
+                source = std::string_view {source.begin(), source.end() - suffix.size()};
+            }
+
+            remove_prefix(source, whitespaces);
+
+            std::string_view base_scope;
+            if (source.starts_with(using_stmt))
+            {
+                source = std::string_view {source.begin() + using_stmt.size(), source.end()};
+                remove_prefix(source, whitespaces);
+
+                std::size_t scope_index = source.find_first_of(colon);
+                base_scope = source.substr(0, scope_index);
+
+                std::size_t whitespace_index = base_scope.find_first_of(whitespaces);
+                if (whitespace_index != std::string_view ::npos)
+                {
+                    base_scope = base_scope.substr(0, whitespace_index);
+                }
+
+                source = source.substr(scope_index + 1);
+            }
+
+            while (source.size() > 0)
+            {
+                constexpr std::string_view chars_begin = "(,";
+                constexpr std::string_view chars_end = ")],";
+
+                remove_prefix(source, whitespaces);
+
+                std::size_t index_begin = source.find_first_of(chars_begin);
+                std::size_t index_end = source.find_first_of(chars_end);
+                std::string_view name = source.substr(0, index_begin);
+                std::string_view values = source.substr(index_begin + 1, index_end - index_begin - 1);
+
+                constexpr std::string_view scope_delimiter = "::";
+
+                std::string scope {base_scope};
+                std::size_t index_scope = name.rfind(scope_delimiter);
+
+                if (index_scope != std::string_view::npos)
+                {
+                    if (!scope.empty())
+                    {
+                        scope += scope_delimiter;
+                    }
+
+                    scope += name.substr(0, index_scope);
+                    name = name.substr(index_scope + scope_delimiter.size());
+                }
+
+                ast_attribute attribute;
+                attribute.scope = std::move(scope);
+                attribute.name = std::string(name);
+
+                while (values.size() > 0)
+                {
+                    constexpr std::string_view key_delimiter = "=,";
+                    constexpr std::string_view value_delimiter = ",";
+
+                    std::size_t index_key = values.find_first_of(key_delimiter);
+                    std::string_view key = values.substr(0, index_key);
+                    std::string_view value;
+
+                    if (source.at(index_key) == '=')
+                    {
+                        std::size_t index_value = values.find_first_of(value_delimiter);
+                        value = values.substr(index_key + 1, index_value);
+                        values = values.substr(index_value);
+                    }
+                    else
+                    {
+                        values = values.substr(index_key);
+                    }
+
+                    attribute.values.emplace(key, value);
+                }
+
+                attributes.emplace_back(std::move(attribute));
+                source = source.substr(index_end + 1);
+                remove_prefix(source, chars_end);
+            }
+        }
+
+        void make_attributes(CXCursor cursor, detail::clang_data<ast_file>& data, std::vector<ast_attribute>& attributes)
+        {
+            constexpr std::string_view attribute_begin = "[[";
+            constexpr std::string_view attribute_end = "]]";
+            constexpr std::string_view whitespaces = " \t\r\n";
+
+            CXSourceLocation location = clang_getCursorLocation(cursor);
+
+            CXFile file;
+            std::uint32_t line;
+            std::uint32_t column;
+            std::uint32_t offset;
+
+            clang_getFileLocation(location, &file, &line, &column, &offset);
+
+            std::string_view preamble {data.source.data(), offset};
+
+            remove_suffix(preamble, whitespaces);
+
+            while (preamble.ends_with(attribute_end))
+            {
+                std::size_t index_begin = preamble.rfind(attribute_begin);
+                std::string_view attribute = preamble.substr(index_begin);
+
+                make_attributes(attribute, attributes);
+
+                preamble = preamble.substr(0, index_begin);
+                remove_suffix(preamble, whitespaces);
+            }
+#if 0
+            std::string preamble {data.source.data(), offset};
+
+            std::regex regex {R"(\s*(\]\].*\[\[)+)"};
+
+            std::match_results<std::string::const_reverse_iterator> matches;
+
+            if (std::regex_search(preamble.crbegin(), preamble.crend(), matches, regex))
+            {
+                for (std::size_t index = 1; index < matches.size(); ++index)
+                {
+                    std::string match = matches[index].str();
+                    std::reverse(match.begin(), match.end());
+                    make_attributes(match, attributes);
+                }
+            }
+#endif
+        }
+
+        ast_attribute make_attribute(CXCursor cursor, detail::clang_data<ast_file>& data)
+        {
+            ast_attribute attribute;
+            attribute.name = get_name(cursor);
+            attribute.scope = data.full_scope();
+            SPDLOG_WARN("found attribute, name={}", attribute.full_name());
+            return attribute;
         }
 
         ast_class make_class(CXCursor cursor, detail::clang_data<ast_file>& data)
@@ -114,7 +290,43 @@ namespace spore::codegen
             ast_class class_;
             class_.name = get_name(cursor);
             class_.scope = data.full_scope();
+
+            make_attributes(cursor, data, class_.attributes);
+
+            if (clang_Cursor_hasAttrs(cursor))
+            {
+                SPDLOG_WARN("found attribute in class");
+            }
+
             SPDLOG_WARN("found class, name={}", class_.full_name());
+
+            const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
+                detail::clang_data<ast_file>& data = *static_cast<detail::clang_data<ast_file>*>(data_ptr);
+
+                if (clang_isAttribute(cursor.kind))
+                {
+                    SPDLOG_WARN("found attribute");
+                }
+
+                SPDLOG_WARN("found token in class, kind={}", to_string(clang_getCursorKindSpelling(cursor.kind)));
+                switch (cursor.kind)
+                {
+                    case CXCursor_WarnUnusedAttr:
+                    case CXCursor_UnexposedAttr: {
+                        ast_attribute attribute = make_attribute(cursor, data);
+                        break;
+                    }
+
+                    default: {
+                        break;
+                    }
+                }
+
+                return CXChildVisit_Continue;
+            };
+
+            clang_visitChildren(cursor, visitor, &data);
+
             return class_;
         }
 
@@ -137,6 +349,12 @@ namespace spore::codegen
         {
             detail::clang_data<ast_file>& data = *static_cast<detail::clang_data<ast_file>*>(data_ptr);
 
+            if (clang_isAttribute(cursor.kind))
+            {
+                SPDLOG_WARN("found attribute");
+            }
+
+            SPDLOG_WARN("found token, kind={}", to_string(clang_getCursorKindSpelling(cursor.kind)));
             switch (cursor.kind)
             {
                 case CXCursor_Namespace: {
@@ -165,15 +383,22 @@ namespace spore::codegen
                     break;
                 }
 
-                default:
+                case CXCursor_WarnUnusedAttr:
+                case CXCursor_UnexposedAttr: {
+                    ast_attribute attribute = make_attribute(cursor, data);
                     break;
+                }
+
+                default:
+                    return CXChildVisit_Recurse;
             }
 
             return CXChildVisit_Continue;
         }
 
-        std::tuple<std::int32_t, std::string, std::string> run_command(const std::string& command)
+        std::tuple<std::int32_t, std::string, std::string> run_command(const std::string& command, const std::string& input = std::string {})
         {
+            const bool has_stdin = not input.empty();
             const auto reader_factory = [](std::stringstream& stream) {
                 return [&](const char* bytes, std::size_t n) {
                     stream.write(bytes, static_cast<std::streamsize>(n));
@@ -188,7 +413,14 @@ namespace spore::codegen
                 std::string(),
                 reader_factory(_stdout),
                 reader_factory(_stderr),
+                has_stdin,
             };
+
+            if (has_stdin)
+            {
+                process.write(input);
+                process.close_stdin();
+            }
 
             std::int32_t result = process.get_exit_status();
             return std::tuple {result, _stdout.str(), _stderr.str()};
@@ -242,7 +474,9 @@ namespace spore::codegen
                     CXTranslationUnit_Incomplete |
                     CXTranslationUnit_SkipFunctionBodies |
                     CXTranslationUnit_SingleFileParse |
-                    CXTranslationUnit_KeepGoing);
+                    CXTranslationUnit_KeepGoing |
+                    CXTranslationUnit_VisitImplicitAttributes |
+                    CXTranslationUnit_IncludeAttributedTypes);
 
             std::string macros;
             if (!preprocess_macros(path, macros))
@@ -263,6 +497,12 @@ namespace spore::codegen
             source = std::regex_replace(source, include_regex, "");
             source.insert(include_index, macros);
 
+            if (!preprocess_source(source))
+            {
+                SPDLOG_ERROR("unable to read source file, path={}", path);
+                return false;
+            }
+
             CXUnsavedFile clang_file {path.data(), source.data(), static_cast<unsigned long>(source.size())};
 
             CXIndex index = clang_createIndex(0, 0);
@@ -282,8 +522,76 @@ namespace spore::codegen
             defer dispose_translation_unit = [&] { clang_disposeTranslationUnit(translation_unit); };
             CXCursor cursor = clang_getTranslationUnitCursor(translation_unit);
 
+            const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
+                detail::clang_data<ast_file>& data = *static_cast<detail::clang_data<ast_file>*>(data_ptr);
+                if (clang_isAttribute(cursor.kind))
+                {
+                    SPDLOG_WARN("found attribute");
+                }
+
+                if (clang_Cursor_hasAttrs(cursor))
+                {
+                    SPDLOG_WARN("found attribute container");
+                }
+
+                switch (cursor.kind)
+                {
+                    case CXCursor_ClassTemplate: {
+                        break;
+                    }
+
+                    case CXCursor_ClassDecl:
+                    case CXCursor_StructDecl: {
+                        SPDLOG_WARN("found class, name={}", detail::get_name(cursor));
+                        CXSourceLocation location = clang_getCursorLocation(cursor);
+
+                        CXFile file;
+                        std::uint32_t line;
+                        std::uint32_t column;
+                        std::uint32_t offset;
+
+                        clang_getFileLocation(location, &file, &line, &column, &offset);
+
+                        std::string preamble {data.source.data(), offset};
+                        //                        std::regex attribute_regex {R"((\[\[.*\]\])+\s*)"};
+
+                        std::regex attribute_regex {R"(\s*(\]\].*\[\[)+)"};
+
+                        std::match_results<std::string::const_reverse_iterator> matches;
+                        if (std::regex_search(preamble.crbegin(), preamble.crend(), matches, attribute_regex))
+                        {
+                            for (std::size_t index = 1; index < matches.size(); ++index)
+                            {
+                                std::string match = matches[index].str();
+                                std::reverse(match.begin(), match.end());
+                                SPDLOG_WARN("match: {}", match);
+                            }
+                        }
+
+                        //                        using svregex_iterator = std::regex_iterator<std::string_view>;
+                        //                        for (auto it = std::sregex_iterator(preamble.rbegin(), preamble.rend(), attribute_regex); it != std::sregex_iterator(); ++it)
+                        //                        {
+                        //                            SPDLOG_WARN("match: {}", it->str());
+                        //                        }
+
+                        CXString* maybe_str1 = (CXString*) location.ptr_data[0];
+                        CXString* maybe_str2 = (CXString*) location.ptr_data[1];
+                        CXCursor lexical_parent = clang_getCursorLexicalParent(cursor);
+                        CXCursor semantic_parent = clang_getCursorSemanticParent(cursor);
+                        SPDLOG_WARN("");
+                        break;
+                    }
+
+                    default:
+                        break;
+                }
+
+                return CXChildVisit_Recurse;
+            };
+
             std::vector<std::string> scopes;
-            detail::clang_data<ast_file> data {file, scopes};
+            detail::clang_data<ast_file> data {file, source, scopes};
+            // clang_visitChildren(cursor, visitor, &data);
             clang_visitChildren(cursor, &detail::visitor_impl, &data);
 
             return true;
@@ -316,6 +624,34 @@ namespace spore::codegen
             }
 
             macros = std::move(out);
+            return true;
+        }
+
+        bool preprocess_source(std::string& source) const
+        {
+            constexpr std::size_t command_size = 1024;
+
+            std::initializer_list<std::string_view> additional_args {
+                "-E",
+                "-P",
+                "-Wno-everything",
+                "-",
+            };
+
+            std::string command;
+            command.reserve(command_size);
+            command += clang + " ";
+            command += join(" ", args, std::identity()) + " ";
+            command += join(" ", additional_args, std::identity());
+
+            auto [result, out, err] = detail::run_command(command, source);
+            if (result != 0)
+            {
+                SPDLOG_ERROR("cannot preprocess source, result={}", result);
+                return false;
+            }
+
+            source = std::move(out);
             return true;
         }
 
