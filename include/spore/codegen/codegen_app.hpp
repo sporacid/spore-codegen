@@ -152,6 +152,8 @@ namespace spore::codegen
                 }
             }
 
+            options.definitions.emplace_back(SPORE_CODEGEN_MACRO, "1");
+
             for (const std::pair<std::string, std::string>& pair : options.user_data)
             {
                 json_user_data[pair.first] = pair.second;
