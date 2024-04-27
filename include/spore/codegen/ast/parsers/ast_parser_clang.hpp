@@ -384,7 +384,6 @@ namespace spore::codegen
                     }
 
                     case CXCursor_TemplateTypeParameter: {
-                        std::string_view preamble = get_preamble(cursor, closure_data.source);
                         ast_template_param& template_param = closure_class.template_params.emplace_back();
                         template_param.type = "typename";
                         template_param.name = get_name(cursor);
