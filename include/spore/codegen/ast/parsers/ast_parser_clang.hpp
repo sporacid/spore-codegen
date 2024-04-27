@@ -334,21 +334,9 @@ namespace spore::codegen
             class_.name = get_name(cursor);
             class_.scope = data.full_scope();
 
-            std::string_view name_template = rfind_template(class_.name);
-            if (!name_template.empty())
-            {
-                class_.name.resize(class_.name.size() - name_template.size());
-            }
-
             make_attributes(cursor, data, class_.attributes);
 
-            CXCursorKind cursor_kind = cursor.kind;
-            if (cursor_kind == CXCursor_ClassTemplate)
-            {
-                cursor_kind = clang_getTemplateCursorKind(cursor);
-            }
-
-            switch (cursor_kind)
+            switch (cursor.kind)
             {
                 case CXCursor_StructDecl: {
                     class_.type = ast_class_type::struct_;
@@ -381,8 +369,40 @@ namespace spore::codegen
                         break;
                     }
 
+                    default: {
+                        break;
+                    }
+                }
+
+                return CXChildVisit_Continue;
+            };
+
+            closure_t closure {class_, data};
+            clang_visitChildren(cursor, visitor, &closure);
+
+            return class_;
+        }
+
+        ast_class make_class_template(CXCursor cursor, detail::clang_data<ast_file>& data)
+        {
+            ast_class class_;
+            std::vector<ast_template_param> params;
+
+            using closure_t = std::tuple<ast_class&, std::vector<ast_template_param>&, detail::clang_data<ast_file>&>;
+            const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
+                auto& [closure_class, closure_params, closure_data] = *static_cast<closure_t*>(data_ptr);
+                switch (cursor.kind)
+                {
+                    case CXCursor_ClassDecl:
+                    case CXCursor_StructDecl: {
+                        closure_class = make_class(cursor, closure_data);
+                        std::string_view name_template = rfind_template(closure_class.name);
+                        closure_class.name.resize(closure_class.name.size() - name_template.size());
+                        break;
+                    }
+
                     case CXCursor_TemplateTypeParameter: {
-                        ast_template_param& template_param = closure_class.template_params.emplace_back();
+                        ast_template_param& template_param = closure_params.emplace_back();
                         template_param.type = "typename";
                         template_param.name = get_name(cursor);
                         break;
@@ -390,14 +410,9 @@ namespace spore::codegen
 
                     case CXCursor_NonTypeTemplateParameter: {
                         std::string_view preamble = get_preamble(cursor, closure_data.source);
-                        ast_template_param& template_param = closure_class.template_params.emplace_back();
+                        ast_template_param& template_param = closure_params.emplace_back();
                         template_param.type = rfind_type(preamble);
                         template_param.name = get_name(cursor);
-                        break;
-                    }
-
-                    case CXCursor_TemplateTemplateParameter: {
-                        SPDLOG_WARN("unhandled template parameter type");
                         break;
                     }
 
@@ -409,9 +424,10 @@ namespace spore::codegen
                 return CXChildVisit_Recurse;
             };
 
-            closure_t closure {class_, data};
+            closure_t closure {class_, params, data};
             clang_visitChildren(cursor, visitor, &closure);
 
+            class_.template_params = std::move(params);
             return class_;
         }
 
@@ -432,7 +448,11 @@ namespace spore::codegen
                     break;
                 }
 
-                case CXCursor_ClassTemplate:
+                case CXCursor_ClassTemplate: {
+                    data.value.classes.emplace_back(make_class_template(cursor, data));
+                    break;
+                }
+
                 case CXCursor_ClassDecl:
                 case CXCursor_StructDecl: {
                     data.value.classes.emplace_back(make_class(cursor, data));
@@ -547,7 +567,9 @@ namespace spore::codegen
             }
 
             std::regex include_regex("#\\s*include .*");
-            std::size_t include_index = std::sregex_iterator(source.begin(), source.end(), include_regex)->position();
+            std::sregex_iterator include_it {source.begin(), source.end(), include_regex};
+            std::size_t include_index = include_it != std::sregex_iterator() ? include_it->position() : 0;
+
             source = std::regex_replace(source, include_regex, "");
             source.insert(include_index, macros);
 

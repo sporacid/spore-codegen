@@ -24,6 +24,7 @@ namespace spore::codegen
 
         std::ofstream stream(path.data());
         stream << content;
+        stream.close();
         return !stream.bad();
     }
 
