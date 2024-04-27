@@ -189,7 +189,7 @@ namespace spore::codegen
 
                 std::size_t index_name = source.find_first_of(name_delimiter);
                 std::string_view name = source.substr(0, index_name);
-                source = source.substr(index_name);
+                source = source.substr(index_name != std::string_view::npos ? index_name : source.size());
 
                 constexpr std::string_view scope_delimiter = "::";
 
@@ -290,8 +290,6 @@ namespace spore::codegen
 
         ast_field make_field(CXCursor cursor, detail::clang_data<ast_file>& data)
         {
-            constexpr std::string_view field_type_delimiters = ";:{}[]";
-
             std::string_view preamble = get_preamble(cursor, data.source);
 
             ast_field field;

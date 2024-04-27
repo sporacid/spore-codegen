@@ -61,12 +61,6 @@ int main(int argc, const char* argv[])
         .append();
 
     arg_parser
-        .add_argument("-f", "--features")
-        .help("feature to enable for clang compilation")
-        .default_value(std::vector<std::string> {})
-        .append();
-
-    arg_parser
         .add_argument("-D", "--definitions")
         .help("compiler definitions to add to clang compilation")
         .default_value(std::vector<std::pair<std::string, std::string>> {})
@@ -149,7 +143,6 @@ int main(int argc, const char* argv[])
     options.clang = arg_parser.get<std::string>("--clang");
     options.includes = arg_parser.get<std::vector<std::string>>("--includes");
     options.template_paths = arg_parser.get<std::vector<std::string>>("--template-paths");
-    options.features = arg_parser.get<std::vector<std::string>>("--features");
     options.definitions = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--definitions");
     options.user_data = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--user-data");
     options.parallelism = arg_parser.get<std::uint32_t>("--parallelism");

@@ -3,16 +3,17 @@
 #include "catch2/catch_all.hpp"
 
 #include "spore/codegen/ast/ast_file.hpp"
-#include "spore/codegen/ast/parsers/ast_parser_cppast.hpp"
+#include "spore/codegen/ast/parsers/ast_parser_clang.hpp"
+#include "spore/codegen/codegen_options.hpp"
 
 namespace details
 {
     template <typename ast_parser_t>
     std::shared_ptr<ast_parser_t> make_parser()
     {
-        if constexpr (std::is_same_v<ast_parser_t, spore::codegen::ast_parser_cppast>)
+        if constexpr (std::is_same_v<ast_parser_t, spore::codegen::ast_parser_clang>)
         {
-            return std::make_shared<ast_parser_t>(cppast::libclang_compile_config());
+            return std::make_shared<ast_parser_t>(spore::codegen::codegen_options());
         }
 
         std::abort();
@@ -27,7 +28,7 @@ namespace details
     }
 }
 
-TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codegen::ast_parser]", spore::codegen::ast_parser_cppast)
+TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codegen::ast_parser]", spore::codegen::ast_parser_clang)
 {
     spore::codegen::ast_file file;
     std::shared_ptr<TestType> parser = details::make_parser<TestType>();

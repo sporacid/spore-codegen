@@ -29,54 +29,32 @@ find_package(spdlog CONFIG REQUIRED)
 find_package(tiny-process-library CONFIG REQUIRED)
 find_package(Clang CONFIG REQUIRED)
 
-# message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
-# message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
-# list(
-#   APPEND CMAKE_MODULE_PATH
-#   ${LLVM_CMAKE_DIR}
-# )
-# include(HandleLLVMOptions)
-
-# clang_map_components_to_libnames(
-#  SPORE_CODEGEN_LLVM_LIBS
-#  all
-# )
-
-message(STATUS ${SPORE_CODEGEN_LLVM_LIBS})
-
 target_link_libraries(
   ${SPORE_CODEGEN_LIBRARY_TARGET}
   INTERFACE
-  fmt::fmt
-  nlohmann_json::nlohmann_json
-  pantor::inja
-  p-ranav::glob
-  spdlog::spdlog
-  tiny-process-library::tiny-process-library
-  # libclang
-  "C:\\Program Files\\LLVM\\lib\\libclang.lib"
+    fmt::fmt
+    nlohmann_json::nlohmann_json
+    pantor::inja
+    p-ranav::glob
+    spdlog::spdlog
+    tiny-process-library::tiny-process-library
+    libclang
 )
 
 target_include_directories(
   ${SPORE_CODEGEN_LIBRARY_TARGET}
   INTERFACE
-  ${PROJECT_SOURCE_DIR}/include
-  ${SPORE_PICOSHA2_INCLUDE_DIRS}
-  ${CLANG_INCLUDE_DIRS}
+    ${PROJECT_SOURCE_DIR}/include
+    ${SPORE_PICOSHA2_INCLUDE_DIRS}
+    ${CLANG_INCLUDE_DIRS}
 )
-
-# target_compile_definitions(
-#   ${SPORE_CODEGEN_LIBRARY_TARGET}
-#   INTERFACE
-#    ${LLVM_DEFINITIONS}
-# )
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   find_package(TBB REQUIRED)
   target_link_libraries(
     ${SPORE_CODEGEN_LIBRARY_TARGET}
     INTERFACE
-    TBB::tbb
+      TBB::tbb
   )
 endif ()
 
@@ -99,15 +77,15 @@ add_executable(
 set_target_properties(
   ${SPORE_CODEGEN_BINARY_TARGET}
   PROPERTIES
-  LINKER_LANGUAGE CXX
-  OUTPUT_NAME ${SPORE_CODEGEN_BINARY_NAME}
+    LINKER_LANGUAGE CXX
+    OUTPUT_NAME ${SPORE_CODEGEN_BINARY_NAME}
 )
 
 target_link_libraries(
   ${SPORE_CODEGEN_BINARY_TARGET}
   PRIVATE
-  ${SPORE_CODEGEN_LIBRARY_TARGET}
-  argparse::argparse
+    ${SPORE_CODEGEN_LIBRARY_TARGET}
+    argparse::argparse
 )
 
 include(GNUInstallDirs)
