@@ -536,14 +536,13 @@ namespace spore::codegen
             std::string macros;
             if (!preprocess_macros(path, macros))
             {
-                SPDLOG_ERROR("unable to preprocess macros file, path={}", path);
                 return false;
             }
 
             std::string source;
             if (!read_file(path, source))
             {
-                SPDLOG_ERROR("unable to read source file, path={}", path);
+                SPDLOG_ERROR("cannot read source file, path={}", path);
                 return false;
             }
 
@@ -554,7 +553,6 @@ namespace spore::codegen
 
             if (!preprocess_source(source))
             {
-                SPDLOG_ERROR("unable to read source file, path={}", path);
                 return false;
             }
 
@@ -606,7 +604,7 @@ namespace spore::codegen
             auto [result, out, err] = detail::run_command(command);
             if (result != 0)
             {
-                SPDLOG_ERROR("cannot preprocess macros, path={} result={}", path, result);
+                SPDLOG_ERROR("cannot preprocess macros, path={} result={} error={}", path, result, err);
                 return false;
             }
 
@@ -634,7 +632,7 @@ namespace spore::codegen
             auto [result, out, err] = detail::run_command(command, source);
             if (result != 0)
             {
-                SPDLOG_ERROR("cannot preprocess source, result={}", result);
+                SPDLOG_ERROR("cannot preprocess source, result={} error={}", result, err);
                 return false;
             }
 
