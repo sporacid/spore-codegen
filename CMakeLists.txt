@@ -23,6 +23,10 @@ configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/include/spore/codegen/codegen_version.hpp
 )
 
+add_compile_options(
+  "$<$<CXX_COMPILER_ID:MSVC>:/bigobj>"
+)
+
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_compile_definitions(
     SPDLOG_ACTIVE_LEVEL=0
@@ -39,7 +43,7 @@ elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
     SPDLOG_ACTIVE_LEVEL=1
   )
   add_compile_options(
-    "$<$<CXX_COMPILER_ID:MSVC>:/Ox>"
+    "$<$<CXX_COMPILER_ID:MSVC>:/O2>"
     "$<$<CXX_COMPILER_ID:GNU>:-O3>"
     "$<$<CXX_COMPILER_ID:Clang>:-O3>"
   )

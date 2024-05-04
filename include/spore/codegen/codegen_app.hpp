@@ -20,6 +20,8 @@
 #include "spore/codegen/ast/converters/ast_converter_default.hpp"
 #include "spore/codegen/ast/parsers/ast_parser.hpp"
 #include "spore/codegen/ast/parsers/ast_parser_clang.hpp"
+#include "spore/codegen/ast/parsers/ast_parser_clang_cpp.hpp"
+#include "spore/codegen/ast/parsers/ast_parser_clang_process.hpp"
 #include "spore/codegen/codegen_cache.hpp"
 #include "spore/codegen/codegen_config.hpp"
 #include "spore/codegen/codegen_error.hpp"
@@ -39,9 +41,9 @@ namespace spore::codegen
 {
     namespace details
     {
-        inline std::once_flag setup_once_flag;
+        std::once_flag setup_once_flag;
 
-        inline void setup_once()
+        void setup_once()
         {
             ast_condition_factory::instance().register_condition<ast_condition_any>();
             ast_condition_factory::instance().register_condition<ast_condition_all>();
@@ -53,13 +55,13 @@ namespace spore::codegen
         {
             std::filesystem::path old_path;
 
-            inline explicit current_path_scope(const std::filesystem::path& new_path)
+            explicit current_path_scope(const std::filesystem::path& new_path)
             {
                 old_path = std::filesystem::current_path();
                 std::filesystem::current_path(new_path);
             }
 
-            inline ~current_path_scope()
+            ~current_path_scope()
             {
                 std::filesystem::current_path(old_path);
             }
@@ -103,7 +105,7 @@ namespace spore::codegen
         std::mutex mutex;
         std::vector<std::unique_ptr<TinyProcessLib::Process>> processes;
 
-        inline explicit codegen_app(codegen_options in_options)
+        explicit codegen_app(codegen_options in_options)
             : options(std::move(in_options))
         {
             std::call_once(details::setup_once_flag, &details::setup_once);
@@ -159,19 +161,19 @@ namespace spore::codegen
                 json_user_data[pair.first] = pair.second;
             }
 
-            parser = std::make_shared<ast_parser_clang>(options);
+            parser = std::make_shared<ast_parser_clang_process>(options);
             converter = std::make_shared<ast_converter_default>();
             renderer = std::make_shared<codegen_renderer_composite>(
                 std::make_shared<codegen_renderer_inja>(options.template_paths));
         }
 
-        inline void run()
+        void run()
         {
             const auto then = std::chrono::steady_clock::now();
 
             const auto finally = [&]() {
                 nlohmann::json cache_data = nlohmann::json(cache).dump(2);
-                if (!spore::codegen::write_file(options.cache, cache_data))
+                if (!write_file(options.cache, cache_data))
                 {
                     SPDLOG_WARN("failed to write cache, file={}", options.cache);
                 }
@@ -202,7 +204,7 @@ namespace spore::codegen
             std::for_each(config.stages.begin(), config.stages.end(), action);
         }
 
-        inline void run_stage(const codegen_config_stage& stage)
+        void run_stage(const codegen_config_stage& stage)
         {
             std::filesystem::path stage_directory = std::filesystem::current_path() / stage.directory;
             if (!std::filesystem::exists(stage_directory))
@@ -222,6 +224,11 @@ namespace spore::codegen
                 try
                 {
                     const auto then = std::chrono::steady_clock::now();
+
+                    if (file_stage.file.find("attribute.hpp") != std::string::npos)
+                    {
+                        SPDLOG_WARN("");
+                    }
 
                     run_file_stage(file_stage);
 
@@ -286,7 +293,7 @@ namespace spore::codegen
             }
         }
 
-        inline void run_file_stage(const codegen_file_stage& file_stage)
+        void run_file_stage(const codegen_file_stage& file_stage)
         {
             ast_file file;
             if (!parser->parse_file(file_stage.file, file))
@@ -352,6 +359,7 @@ namespace spore::codegen
                     }
 
                     SPDLOG_DEBUG("writing output, file={}", file_task.output);
+
                     if (!spore::codegen::write_file(file_task.output, result))
                     {
                         throw codegen_error(codegen_error_code::io, "failed to write output, file={}", file_task.output);
@@ -367,7 +375,7 @@ namespace spore::codegen
             }
         }
 
-        inline void make_file_stages(const codegen_config_stage& stage, std::vector<codegen_file_stage>& file_stages)
+        void make_file_stages(const codegen_config_stage& stage, std::vector<codegen_file_stage>& file_stages)
         {
             std::vector<std::shared_ptr<ast_condition>> conditions;
             conditions.reserve(stage.steps.size());
@@ -405,7 +413,8 @@ namespace spore::codegen
             for (const std::filesystem::path& file : files)
             {
                 codegen_file_stage file_stage;
-                file_stage.file = file.string();
+                file_stage.file = std::filesystem::absolute(file).string();
+                // file_stage.file = file.string();
 
                 const bool file_up_to_date = cache.check_and_update(file.string());
                 for (std::size_t index_step = 0; index_step < stage.steps.size(); ++index_step)
@@ -456,7 +465,7 @@ namespace spore::codegen
             }
         }
 
-        inline void resolve_templates(std::vector<std::string>& templates)
+        void resolve_templates(std::vector<std::string>& templates)
         {
             SPDLOG_DEBUG("searching for templates");
             for (std::string& template_ : templates)

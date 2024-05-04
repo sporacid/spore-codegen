@@ -38,7 +38,12 @@ target_link_libraries(
     p-ranav::glob
     spdlog::spdlog
     tiny-process-library::tiny-process-library
+    # "C:/Program Files/LLVM/lib/libclang.lib"
     libclang
+    clangFrontend
+    clangTooling
+    #libtooling
+    #clangLex
 )
 
 target_include_directories(

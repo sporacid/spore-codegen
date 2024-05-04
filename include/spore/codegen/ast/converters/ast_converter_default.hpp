@@ -58,6 +58,12 @@ namespace spore::codegen
         json["attributes"] = value.attributes;
     }
 
+    template <typename ast_object_t>
+    void to_json(nlohmann::json& json, const ast_has_flags<ast_object_t>& value)
+    {
+        json["flags"] = value.flags;
+    }
+
     void to_json(nlohmann::json& json, const ast_attribute& value)
     {
         to_json(json, static_cast<const ast_has_name<ast_attribute>&>(value));
@@ -89,9 +95,10 @@ namespace spore::codegen
 
     void to_json(nlohmann::json& json, const ast_ref& value)
     {
+        to_json(json, static_cast<const ast_has_flags<ast_ref>&>(value));
+
         json["id"] = details::make_unique_id();
         json["name"] = value.name;
-        json["flags"] = value.flags;
     }
 
     void to_json(nlohmann::json& json, const ast_template_param& value)
@@ -121,9 +128,9 @@ namespace spore::codegen
         to_json(json, static_cast<const ast_has_name<ast_function>&>(value));
         to_json(json, static_cast<const ast_has_attributes<ast_function>&>(value));
         to_json(json, static_cast<const ast_has_template_params<ast_function>&>(value));
+        to_json(json, static_cast<const ast_has_flags<ast_function>&>(value));
 
         json["id"] = details::make_unique_id();
-        json["flags"] = value.flags;
         json["arguments"] = value.arguments;
         json["return_type"] = value.return_type;
     }
@@ -132,15 +139,16 @@ namespace spore::codegen
     {
         to_json(json, static_cast<const ast_has_attributes<ast_constructor>&>(value));
         to_json(json, static_cast<const ast_has_template_params<ast_constructor>&>(value));
+        to_json(json, static_cast<const ast_has_flags<ast_constructor>&>(value));
 
         json["id"] = details::make_unique_id();
-        json["flags"] = value.flags;
         json["arguments"] = value.arguments;
     }
 
     void to_json(nlohmann::json& json, const ast_field& value)
     {
         to_json(json, static_cast<const ast_has_attributes<ast_field>&>(value));
+        to_json(json, static_cast<const ast_has_flags<ast_field>&>(value));
 
         json["id"] = details::make_unique_id();
         json["name"] = value.name;
