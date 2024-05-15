@@ -349,7 +349,7 @@ namespace spore::codegen
             return function;
         }
 
-        ast_class make_class_v2(CXCursor cursor, detail::clang_data<ast_file>& data)
+        ast_class make_class(CXCursor cursor, detail::clang_data<ast_file>& data)
         {
             ast_class class_;
             class_.name = get_name(cursor);
@@ -569,52 +569,46 @@ namespace spore::codegen
         }
 
 #endif
-        CXChildVisitResult visitor_impl(CXCursor cursor, CXCursor, CXClientData data_ptr)
+        void make_file(CXCursor cursor, detail::clang_data<ast_file>& data)
         {
-            if (!clang_Location_isFromMainFile(clang_getCursorLocation(cursor)))
-                return CXChildVisit_Continue;
-
-            detail::clang_data<ast_file>& data = *static_cast<detail::clang_data<ast_file>*>(data_ptr);
-
-            switch (cursor.kind)
-            {
-                case CXCursor_Namespace: {
-                    clang_visitChildren(cursor, &detail::visitor_impl, &data);
-                    break;
-                }
-
-                case CXCursor_ClassTemplate:
-                case CXCursor_ClassDecl:
-                case CXCursor_StructDecl: {
-                    // TODO handle inner classes
-                    data.value.classes.emplace_back(make_class_v2(cursor, data));
-                    break;
-                }
-
-                    //                case CXCursor_ClassTemplate: {
-                    //                    data.value.classes.emplace_back(make_class_template(cursor, data));
-                    //                    break;
-                    //                }
-                    //
-                    //                case CXCursor_ClassDecl:
-                    //                case CXCursor_StructDecl: {
-                    //                    data.value.classes.emplace_back(make_class(cursor, data));
-                    //                    break;
-                    //                }
-
-                case CXCursor_FunctionTemplate:
-                case CXCursor_FunctionDecl: {
-                    data.value.functions.emplace_back(make_function(cursor, data));
+            using closure_t = std::tuple<CXCursorVisitor, detail::clang_data<ast_file>&>;
+            const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
+                if (!clang_Location_isFromMainFile(clang_getCursorLocation(cursor)))
                     return CXChildVisit_Continue;
+
+                const auto& [closure_visitor, closure_data] = *static_cast<closure_t*>(data_ptr);
+
+                switch (cursor.kind)
+                {
+                    case CXCursor_Namespace: {
+                        clang_visitChildren(cursor, closure_visitor, data_ptr);
+                        break;
+                    }
+
+                    case CXCursor_ClassTemplate:
+                    case CXCursor_ClassDecl:
+                    case CXCursor_StructDecl: {
+                        // TODO handle inner classes
+                        closure_data.value.classes.emplace_back(make_class(cursor, closure_data));
+                        break;
+                    }
+
+                    case CXCursor_FunctionTemplate:
+                    case CXCursor_FunctionDecl: {
+                        closure_data.value.functions.emplace_back(make_function(cursor, closure_data));
+                        return CXChildVisit_Continue;
+                    }
+
+                    default:
+                        return CXChildVisit_Recurse;
                 }
 
-                default:
-                    return CXChildVisit_Recurse;
-            }
+                return CXChildVisit_Continue;
+            };
 
-            return CXChildVisit_Continue;
+            closure_t closure {visitor, data};
+            clang_visitChildren(cursor, visitor, &closure);
         }
-
         std::tuple<std::int32_t, std::string, std::string> run_command(const std::string& command, const std::string& input = std::string {})
         {
             const bool has_stdin = not input.empty();
@@ -731,33 +725,36 @@ namespace spore::codegen
             file.path = path;
 
             detail::clang_data<ast_file> data {file, source};
-            clang_visitChildren(cursor, &detail::visitor_impl, &data);
+            detail::make_file(cursor, data);
 
-            //            std::size_t indent = 0;
-            //            CXCursorVisitor visitor;
-            //
-            //            using closure_t = std::tuple<std::size_t&, CXCursorVisitor>;
-            //            visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
-            //                if (clang_Location_isFromMainFile(clang_getCursorLocation(cursor)))
-            //                {
-            //                    auto& [indent_, visitor_] = *static_cast<closure_t*>(data_ptr);
-            //                    for (std::size_t index = 0; index < indent_; ++index)
-            //                        std::cout << "  ";
-            //                    std::cout << detail::to_string(clang_getCursorKindSpelling(cursor.kind)) << ": " << detail::get_name(cursor) << std::endl;
-            //                    ++indent_;
-            //                    clang_visitChildren(cursor, visitor_, data_ptr);
-            //                    --indent_;
-            //                }
-            //
-            //                return CXChildVisit_Continue;
-            //            };
-            //
-            //            closure_t closure {indent, visitor};
-            //            std::cout << "FILE " << path << std::endl;
-            //            std::cout << "-------------------" << std::endl;
-            //            clang_visitChildren(cursor, visitor, &closure);
-            //            std::cout << "-------------------" << std::endl;
+#if 0
+            {
+                std::size_t indent = 0;
+                CXCursorVisitor visitor;
 
+                using closure_t = std::tuple<std::size_t&, CXCursorVisitor>;
+                visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
+                    if (clang_Location_isFromMainFile(clang_getCursorLocation(cursor)))
+                    {
+                        auto& [indent_, visitor_] = *static_cast<closure_t*>(data_ptr);
+                        for (std::size_t index = 0; index < indent_; ++index)
+                            std::cout << "  ";
+                        std::cout << detail::to_string(clang_getCursorKindSpelling(cursor.kind)) << ": " << detail::get_name(cursor) << std::endl;
+                        ++indent_;
+                        clang_visitChildren(cursor, visitor_, data_ptr);
+                        --indent_;
+                    }
+
+                    return CXChildVisit_Continue;
+                };
+
+                closure_t closure {indent, visitor};
+                std::cout << "FILE " << path << std::endl;
+                std::cout << "-------------------" << std::endl;
+                clang_visitChildren(cursor, visitor, &closure);
+                std::cout << "-------------------" << std::endl;
+            }
+#endif
             return true;
         }
     };

@@ -20,9 +20,6 @@
 #include "spore/codegen/ast/converters/ast_converter_default.hpp"
 #include "spore/codegen/ast/parsers/ast_parser.hpp"
 #include "spore/codegen/ast/parsers/ast_parser_clang.hpp"
-// #include "spore/codegen/ast/parsers/ast_parser_clang_cpp.hpp"
-// #include "spore/codegen/ast/parsers/ast_parser_clang_process.hpp"
-// #include "spore/codegen/ast/parsers/ast_parser_clang_process_raw.hpp"
 #include "spore/codegen/codegen_cache.hpp"
 #include "spore/codegen/codegen_config.hpp"
 #include "spore/codegen/codegen_error.hpp"
@@ -226,11 +223,6 @@ namespace spore::codegen
                 {
                     const auto then = std::chrono::steady_clock::now();
 
-                    if (file_stage.file.find("attribute.hpp") != std::string::npos)
-                    {
-                        SPDLOG_WARN("");
-                    }
-
                     run_file_stage(file_stage);
 
                     const auto now = std::chrono::steady_clock::now();
@@ -414,8 +406,8 @@ namespace spore::codegen
             for (const std::filesystem::path& file : files)
             {
                 codegen_file_stage file_stage;
-                file_stage.file = std::filesystem::absolute(file).string();
-                // file_stage.file = file.string();
+                file_stage.file = file.string();
+                replace_all(file_stage.file, "\\", "/");
 
                 const bool file_up_to_date = cache.check_and_update(file.string());
                 for (std::size_t index_step = 0; index_step < stage.steps.size(); ++index_step)
