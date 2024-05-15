@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <variant>
 
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
@@ -266,13 +267,27 @@ namespace spore::codegen
 
         bool parse_file(const std::string& path, ast_file& file) override
         {
+            std::string source;
+            if (!read_file(path, source))
+            {
+                SPDLOG_ERROR("cannot read file, path={}", path);
+                return false;
+            }
+
+            constexpr std::string_view flag_struct =
+                "#ifndef __SPORE_CODEGEN_DEFINE__\n"
+                "#define __SPORE_CODEGEN_DEFINE__\n"
+                "    struct __SPORE_CODEGEN__;\n"
+                "#endif\n";
+
+            source.insert(0, flag_struct);
+
             std::string command;
             command += clang + " ";
             command += join(" ", args, std::identity()) + " ";
-            command += "-fsyntax-only -Xclang -ast-dump=json -Xclang -ast-dump-filter=spore ";
-            command += path;
+            command += "-fsyntax-only -Xclang -ast-dump=json -";
 
-            auto [result, out, err] = run(command);
+            auto [result, out, err] = run(command, source);
             if (result != 0)
             {
                 SPDLOG_ERROR("cannot preprocess macros, path={} result={} error={}", path, result, err);
@@ -288,6 +303,7 @@ namespace spore::codegen
             std::size_t begin = 0;
             std::size_t depth = 0;
             std::vector<std::tuple<std::size_t, std::size_t>> ranges;
+            bool relevant = false;
 
             for (std::size_t index = 0; index < out.size(); ++index)
             {
@@ -304,12 +320,14 @@ namespace spore::codegen
                 {
                     if (--depth == 0)
                     {
-                        std::string_view json_string {out.data() + begin, (index + 1) - begin};
-                        std::size_t wtf = json_string.find("spore/engine");
-
-                        if (wtf != std::string_view::npos)
+                        if (relevant)
                         {
                             ranges.emplace_back(begin, index + 1);
+                        }
+                        else
+                        {
+                            std::string_view json_string {out.data() + begin, (index + 1) - begin};
+                            relevant = json_string.find("__SPORE_CODEGEN__") != std::string_view::npos;
                         }
                     }
                 }

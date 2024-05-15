@@ -77,3 +77,6 @@ CMakeUserPresets.json
 .dumps/
 .cache
 .version
+
+# Visual Studio Files
+.vs/

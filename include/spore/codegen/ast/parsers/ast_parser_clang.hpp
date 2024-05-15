@@ -6,6 +6,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <iostream>
 
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
@@ -13,9 +14,6 @@
 #include "spdlog/spdlog.h"
 #include "clang-c/CXSourceLocation.h"
 #include "clang-c/Index.h"
-#include "clang/Lex/Lexer.h"
-#include "clang/Lex/Preprocessor.h"
-#include "clang/Parse/ParseAST.h"
 
 #include "spore/codegen/ast/parsers/ast_parser.hpp"
 #include "spore/codegen/codegen_helpers.hpp"
@@ -610,7 +608,10 @@ namespace spore::codegen
 
             args.emplace_back("-xc++");
             args.emplace_back("-w");
-            args.emplace_back("-Wno-everything");
+            args.emplace_back("-E");
+            args.emplace_back("-dM");
+
+            // args.emplace_back("-Wno-everything");
             args.emplace_back(fmt::format("-std={}", options.cpp_standard));
 
             for (const std::string& include : options.includes)
@@ -648,16 +649,20 @@ namespace spore::codegen
 
         bool parse_file(const std::string& path, ast_file& file) override
         {
-            constexpr auto flags = CXTranslationUnit_None;
-           // constexpr auto flags =
-           //     static_cast<CXTranslationUnit_Flags>(
-           //         CXTranslationUnit_Incomplete |
-           //         CXTranslationUnit_SkipFunctionBodies |
-           //         // CXTranslationUnit_PrecompiledPreamble |
-           //         // CXTranslationUnit_CreatePreambleOnFirstParse |
-           //         CXTranslationUnit_SingleFileParse |
-           //         CXTranslationUnit_KeepGoing |
-           //         CXTranslationUnit_IgnoreNonErrorsFromIncludedFiles);
+            // constexpr auto flags =
+            //     static_cast<CXTranslationUnit_Flags>(
+            //         CXTranslationUnit_Incomplete |
+            //         CXTranslationUnit_SkipFunctionBodies |
+            //         // CXTranslationUnit_PrecompiledPreamble |
+            //         // CXTranslationUnit_CreatePreambleOnFirstParse |
+            //         CXTranslationUnit_SingleFileParse |
+            //         CXTranslationUnit_KeepGoing |
+            //         CXTranslationUnit_IgnoreNonErrorsFromIncludedFiles);
+
+            constexpr auto flags = static_cast<CXTranslationUnit_Flags>(
+                CXTranslationUnit_SkipFunctionBodies |
+                CXTranslationUnit_IncludeAttributedTypes |
+                CXTranslationUnit_VisitImplicitAttributes);
 
 #if 0
             std::string macros;
@@ -686,29 +691,29 @@ namespace spore::codegen
             }
 #endif
 
-            //  std::string source;
-            //  if (!read_file(path, source))
-            //  {
-            //      SPDLOG_ERROR("cannot read source file, path={}", path);
-            //      return false;
-            //  }
+              std::string source;
+              if (!read_file(path, source))
+              {
+                  SPDLOG_ERROR("cannot read source file, path={}", path);
+                  return false;
+              }
+
+              // if (!preprocess_source(source))
+              // {
+              //     return false;
+              // }
 //
-            //  if (!preprocess_source(source))
-            //  {
-            //      return false;
-            //  }
-//
-            //  CXUnsavedFile clang_file {path.data(), source.data(), static_cast<unsigned long>(source.size())};
+              CXUnsavedFile clang_file {path.data(), source.data(), static_cast<unsigned long>(source.size())};
 
             // CXIndex index = clang_createIndex(0, 0);
             // defer dispose_index = [&] { clang_disposeIndex(index); };
 
-            CXTranslationUnit translation_unit = nullptr;
-            CXErrorCode error = clang_parseTranslationUnit2(
-                clang_index, path.data(), args_view.data(), static_cast<int>(args_view.size()), nullptr, 0, flags, &translation_unit);
+            // CXTranslationUnit translation_unit = nullptr;
+            // CXErrorCode error = clang_parseTranslationUnit2(
+            //     clang_index, path.data(), args_view.data(), static_cast<int>(args_view.size()), nullptr, 0, flags, &translation_unit);
 
-            // CXTranslationUnit translation_unit = clang_createTranslationUnitFromSourceFile(
-            //     clang_index, path.data(), static_cast<int>(args_view.size()), args_view.data(), 0, nullptr);
+             CXTranslationUnit translation_unit = clang_parseTranslationUnit(
+                 clang_index, path.data(), args_view.data(), static_cast<int>(args_view.size()), &clang_file, 1, flags);
 
             if (translation_unit == nullptr)
             {

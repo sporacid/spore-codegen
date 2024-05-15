@@ -20,8 +20,9 @@
 #include "spore/codegen/ast/converters/ast_converter_default.hpp"
 #include "spore/codegen/ast/parsers/ast_parser.hpp"
 #include "spore/codegen/ast/parsers/ast_parser_clang.hpp"
-#include "spore/codegen/ast/parsers/ast_parser_clang_cpp.hpp"
-#include "spore/codegen/ast/parsers/ast_parser_clang_process.hpp"
+//#include "spore/codegen/ast/parsers/ast_parser_clang_cpp.hpp"
+//#include "spore/codegen/ast/parsers/ast_parser_clang_process.hpp"
+//#include "spore/codegen/ast/parsers/ast_parser_clang_process_raw.hpp"
 #include "spore/codegen/codegen_cache.hpp"
 #include "spore/codegen/codegen_config.hpp"
 #include "spore/codegen/codegen_error.hpp"
@@ -161,7 +162,7 @@ namespace spore::codegen
                 json_user_data[pair.first] = pair.second;
             }
 
-            parser = std::make_shared<ast_parser_clang_process>(options);
+            parser = std::make_shared<ast_parser_clang>(options);
             converter = std::make_shared<ast_converter_default>();
             renderer = std::make_shared<codegen_renderer_composite>(
                 std::make_shared<codegen_renderer_inja>(options.template_paths));

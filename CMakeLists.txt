@@ -52,7 +52,7 @@ endif ()
 add_subdirectory(src)
 
 if (SPORE_BUILD_EXAMPLES)
-  add_subdirectory(examples)
+  #add_subdirectory(examples)
 endif ()
 
 if (SPORE_BUILD_TESTS)

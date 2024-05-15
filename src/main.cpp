@@ -26,6 +26,13 @@ namespace details
 
 int main(int argc, const char* argv[])
 {
+    for (auto index = 0; index < argc; ++index)
+    {
+        std::cout << argv[index] << " ";
+    }
+
+    
+    std::cout << std::endl; 
     spdlog::set_pattern("%l: %v");
 
     argparse::ArgumentParser arg_parser {

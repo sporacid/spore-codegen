@@ -43,8 +43,10 @@ namespace spore::codegen
         struct clang_diagnostics_consumer
             : clang::DiagnosticConsumer
         {
-            void HandleDiagnostic(clang::DiagnosticsEngine::Level, const clang::Diagnostic&) final
+            void HandleDiagnostic(clang::DiagnosticsEngine::Level level, const clang::Diagnostic& diagnostic) final
             {
+                (void) level;
+                (void) diagnostic;
                 SPDLOG_DEBUG("?");
             }
         };
@@ -71,10 +73,15 @@ namespace spore::codegen
             {
                 return std::make_unique<clang_codegen_consumer>();
             }
+
+            bool isModelParsingAction() const final
+            {
+                return true;
+            }
         };
     }
 
-    struct clang_parser_clang_cpp : ast_parser
+    struct ast_parser_clang_cpp : ast_parser
     {
         // std::unique_ptr<detail::clang_diagnostics_consumer> diagnostics_consumer;
         // std::unique_ptr<clang::DiagnosticIDs> diagnostics_ids;
@@ -96,7 +103,7 @@ namespace spore::codegen
         // std::shared_ptr<clang::Preprocessor> preprocessor;
         // std::unique_ptr<clang::TargetInfo> target_info;
 
-        explicit clang_parser_clang_cpp(const codegen_options& options)
+        explicit ast_parser_clang_cpp(const codegen_options& options)
             : // diagnostics_consumer(std::make_unique<detail::clang_diagnostics_consumer>()),
               // diagnostics_ids(std::make_unique<clang::DiagnosticIDs>()),
               // diagnostics_options(std::make_unique<clang::DiagnosticOptions>()),
@@ -115,7 +122,7 @@ namespace spore::codegen
         // preprocessor_options(std::make_shared<clang::PreprocessorOptions>())
         {
             std::vector<std::string> args;
-            //args.emplace_back("-xc++");
+            // args.emplace_back("-xc++");
             args.emplace_back("-w");
             args.emplace_back(fmt::format("-std={}", options.cpp_standard));
 
@@ -161,31 +168,31 @@ namespace spore::codegen
 
             // clang::DiagnosticOptions diagnostic_options;
 
-//            clang::LangOptions& lang_options = *compiler->getInvocation().LangOpts;
-//            lang_options.LangStd = clang::LangStandard::lang_cxx20;
-//
-//            clang::TargetOptions& target_options = *compiler->getInvocation().TargetOpts;
-//
-//            clang::HeaderSearchOptions& header_search_opts = *compiler->getInvocation().HeaderSearchOpts;
-//            for (const std::string& include : options.includes)
-//            {
-//                constexpr bool is_framework = false;
-//                constexpr bool ignore_sys_root = false;
-//                header_search_opts.AddPath(include, clang::frontend::IncludeDirGroup::Angled, is_framework, ignore_sys_root);
-//            }
-//
-//            clang::PreprocessorOptions& preprocessor_opts = *compiler->getInvocation().PreprocessorOpts;
-//            for (const auto& [key, value] : options.definitions)
-//            {
-//                if (value.empty())
-//                {
-//                    preprocessor_opts.addMacroDef(fmt::format("{}", key));
-//                }
-//                else
-//                {
-//                    preprocessor_opts.addMacroDef(fmt::format("{}={}", key, value));
-//                }
-//            }
+            //            clang::LangOptions& lang_options = *compiler->getInvocation().LangOpts;
+            //            lang_options.LangStd = clang::LangStandard::lang_cxx20;
+            //
+            //            clang::TargetOptions& target_options = *compiler->getInvocation().TargetOpts;
+            //
+            //            clang::HeaderSearchOptions& header_search_opts = *compiler->getInvocation().HeaderSearchOpts;
+            //            for (const std::string& include : options.includes)
+            //            {
+            //                constexpr bool is_framework = false;
+            //                constexpr bool ignore_sys_root = false;
+            //                header_search_opts.AddPath(include, clang::frontend::IncludeDirGroup::Angled, is_framework, ignore_sys_root);
+            //            }
+            //
+            //            clang::PreprocessorOptions& preprocessor_opts = *compiler->getInvocation().PreprocessorOpts;
+            //            for (const auto& [key, value] : options.definitions)
+            //            {
+            //                if (value.empty())
+            //                {
+            //                    preprocessor_opts.addMacroDef(fmt::format("{}", key));
+            //                }
+            //                else
+            //                {
+            //                    preprocessor_opts.addMacroDef(fmt::format("{}={}", key, value));
+            //                }
+            //            }
 
             // compiler->setASTContext(ast_context.get());
             compiler->createDiagnostics(new detail::clang_diagnostics_consumer());
@@ -195,6 +202,10 @@ namespace spore::codegen
             //         diagnostics_consumer.get()));
 
             clang::CompilerInvocation::CreateFromArgs(compiler->getInvocation(), args_view, compiler->getDiagnostics());
+
+            clang::FrontendOptions& frontend_options = compiler->getInvocation().getFrontendOpts();
+            frontend_options.SkipFunctionBodies = true;
+            frontend_options.ProgramAction = clang::frontend::ParseSyntaxOnly;
             // compiler->setInvocation(invocation);
 
             compiler->createFileManager();
@@ -204,7 +215,7 @@ namespace spore::codegen
             compiler->createPreprocessor(clang::TranslationUnitKind::TU_Complete);
             compiler->createASTContext();
 
-            compiler->LoadRequestedPlugins();
+            // compiler->LoadRequestedPlugins();
 
             //            header_search = std::make_unique<clang::HeaderSearch>(
             //                header_search_options,
@@ -232,8 +243,12 @@ namespace spore::codegen
             detail::clang_codegen_action action;
             action.setCurrentInput(input_file);
 
+            compiler->ExecuteAction(action);
             return compiler->ExecuteAction(action);
         }
+
+      private:
+        static inline const defer _llvm_shutdown_defer = &llvm::llvm_shutdown;
     };
 }
 
