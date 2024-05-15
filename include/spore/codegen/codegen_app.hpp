@@ -308,11 +308,6 @@ namespace spore::codegen
                 throw codegen_error(codegen_error_code::rendering, "failed to convert input data to json, file={}", file.path);
             }
 
-            std::cout << "FILE " << file.path << std::endl;
-            std::cout << "-------------------" << std::endl;
-            std::cout << json_data.dump(2) << std::endl;
-            std::cout << "-------------------" << std::endl;
-
             std::filesystem::path file_path(file_stage.file);
             if (options.dump_ast)
             {
