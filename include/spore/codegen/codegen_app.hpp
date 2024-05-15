@@ -20,9 +20,9 @@
 #include "spore/codegen/ast/converters/ast_converter_default.hpp"
 #include "spore/codegen/ast/parsers/ast_parser.hpp"
 #include "spore/codegen/ast/parsers/ast_parser_clang.hpp"
-//#include "spore/codegen/ast/parsers/ast_parser_clang_cpp.hpp"
-//#include "spore/codegen/ast/parsers/ast_parser_clang_process.hpp"
-//#include "spore/codegen/ast/parsers/ast_parser_clang_process_raw.hpp"
+// #include "spore/codegen/ast/parsers/ast_parser_clang_cpp.hpp"
+// #include "spore/codegen/ast/parsers/ast_parser_clang_process.hpp"
+// #include "spore/codegen/ast/parsers/ast_parser_clang_process_raw.hpp"
 #include "spore/codegen/codegen_cache.hpp"
 #include "spore/codegen/codegen_config.hpp"
 #include "spore/codegen/codegen_error.hpp"
@@ -307,6 +307,11 @@ namespace spore::codegen
             {
                 throw codegen_error(codegen_error_code::rendering, "failed to convert input data to json, file={}", file.path);
             }
+
+            std::cout << "FILE " << file.path << std::endl;
+            std::cout << "-------------------" << std::endl;
+            std::cout << json_data.dump(2) << std::endl;
+            std::cout << "-------------------" << std::endl;
 
             std::filesystem::path file_path(file_stage.file);
             if (options.dump_ast)
