@@ -20,6 +20,7 @@
 #include "spore/codegen/ast/converters/ast_converter_default.hpp"
 #include "spore/codegen/ast/parsers/ast_parser.hpp"
 #include "spore/codegen/ast/parsers/ast_parser_clang.hpp"
+#include "spore/codegen/ast/parsers/ast_parser_clang_cpp.hpp"
 #include "spore/codegen/codegen_cache.hpp"
 #include "spore/codegen/codegen_config.hpp"
 #include "spore/codegen/codegen_error.hpp"
@@ -153,6 +154,8 @@ namespace spore::codegen
             }
 
             options.definitions.emplace_back(SPORE_CODEGEN_MACRO, "1");
+            // options.definitions.emplace_back("SPORE_ATTRIBUTE_V2_IMPL(...)", "__attribute__((#__VA_ARGS__))");
+            // options.definitions.emplace_back("SPORE_ATTRIBUTE_V2(...)", "SPORE_ATTRIBUTE_V2_IMPL(__VA_ARGS__)");
 
             for (const std::pair<std::string, std::string>& pair : options.user_data)
             {

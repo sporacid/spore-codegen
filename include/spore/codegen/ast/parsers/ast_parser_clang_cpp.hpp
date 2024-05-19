@@ -7,6 +7,184 @@
 #include <string_view>
 #include <vector>
 
+#include "clang/AST/ASTConsumer.h"
+#include "clang/AST/RecursiveASTVisitor.h"
+#include "clang/Frontend/CompilerInstance.h"
+#include "clang/Frontend/FrontendAction.h"
+#include "clang/Tooling/Tooling.h"
+
+#include "spore/codegen/ast/parsers/ast_parser.hpp"
+#include "spore/codegen/codegen_error.hpp"
+#include "spore/codegen/codegen_helpers.hpp"
+#include "spore/codegen/codegen_options.hpp"
+#include "spore/codegen/misc/defer.hpp"
+
+namespace spore::codegen
+{
+    namespace detail
+    {
+        struct FindNamedClassVisitor : public clang::RecursiveASTVisitor<FindNamedClassVisitor>
+        {
+            clang::ASTContext& Context;
+            std::string File;
+
+            explicit FindNamedClassVisitor(clang::ASTContext& Context, llvm::StringRef InFile)
+                : Context(Context),
+                  File(InFile.data()) {}
+
+            bool shouldWalkTypesOfTypeLocs() const { return false; }
+            bool shouldVisitLambdaBody() const { return false; }
+
+//            class ASTContext;
+//            class ClassTemplateDecl;
+//            class ConstructorUsingShadowDecl;
+//            class CXXBasePath;
+//            class CXXBasePaths;
+//            class CXXConstructorDecl;
+//            class CXXDestructorDecl;
+//            class CXXFinalOverriderMap;
+//            class CXXIndirectPrimaryBaseSet;
+//            class CXXMethodDecl;
+//            class DecompositionDecl;
+//            class FriendDecl;
+//            class FunctionTemplateDecl;
+//            class IdentifierInfo;
+//            class MemberSpecializationInfo;
+//            class BaseUsingDecl;
+//            class TemplateDecl;
+//            class TemplateParameterList;
+//            class UsingDecl;
+
+            bool VisitCXXMethodDecl(clang::CXXMethodDecl* Declaration)
+            {
+                return true;
+            }
+
+            bool VisitFunctionTemplateDecl(clang::FunctionTemplateDecl* Declaration)
+            {
+                return true;
+            }
+
+            bool VisitTemplateDecl(clang::TemplateDecl* Declaration)
+            {
+                return true;
+            }
+
+            bool VisitClassTemplateDecl(clang::ClassTemplateDecl* Declaration)
+            {
+                return true;
+            }
+
+            bool VisitCXXRecordDecl(clang::CXXRecordDecl* Declaration)
+            {
+                // clang::FullSourceLoc FullLocation = Context.getFullLoc(Declaration->getBeginLoc());
+                // if (File != FullLocation.getFileEntry()->getName())
+                //     return true;
+                if (!Declaration)
+                {
+                    return true;
+                }
+
+                clang::FullSourceLoc FullLocation = Context.getFullLoc(Declaration->getBeginLoc());
+                SPDLOG_INFO("declaration {}", Declaration->getName().data());
+                return true;
+            }
+        };
+
+        struct FindNamedClassConsumer : public clang::ASTConsumer
+        {
+            FindNamedClassVisitor Visitor;
+            std::string File;
+
+            explicit FindNamedClassConsumer(clang::ASTContext& Context, llvm::StringRef InFile)
+                : Visitor(Context, InFile),
+                  File(InFile.data()) {}
+
+            void HandleTranslationUnit(clang::ASTContext& Context) override
+            {
+                // Visitor.TraverseDecl(Context.getTranslationUnitDecl());
+
+                for (clang::Decl* decl : Context.getTranslationUnitDecl()->decls())
+                {
+                    const auto& file_id = Context.getSourceManager().getFileID(decl->getLocation());
+                    if (file_id == Context.getSourceManager().getMainFileID())
+                    {
+                        Visitor.TraverseDecl(decl);
+                    }
+                }
+            }
+        };
+
+        struct FindNamedClassAction : public clang::ASTFrontendAction
+        {
+            std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) override
+            {
+                return std::make_unique<FindNamedClassConsumer>(Compiler.getASTContext(), InFile);
+            }
+        };
+    }
+
+    struct ast_parser_clang_cpp : ast_parser
+    {
+        std::vector<std::string> args;
+
+        explicit ast_parser_clang_cpp(const codegen_options& options)
+        {
+            args.emplace_back("-xc++");
+            args.emplace_back("-fsyntax-only");
+            args.emplace_back("-E");
+            args.emplace_back("-dM");
+            args.emplace_back("-w");
+            args.emplace_back("-Wno-everything");
+            args.emplace_back(fmt::format("-std={}", options.cpp_standard));
+
+            for (const std::string& include : options.includes)
+            {
+                args.emplace_back(fmt::format("-I{}", include));
+            }
+
+            for (const auto& [key, value] : options.definitions)
+            {
+                if (value.empty())
+                {
+                    args.emplace_back(fmt::format("-D{}", key));
+                }
+                else
+                {
+                    args.emplace_back(fmt::format("-D{}={}", key, value));
+                }
+            }
+
+            std::sort(args.begin(), args.end());
+            args.erase(std::unique(args.begin(), args.end()), args.end());
+        }
+
+        bool parse_file(const std::string& path, ast_file& file) override
+        {
+            SPDLOG_INFO("parsing, path={}", path);
+
+            std::string source;
+            if (!read_file(path, source))
+            {
+                SPDLOG_ERROR("cannot read source file, path={}", path);
+                return false;
+            }
+
+            return clang::tooling::runToolOnCodeWithArgs(
+                std::make_unique<detail::FindNamedClassAction>(), source, args, path);
+        }
+    };
+}
+
+#if 0
+
+#include <algorithm>
+#include <functional>
+#include <regex>
+#include <string>
+#include <string_view>
+#include <vector>
+
 #include "clang/AST/AST.h"
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/ASTContext.h"
@@ -31,6 +209,7 @@
 #include "spore/codegen/codegen_helpers.hpp"
 #include "spore/codegen/codegen_options.hpp"
 #include "spore/codegen/misc/defer.hpp"
+
 
 namespace spore::codegen
 {
@@ -251,7 +430,7 @@ namespace spore::codegen
         static inline const defer _llvm_shutdown_defer = &llvm::llvm_shutdown;
     };
 }
-
+#endif
 #if 0
 
 #include "clang/AST/AST.h"

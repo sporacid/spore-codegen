@@ -11,6 +11,7 @@ namespace spore::codegen
         std::string type;
         std::string name;
         std::optional<std::string> default_value;
+        bool is_variadic = false;
     };
 
     template <typename ast_value_t>

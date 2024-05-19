@@ -110,6 +110,7 @@ namespace spore::codegen
         json["type"] = value.type;
         json["default_value"] = value.default_value.value_or("");
         json["has_default_value"] = value.default_value.has_value();
+        json["is_variadic"] = value.is_variadic;
     }
 
     void to_json(nlohmann::json& json, const ast_argument& value)
