@@ -217,6 +217,18 @@ namespace spore::codegen
             details::current_path_scope directory_scope(stage_directory);
             std::vector<std::exception_ptr> exceptions;
 
+#if 0
+            const auto then = std::chrono::steady_clock::now();
+            std::vector<ast_file> asts;
+            std::vector<std::filesystem::path> files = glob::rglob("**/*.hpp");
+            ast_parser_clang_cpp ast_parser {options};
+            ast_parser.parse_files(files, asts);
+
+            const auto now = std::chrono::steady_clock::now();
+            const std::chrono::duration<std::float_t> duration = now - then;
+            SPDLOG_INFO("__ codegen completed for all files, duration={}s", duration.count());
+#endif
+
             std::vector<codegen_file_stage> file_stages;
             make_file_stages(stage, file_stages);
 

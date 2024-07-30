@@ -43,9 +43,13 @@ elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
     SPDLOG_ACTIVE_LEVEL=1
   )
   add_compile_options(
-    "$<$<CXX_COMPILER_ID:MSVC>:/O2>"
+    "$<$<CXX_COMPILER_ID:MSVC>:/O2;/DNDEBUG;/Zi;/Gy>"
     "$<$<CXX_COMPILER_ID:GNU>:-O3>"
     "$<$<CXX_COMPILER_ID:Clang>:-O3>"
+  )
+  add_link_options(
+    "$<$<CXX_COMPILER_ID:MSVC>:/DEBUG;/INCREMENTAL:NO;/OPT:REF;/OPT:ICF>"
+
   )
 endif ()
 

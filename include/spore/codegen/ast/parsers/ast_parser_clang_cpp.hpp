@@ -11,49 +11,57 @@
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendAction.h"
+#include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
 
 #include "spore/codegen/ast/parsers/ast_parser.hpp"
 #include "spore/codegen/codegen_error.hpp"
 #include "spore/codegen/codegen_helpers.hpp"
 #include "spore/codegen/codegen_options.hpp"
+#include "spore/codegen/codegen_version.hpp"
 #include "spore/codegen/misc/defer.hpp"
 
 namespace spore::codegen
 {
     namespace detail
     {
-        struct FindNamedClassVisitor : public clang::RecursiveASTVisitor<FindNamedClassVisitor>
+        struct ASTVisitorImpl : public clang::RecursiveASTVisitor<ASTVisitorImpl>
         {
             clang::ASTContext& Context;
             std::string File;
 
-            explicit FindNamedClassVisitor(clang::ASTContext& Context, llvm::StringRef InFile)
+            explicit ASTVisitorImpl(clang::ASTContext& Context, llvm::StringRef InFile)
                 : Context(Context),
                   File(InFile.data()) {}
 
-            bool shouldWalkTypesOfTypeLocs() const { return false; }
-            bool shouldVisitLambdaBody() const { return false; }
+            bool shouldWalkTypesOfTypeLocs() const
+            {
+                return false;
+            }
+            bool shouldVisitLambdaBody() const
+            {
+                return false;
+            }
 
-//            class ASTContext;
-//            class ClassTemplateDecl;
-//            class ConstructorUsingShadowDecl;
-//            class CXXBasePath;
-//            class CXXBasePaths;
-//            class CXXConstructorDecl;
-//            class CXXDestructorDecl;
-//            class CXXFinalOverriderMap;
-//            class CXXIndirectPrimaryBaseSet;
-//            class CXXMethodDecl;
-//            class DecompositionDecl;
-//            class FriendDecl;
-//            class FunctionTemplateDecl;
-//            class IdentifierInfo;
-//            class MemberSpecializationInfo;
-//            class BaseUsingDecl;
-//            class TemplateDecl;
-//            class TemplateParameterList;
-//            class UsingDecl;
+            //            class ASTContext;
+            //            class ClassTemplateDecl;
+            //            class ConstructorUsingShadowDecl;
+            //            class CXXBasePath;
+            //            class CXXBasePaths;
+            //            class CXXConstructorDecl;
+            //            class CXXDestructorDecl;
+            //            class CXXFinalOverriderMap;
+            //            class CXXIndirectPrimaryBaseSet;
+            //            class CXXMethodDecl;
+            //            class DecompositionDecl;
+            //            class FriendDecl;
+            //            class FunctionTemplateDecl;
+            //            class IdentifierInfo;
+            //            class MemberSpecializationInfo;
+            //            class BaseUsingDecl;
+            //            class TemplateDecl;
+            //            class TemplateParameterList;
+            //            class UsingDecl;
 
             bool VisitCXXMethodDecl(clang::CXXMethodDecl* Declaration)
             {
@@ -91,12 +99,12 @@ namespace spore::codegen
             }
         };
 
-        struct FindNamedClassConsumer : public clang::ASTConsumer
+        struct ASTConsumerImpl : public clang::ASTConsumer
         {
-            FindNamedClassVisitor Visitor;
+            ASTVisitorImpl Visitor;
             std::string File;
 
-            explicit FindNamedClassConsumer(clang::ASTContext& Context, llvm::StringRef InFile)
+            explicit ASTConsumerImpl(clang::ASTContext& Context, llvm::StringRef InFile)
                 : Visitor(Context, InFile),
                   File(InFile.data()) {}
 
@@ -115,11 +123,19 @@ namespace spore::codegen
             }
         };
 
-        struct FindNamedClassAction : public clang::ASTFrontendAction
+        struct ASTFrontendActionImpl : public clang::ASTFrontendAction
         {
             std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance& Compiler, llvm::StringRef InFile) override
             {
-                return std::make_unique<FindNamedClassConsumer>(Compiler.getASTContext(), InFile);
+                return std::make_unique<ASTConsumerImpl>(Compiler.getASTContext(), InFile);
+            }
+        };
+
+        struct FrontendActionFactoryImpl : public clang::tooling::FrontendActionFactory
+        {
+            std::unique_ptr<clang::FrontendAction> create() override
+            {
+                return std::make_unique<ASTFrontendActionImpl>();
             }
         };
     }
@@ -127,8 +143,11 @@ namespace spore::codegen
     struct ast_parser_clang_cpp : ast_parser
     {
         std::vector<std::string> args;
+        std::vector<const char*> argv;
+        std::shared_ptr<clang::PCHContainerOperations> pch_container_ops;
 
         explicit ast_parser_clang_cpp(const codegen_options& options)
+            : pch_container_ops(std::make_shared<clang::PCHContainerOperations>())
         {
             args.emplace_back("-xc++");
             args.emplace_back("-fsyntax-only");
@@ -157,6 +176,41 @@ namespace spore::codegen
 
             std::sort(args.begin(), args.end());
             args.erase(std::unique(args.begin(), args.end()), args.end());
+
+            const auto transformer = [](const std::string& arg) { return arg.data(); };
+            std::transform(args.begin(), args.end(), std::back_inserter(argv), transformer);
+        }
+
+        bool parse_files(std::span<const std::filesystem::path> paths, std::vector<ast_file>& files)
+        {
+            std::vector<std::string> action_args = args;
+            for (const std::filesystem::path& path : paths)
+            {
+                action_args.emplace_back(path.generic_string());
+            }
+
+            std::vector<const char*> action_argv;
+            action_argv.emplace_back(SPORE_CODEGEN_NAME);
+            const auto transformer = [](const std::string& arg) { return arg.data(); };
+            std::transform(action_args.begin(), action_args.end(), std::back_inserter(action_argv), transformer);
+            int action_argc = static_cast<int>(action_argv.size());
+
+            llvm::cl::OptionCategory tool_category {SPORE_CODEGEN_NAME};
+            llvm::Expected<clang::tooling::CommonOptionsParser> expected_options_parser =
+                clang::tooling::CommonOptionsParser::create(action_argc, action_argv.data(), tool_category);
+
+            if (!expected_options_parser)
+            {
+                llvm::errs() << expected_options_parser.takeError();
+                SPDLOG_ERROR("cannot create option parser");
+                return false;
+            }
+
+            clang::tooling::CommonOptionsParser& options_parser = expected_options_parser.get();
+            clang::tooling::ClangTool tool(options_parser.getCompilations(), options_parser.getSourcePathList());
+
+            detail::FrontendActionFactoryImpl factory;
+            return tool.run(&factory);
         }
 
         bool parse_file(const std::string& path, ast_file& file) override
@@ -170,8 +224,23 @@ namespace spore::codegen
                 return false;
             }
 
+            //            int argc = static_cast<int>(argv.size());
+            //            llvm::cl::OptionCategory tool_category {SPORE_CODEGEN_NAME};
+            //            llvm::Expected<clang::tooling::CommonOptionsParser> expected_options_parser =
+            //                clang::tooling::CommonOptionsParser::create(argc, argv.data(), tool_category);
+            //
+            //            if (!expected_options_parser)
+            //            {
+            //                SPDLOG_ERROR("cannot create option parser");
+            //                return false;
+            //            }
+            //
+            //            clang::tooling::CommonOptionsParser& options_parser = expected_options_parser.get();
+            //            clang::tooling::ClangTool tool(options_parser.getCompilations(), options_parser.getSourcePathList());
+            //
+            //            return tool.run(std::make_unique<detail::FindNamedClassAction>());
             return clang::tooling::runToolOnCodeWithArgs(
-                std::make_unique<detail::FindNamedClassAction>(), source, args, path);
+                std::make_unique<detail::ASTFrontendActionImpl>(), source, args, path, SPORE_CODEGEN_NAME, pch_container_ops);
         }
     };
 }
