@@ -242,6 +242,11 @@ namespace spore::codegen
             return clang::tooling::runToolOnCodeWithArgs(
                 std::make_unique<detail::ASTFrontendActionImpl>(), source, args, path, SPORE_CODEGEN_NAME, pch_container_ops);
         }
+
+        bool parse_files(const std::vector<std::string>& paths, std::vector<ast_file>& files) override
+        {
+            return false;
+        }
     };
 }
 

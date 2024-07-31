@@ -41,17 +41,23 @@ namespace spore::codegen
         }
     };
 
+    enum class codegen_cache_status
+    {
+        up_to_date,
+        dirty,
+    };
+
     struct codegen_cache
     {
         std::string version;
         std::vector<codegen_cache_entry> entries;
 
-        bool check_and_update(const std::string& file)
+        codegen_cache_status check_and_update(const std::string& file)
         {
             std::string hash;
             if (!spore::codegen::hash_file(file, hash))
             {
-                return false;
+                return codegen_cache_status::dirty;
             }
 
             std::uintmax_t size = std::filesystem::file_size(file);
@@ -66,7 +72,7 @@ namespace spore::codegen
                 entry.size = size;
                 entry.mtime = mtime;
                 entries.insert(it, std::move(entry));
-                return false;
+                return codegen_cache_status::dirty;
             }
 
             if (size != it->size || mtime != it->mtime || hash != it->hash)
@@ -75,10 +81,10 @@ namespace spore::codegen
                 entry.hash = std::move(hash);
                 entry.size = size;
                 entry.mtime = mtime;
-                return false;
+                return codegen_cache_status::dirty;
             }
 
-            return true;
+            return codegen_cache_status::up_to_date;
         }
 
         void reset()

@@ -355,5 +355,10 @@ namespace spore::codegen
 
             return true;
         }
+
+        bool parse_files(const std::vector<std::string>& paths, std::vector<ast_file>& files) override
+        {
+            return false;
+        }
     };
 }
