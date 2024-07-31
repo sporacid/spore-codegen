@@ -13,6 +13,7 @@ namespace spore::codegen
     struct ast_file
     {
         std::string path;
+        std::string source;
         std::vector<ast_class> classes;
         std::vector<ast_enum> enums;
         std::vector<ast_function> functions;

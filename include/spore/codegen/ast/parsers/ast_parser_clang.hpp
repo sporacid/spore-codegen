@@ -26,13 +26,6 @@ namespace spore::codegen
     {
         constexpr std::string_view whitespaces = " \t\r\n";
 
-        template <typename value_t>
-        struct clang_data
-        {
-            value_t& value;
-            std::string& source;
-        };
-
         void trim_chars(std::string_view& value, std::string_view chars)
         {
             std::size_t index = value.find_first_not_of(chars);
@@ -45,6 +38,7 @@ namespace spore::codegen
             value = value.substr(0, std::max(index + 1, std::size_t {0}));
         }
 
+#if 0
         template <bool backward_v = false>
         std::string_view find_template(std::string_view source)
         {
@@ -166,6 +160,7 @@ namespace spore::codegen
 
             return expression;
         }
+#endif
 
         std::string_view rfind_template(std::string_view preamble)
         {
@@ -228,14 +223,6 @@ namespace spore::codegen
             trim_end_chars(type, whitespaces);
 
             return type;
-        }
-
-        std::string_view get_range(std::string_view source, CXSourceRange range)
-        {
-            CXSourceLocation location_begin = clang_getRangeStart(range);
-            CXSourceLocation location_end = clang_getRangeEnd(range);
-
-            return std::string_view {};
         }
 
         std::string to_string(CXString value)
@@ -462,18 +449,10 @@ namespace spore::codegen
             }
         }
 
-        void make_attributes(CXCursor cursor, detail::clang_data<ast_file>& data, std::vector<ast_attribute>& attributes)
+        void make_attributes(CXCursor cursor, ast_file& data, std::vector<ast_attribute>& attributes)
         {
             constexpr std::string_view attribute_begin = "[[";
             constexpr std::string_view attribute_end = "]]";
-
-            if (data.value.path.ends_with("asset.hpp"))
-            {
-                auto ada = to_string(clang_getCursorDisplayName(cursor));
-                auto ada2 = to_string(clang_getCursorPrettyPrinted(cursor, nullptr));
-                auto adadad = to_string(clang_getCursorSpelling(cursor));
-                printf("");
-            }
 
 #if 0
             CXPrintingPolicy print_policy = clang_getCursorPrintingPolicy(cursor);
@@ -519,7 +498,7 @@ namespace spore::codegen
 #endif
         }
 
-        ast_template_param make_template_param(CXCursor cursor, detail::clang_data<ast_file>& data)
+        ast_template_param make_template_param(CXCursor cursor, ast_file& data)
         {
             constexpr std::string_view equal_sign = "=";
 
@@ -537,13 +516,13 @@ namespace spore::codegen
             if (epilogue.starts_with(equal_sign))
             {
                 trim_chars(epilogue, equal_sign);
-                template_param.default_value = find_expression(epilogue);
+                // template_param.default_value = find_expression(epilogue);
             }
 
             return template_param;
         }
 
-        ast_field make_field(CXCursor cursor, detail::clang_data<ast_file>& data)
+        ast_field make_field(CXCursor cursor, ast_file& data)
         {
             ast_field field;
             field.name = get_name(cursor);
@@ -557,7 +536,7 @@ namespace spore::codegen
             return field;
         }
 
-        ast_function make_function(CXCursor cursor, detail::clang_data<ast_file>& data)
+        ast_function make_function(CXCursor cursor, ast_file& data)
         {
             ast_function function;
             function.name = get_name(cursor);
@@ -566,7 +545,7 @@ namespace spore::codegen
             make_attributes(cursor, data, function.attributes);
             add_access_flags(cursor, function.flags);
 
-            using closure_t = std::tuple<ast_function&, detail::clang_data<ast_file>&>;
+            using closure_t = std::tuple<ast_function&, ast_file&>;
             const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
                 auto& [closure_function, closure_data] = *static_cast<closure_t*>(data_ptr);
                 switch (cursor.kind)
@@ -591,7 +570,7 @@ namespace spore::codegen
             return function;
         }
 
-        ast_class make_class(CXCursor cursor, detail::clang_data<ast_file>& data)
+        ast_class make_class(CXCursor cursor, ast_file& data)
         {
             ast_class class_;
             class_.name = get_name(cursor);
@@ -625,7 +604,7 @@ namespace spore::codegen
                 }
             }
 
-            using closure_t = std::tuple<ast_class&, detail::clang_data<ast_file>&>;
+            using closure_t = std::tuple<ast_class&, ast_file&>;
             const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
                 auto& [closure_class, closure_data] = *static_cast<closure_t*>(data_ptr);
                 switch (cursor.kind)
@@ -679,9 +658,9 @@ namespace spore::codegen
             return class_;
         }
 
-        void make_file(CXCursor cursor, detail::clang_data<ast_file>& data)
+        void make_file(CXCursor cursor, ast_file& data)
         {
-            using closure_t = std::tuple<CXCursorVisitor, detail::clang_data<ast_file>&>;
+            using closure_t = std::tuple<CXCursorVisitor, ast_file&>;
             const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
                 const auto& [closure_visitor, closure_data] = *static_cast<closure_t*>(data_ptr);
 
@@ -700,13 +679,13 @@ namespace spore::codegen
                     case CXCursor_ClassDecl:
                     case CXCursor_StructDecl: {
                         // TODO @sporacid handle inner classes
-                        closure_data.value.classes.emplace_back(make_class(cursor, closure_data));
+                        closure_data.classes.emplace_back(make_class(cursor, closure_data));
                         break;
                     }
 
                     case CXCursor_FunctionTemplate:
                     case CXCursor_FunctionDecl: {
-                        closure_data.value.functions.emplace_back(make_function(cursor, closure_data));
+                        closure_data.functions.emplace_back(make_function(cursor, closure_data));
                         return CXChildVisit_Continue;
                     }
 
@@ -775,7 +754,7 @@ namespace spore::codegen
             clang_disposeIndex(clang_index);
         }
 
-        bool parse_file(const std::string& path, ast_file& file) override
+        bool parse_file(const std::string& path, ast_file& ast_file) override
         {
             constexpr auto flags = static_cast<CXTranslationUnit_Flags>(
                 CXTranslationUnit_Incomplete |
@@ -804,10 +783,9 @@ namespace spore::codegen
             defer dispose_translation_unit = [&] { clang_disposeTranslationUnit(translation_unit); };
             CXCursor cursor = clang_getTranslationUnitCursor(translation_unit);
 
-            file.path = path;
+            ast_file.path = path;
 
-            detail::clang_data<ast_file> data {file, source};
-            detail::make_file(cursor, data);
+            detail::make_file(cursor, ast_file);
 
 #if 0
             {
@@ -840,7 +818,7 @@ namespace spore::codegen
             return true;
         }
 
-        bool parse_files(const std::vector<std::string>& paths, std::vector<ast_file>& files) override
+        bool parse_files(const std::vector<std::string>& paths, std::vector<ast_file>& ast_files) override
         {
             constexpr auto flags = static_cast<CXTranslationUnit_Flags>(
                 CXTranslationUnit_Incomplete |
@@ -857,32 +835,29 @@ namespace spore::codegen
                 main_source += "\"\n";
             }
 
-            std::vector<std::string> sources;
-            sources.reserve(paths.size());
+            ast_files.clear();
+            ast_files.reserve(paths.size());
 
             for (const std::string& path : paths)
             {
-                if (!read_file(path, sources.emplace_back()))
+                ast_file ast_file = {.path = path};
+
+                if (!read_file(path, ast_file.source))
                 {
                     SPDLOG_ERROR("cannot read source file, path={}", path);
                     return false;
                 }
+
+                ast_files.emplace_back(std::move(ast_file));
             }
 
             std::vector<CXUnsavedFile> source_files;
-            source_files.reserve(sources.size() + 1);
+            source_files.reserve(ast_files.size() + 1);
 
             for (std::size_t index = 0; index < paths.size(); ++index)
             {
-                source_files.emplace_back() = CXUnsavedFile {paths[index].data(), sources[index].data(), static_cast<unsigned long>(sources[index].size())};
-            }
-
-            files.clear();
-            files.reserve(paths.size());
-
-            for (const std::string& path : paths)
-            {
-                files.emplace_back() = ast_file {.path = path};
+                const std::string& source = ast_files[index].source;
+                source_files.emplace_back() = CXUnsavedFile {paths[index].data(), source.data(), static_cast<unsigned long>(source.size())};
             }
 
             std::size_t index = 0;
@@ -908,23 +883,21 @@ namespace spore::codegen
             defer dispose_translation_unit = [&] { clang_disposeTranslationUnit(translation_unit); };
             CXCursor cursor = clang_getTranslationUnitCursor(translation_unit);
 
-            using closure_t = std::tuple<std::vector<ast_file>&, std::vector<std::string>&, std::map<std::string_view, std::size_t>&>;
+            using closure_t = std::tuple<std::vector<ast_file>&, std::map<std::string_view, std::size_t>&>;
             const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
-                const auto& [closure_files, closure_sources, closure_file_map] = *static_cast<closure_t*>(data_ptr);
+                const auto& [closure_ast_files, closure_file_map] = *static_cast<closure_t*>(data_ptr);
 
-                auto wtf = detail::get_file(cursor);
                 const auto it_file = closure_file_map.find(detail::get_file(cursor));
                 if (it_file != closure_file_map.end())
                 {
                     std::size_t index = it_file->second;
-                    detail::clang_data<ast_file> data {closure_files[index], closure_sources[index]};
-                    detail::make_file(cursor, data);
+                    detail::make_file(cursor, closure_ast_files[index]);
                 }
 
                 return CXChildVisit_Continue;
             };
 
-            closure_t closure {files, sources, file_map};
+            closure_t closure {ast_files, file_map};
             clang_visitChildren(cursor, visitor, &closure);
 
             return true;
