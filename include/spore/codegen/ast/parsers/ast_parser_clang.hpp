@@ -237,6 +237,12 @@ namespace spore::codegen
             return to_string(string);
         }
 
+        std::string get_spelling(CXCursor cursor)
+        {
+            CXString string = clang_getCursorSpelling(cursor);
+            return to_string(string);
+        }
+
         std::string get_file(CXCursor cursor)
         {
             CXSourceLocation location = clang_getCursorLocation(cursor);
@@ -320,6 +326,79 @@ namespace spore::codegen
                 default:
                     break;
             }
+        }
+
+        void make_attributes(std::string_view spelling, std::map<std::string, std::string>& attributes)
+        {
+            constexpr std::string_view key_delimiters = ",";
+            constexpr std::string_view value_delimiters = "=";
+            constexpr std::string_view default_value = "true";
+
+            while (!spelling.empty())
+            {
+
+                std::size_t index_begin = 0;
+                std::size_t index_end = spelling.find_first_of(key_delimiters);
+                std::size_t count = index_end != std::string_view::npos ? index_end - index_begin : std::string_view::npos;
+
+                std::string_view pair = spelling.substr(index_begin, count);
+                std::size_t index_value = pair.find_first_of(value_delimiters);
+
+                std::string_view key;
+                std::string_view value;
+
+                if (index_value != std::string_view::npos)
+                {
+                    key = pair.substr(0, index_value - 1);
+                    value = pair.substr(index_value + 1);
+                }
+                else
+                {
+                    key = pair;
+                    value = default_value;
+                }
+
+                trim_chars(key, whitespaces);
+                trim_chars(value, whitespaces);
+
+                trim_end_chars(key, whitespaces);
+                trim_end_chars(value, whitespaces);
+
+                attributes.emplace(std::string(key), std::string(value));
+                spelling.remove_prefix(count != std::string_view::npos ? count + 1 : spelling.size());
+            }
+            //
+            //            std::size_t index_begin = 0;
+            //            std::size_t index_end = spelling.find_first_of(key_delimiters);
+            //
+            //            if (index_end != std::string_view::npos)
+            //            {
+            //                std::string_view pair = spelling.substr(index_begin, index_end - index_begin);
+            //                std::size_t index_value = pair.find_first_of(value_delimiters);
+            //
+            //                std::string_view key;
+            //                std::string_view value;
+            //
+            //                if (index_value != std::string_view::npos)
+            //                {
+            //                    key = pair.substr(0, index_value - 1);
+            //                    value = pair.substr(index_value);
+            //                }
+            //                else
+            //                {
+            //                    key = pair;
+            //                    value = default_value;
+            //                }
+            //
+            //
+            //                trim_chars(key, whitespaces);
+            //                trim_end_chars(key, whitespaces);
+            //
+            //                trim_chars(value, whitespaces);
+            //                trim_end_chars(value, whitespaces);
+            //
+            //                attributes.emplace(std::string(key), std::string(value));
+            //            }
         }
 
         void make_attributes(std::string_view source, std::vector<ast_attribute>& attributes)
@@ -637,6 +716,15 @@ namespace spore::codegen
                         break;
                     }
 
+                    case CXCursor_AnnotateAttr: {
+                        auto a = get_name(cursor);
+                        auto b = get_spelling(cursor);
+                        std::map<std::string, std::string> attrs;
+                        make_attributes(b, attrs);
+                        printf("");
+                        break;
+                    }
+
                     case CXCursor_StructDecl:
                     case CXCursor_ClassDecl:
                     case CXCursor_ClassTemplate: {
@@ -664,10 +752,6 @@ namespace spore::codegen
             const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
                 const auto& [closure_visitor, closure_data] = *static_cast<closure_t*>(data_ptr);
 
-                // std::string cursor_file = get_file(cursor);
-                // if (cursor_file != closure_data.value.path)
-                //     return CXChildVisit_Break;
-                //
                 switch (cursor.kind)
                 {
                     case CXCursor_Namespace: {
@@ -706,13 +790,10 @@ namespace spore::codegen
         std::map<CXCursorKind, std::function<void()>> handler_map;
         std::vector<std::string> args;
         std::vector<const char*> args_view;
-        std::string clang;
         CXIndex clang_index;
 
         explicit ast_parser_clang(const codegen_options& options)
         {
-            clang = options.clang;
-
             args.emplace_back("-xc++");
             args.emplace_back("-E");
             args.emplace_back("-P");
