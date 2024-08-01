@@ -28,14 +28,22 @@ namespace details
 
 int main(int argc, const char* argv[])
 {
-    std::map<std::string, std::string> pairs;
-    spore::codegen::ast::parse_pairs_v2(R"(a, b = 1, c = (d = 42, e = "wtf", f = (g = 0)), h = "lol")", pairs);
-
-
-    std::map<std::string, std::string> pairs2;
-    spore::codegen::ast::parse_pairs_v2(pairs["c"], pairs2);
-
+    //    std::map<std::string, std::string> pairs;
+    //    spore::codegen::ast::parse_pairs_v2(R"(a, b = 1, c = (d = 42, e = "wtf", f = (g = 0)), h = "lol")", pairs);
+    //
+    //
+    //    std::map<std::string, std::string> pairs2;
+    //    spore::codegen::ast::parse_pairs_v2(pairs["c"], pairs2);
     spdlog::set_pattern("%l: %v");
+
+    nlohmann::json json;
+    // spore::codegen::ast::parse_pairs_to_json(R"(a, b = 1, c = (d = 42))", json);
+    spore::codegen::ast::parse_pairs_to_json(R"(hmm = (), a, b = 1, c = (d = 42, e = "\"wtf\"", f = (g = 0)), h = "lol", i = false, interfaces = (spore::meta::core, spore::meta::editor, spore::meta::json), interfaces = (spore::meta::log))", json);
+    std::cout << json.dump(2) << std::endl;
+    // spore::codegen::ast::parse_pairs_to_json(R"(a, b = 1, c = (d = 42, e = "\"wtf\"", f = (g = 0)), h = "lol")", json);
+
+    const bool b1 = spore::codegen::ast::parse_pairs_to_json(R"(a, b = 1, c = (), d = 3)", json);
+    const bool b2 = spore::codegen::ast::parse_pairs_to_json(R"(a, b = 1, c = ",d = 3)", json);
 
     argparse::ArgumentParser arg_parser {
         SPORE_CODEGEN_NAME,
