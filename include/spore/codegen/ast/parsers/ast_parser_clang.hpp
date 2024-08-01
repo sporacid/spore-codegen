@@ -216,13 +216,13 @@ namespace spore::codegen
             std::string attributes = get_spelling(cursor);
 
             nlohmann::json json;
-            if (ast::parse_pairs_to_json(attributes, json))
+            if (ast::parse_pairs(attributes, json))
             {
                 return json;
             }
 
             SPDLOG_WARN("invalid attributes, file={} value={}", get_file(cursor), attributes);
-            return {};
+            return nlohmann::json::object();
         }
 
         ast_field make_field(CXCursor cursor, ast_file& data)

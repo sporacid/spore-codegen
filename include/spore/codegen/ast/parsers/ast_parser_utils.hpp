@@ -9,7 +9,7 @@
 
 namespace spore::codegen::ast
 {
-    inline bool parse_pairs_to_json(std::string_view string, nlohmann::json& json)
+    inline bool parse_pairs(std::string_view string, nlohmann::json& json)
     {
         constexpr char comma = ',';
         constexpr char equal = '=';

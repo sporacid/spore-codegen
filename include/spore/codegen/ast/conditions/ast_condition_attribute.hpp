@@ -5,12 +5,13 @@
 #include "nlohmann/json.hpp"
 
 #include "spore/codegen/ast/conditions/ast_condition.hpp"
+#include "spore/codegen/codegen_error.hpp"
 
 namespace spore::codegen
 {
     struct ast_condition_attribute : ast_condition
     {
-        std::vector<std::string> attributes;
+        nlohmann::json attributes;
 
         static constexpr std::string_view type()
         {
@@ -19,34 +20,51 @@ namespace spore::codegen
 
         static std::shared_ptr<ast_condition> make_condition(const nlohmann::json& data)
         {
-            std::vector<std::string> attributes;
-            if (data.is_string())
+            std::shared_ptr<ast_condition_attribute> condition = std::make_shared<ast_condition_attribute>();
+
+            if (data.is_object())
             {
-                attributes.emplace_back() = data.get<std::string>();
+                condition->attributes = data;
             }
             else
             {
-                attributes = data;
+                SPDLOG_WARN("invalid condition data, expected JSON object, type={} data={}", data.type_name(), data.dump());
+                condition->attributes = nlohmann::json::object();
             }
 
-            std::shared_ptr<ast_condition_attribute> condition = std::make_shared<ast_condition_attribute>();
-            condition->attributes = std::move(attributes);
             return condition;
         }
 
         bool matches_condition(const ast_file& file) const override
         {
-            const auto predicate = [&](const std::string& attribute) {
-                return matches_attribute(file, attribute);
-            };
+            for (auto it_attribute = attributes.begin(); it_attribute != attributes.end(); ++it_attribute)
+            {
+                if (matches_attribute(file, it_attribute.key(), it_attribute.value()))
+                {
+                    return true;
+                }
+            }
 
-            return std::any_of(attributes.begin(), attributes.end(), predicate);
+            return false;
         }
 
-        static bool matches_attribute(const ast_file& file, const std::string& attribute)
+        static bool matches_attribute(const ast_file& file, const std::string& key, const nlohmann::json& attribute)
         {
             const auto matches_object = [&](const auto& ast_object) {
-                return ast_object.attributes.contains(attribute);
+                if (ast_object.attributes.is_object() && ast_object.attributes.contains(key))
+                {
+                    const nlohmann::json& object_attribute = ast_object.attributes[key];
+                    if (!attribute.is_array() && object_attribute.is_array())
+                    {
+                        return object_attribute.contains(attribute);
+                    }
+                    else
+                    {
+                        return object_attribute.type() == attribute.type() && object_attribute == attribute;
+                    }
+                }
+
+                return false;
             };
 
             bool matches = std::any_of(file.classes.begin(), file.classes.end(), matches_object);
