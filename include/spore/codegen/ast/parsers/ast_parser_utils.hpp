@@ -5,7 +5,7 @@
 
 #include "nlohmann/json.hpp"
 
-#include "spore/codegen/codegen_helpers.hpp"
+#include "spore/codegen/utils/strings.hpp"
 
 namespace spore::codegen::ast
 {
@@ -24,7 +24,7 @@ namespace spore::codegen::ast
 
         const auto set_token = [&](std::string& token, std::size_t index) {
             token = string.substr(0, index);
-            trim_chars(token, whitespaces);
+            strings::trim(token);
         };
 
         const auto find_end_quote = [&](char quote, std::size_t index) {

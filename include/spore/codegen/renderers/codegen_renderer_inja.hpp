@@ -11,12 +11,12 @@
 #include "nlohmann/json.hpp"
 #include "spdlog/spdlog.h"
 
-#include "spore/codegen/codegen_helpers.hpp"
 #include "spore/codegen/renderers/codegen_renderer.hpp"
+#include "spore/codegen/utils/strings.hpp"
 
 namespace spore::codegen
 {
-    namespace details
+    namespace detail
     {
         bool is_truthy(const nlohmann::json& json)
         {
@@ -120,20 +120,20 @@ namespace spore::codegen
             inja_env.add_callback("truthy", 1,
                 [](inja::Arguments& args) {
                     const nlohmann::json& json = *args.at(0);
-                    return details::is_truthy(json);
+                    return detail::is_truthy(json);
                 });
 
             inja_env.add_callback("truthy", 2,
                 [](inja::Arguments& args) {
                     const nlohmann::json& json = *args.at(0);
                     std::string property = args.at(1)->get<std::string>();
-                    return details::is_truthy(json, std::move(property));
+                    return detail::is_truthy(json, std::move(property));
                 });
 
             inja_env.add_callback("cpp_name", 1,
                 [](inja::Arguments& args) {
                     std::string value = args.at(0)->get<std::string>();
-                    return details::to_cpp_name(value);
+                    return detail::to_cpp_name(value);
                 });
 
             inja_env.add_callback("contains", 2,
@@ -148,7 +148,7 @@ namespace spore::codegen
                     std::string value = args.at(0)->get<std::string>();
                     std::string from = args.at(1)->get<std::string>();
                     std::string to = args.at(2)->get<std::string>();
-                    spore::codegen::replace_all(value, from, to);
+                    strings::replace_all(value, from, to);
                     return value;
                 });
 
@@ -160,7 +160,7 @@ namespace spore::codegen
 
             inja_env.add_callback("include",
                 [&, template_paths](inja::Arguments& args) {
-                    return details::render_include_template(inja_env, args, template_paths);
+                    return detail::render_include_template(inja_env, args, template_paths);
                 });
         }
 

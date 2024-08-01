@@ -10,7 +10,7 @@
 
 namespace spore::codegen
 {
-    namespace details
+    namespace detail
     {
         std::uint32_t make_unique_id()
         {
@@ -68,13 +68,13 @@ namespace spore::codegen
     {
         to_json(json, static_cast<const ast_has_flags<ast_ref>&>(value));
 
-        json["id"] = details::make_unique_id();
+        json["id"] = detail::make_unique_id();
         json["name"] = value.name;
     }
 
     void to_json(nlohmann::json& json, const ast_template_param& value)
     {
-        std::uint32_t unique_id = details::make_unique_id();
+        std::uint32_t unique_id = detail::make_unique_id();
 
         json["id"] = unique_id;
         json["name"] = value.name.empty() ? fmt::format("_{}", unique_id) : value.name;
@@ -88,7 +88,7 @@ namespace spore::codegen
     {
         to_json(json, static_cast<const ast_has_attributes<ast_argument>&>(value));
 
-        json["id"] = details::make_unique_id();
+        json["id"] = detail::make_unique_id();
         json["name"] = value.name;
         json["type"] = value.type;
         json["default_value"] = value.default_value.value_or("");
@@ -102,7 +102,7 @@ namespace spore::codegen
         to_json(json, static_cast<const ast_has_template_params<ast_function>&>(value));
         to_json(json, static_cast<const ast_has_flags<ast_function>&>(value));
 
-        json["id"] = details::make_unique_id();
+        json["id"] = detail::make_unique_id();
         json["arguments"] = value.arguments;
         json["return_type"] = value.return_type;
     }
@@ -113,7 +113,7 @@ namespace spore::codegen
         to_json(json, static_cast<const ast_has_template_params<ast_constructor>&>(value));
         to_json(json, static_cast<const ast_has_flags<ast_constructor>&>(value));
 
-        json["id"] = details::make_unique_id();
+        json["id"] = detail::make_unique_id();
         json["arguments"] = value.arguments;
     }
 
@@ -122,7 +122,7 @@ namespace spore::codegen
         to_json(json, static_cast<const ast_has_attributes<ast_field>&>(value));
         to_json(json, static_cast<const ast_has_flags<ast_field>&>(value));
 
-        json["id"] = details::make_unique_id();
+        json["id"] = detail::make_unique_id();
         json["name"] = value.name;
         json["type"] = value.type;
     }
@@ -148,7 +148,7 @@ namespace spore::codegen
         to_json(json, static_cast<const ast_has_attributes<ast_class>&>(value));
         to_json(json, static_cast<const ast_has_template_params<ast_class>&>(value));
 
-        json["id"] = details::make_unique_id();
+        json["id"] = detail::make_unique_id();
         json["type"] = value.type;
         json["bases"] = value.bases;
         json["fields"] = value.fields;
@@ -171,7 +171,7 @@ namespace spore::codegen
         to_json(json, static_cast<const ast_has_name<ast_enum>&>(value));
         to_json(json, static_cast<const ast_has_attributes<ast_enum>&>(value));
 
-        json["id"] = details::make_unique_id();
+        json["id"] = detail::make_unique_id();
         json["enum_values"] = value.enum_values;
     }
 
@@ -183,7 +183,7 @@ namespace spore::codegen
 
     void to_json(nlohmann::json& json, const ast_file& value)
     {
-        json["id"] = details::make_unique_id();
+        json["id"] = detail::make_unique_id();
         json["path"] = value.path;
         json["classes"] = value.classes;
         json["enums"] = value.enums;

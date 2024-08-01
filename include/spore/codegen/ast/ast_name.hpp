@@ -3,7 +3,6 @@
 #include <string>
 
 #include "spore/codegen/ast/ast_template.hpp"
-#include "spore/codegen/codegen_helpers.hpp"
 
 namespace spore::codegen
 {

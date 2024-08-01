@@ -13,9 +13,10 @@
 
 #include "spore/codegen/ast/parsers/ast_parser.hpp"
 #include "spore/codegen/ast/parsers/ast_parser_utils.hpp"
-#include "spore/codegen/codegen_helpers.hpp"
 #include "spore/codegen/codegen_options.hpp"
 #include "spore/codegen/misc/defer.hpp"
+#include "spore/codegen/utils/files.hpp"
+#include "spore/codegen/utils/strings.hpp"
 
 namespace spore::codegen
 {
@@ -199,7 +200,7 @@ namespace spore::codegen
         {
             constexpr std::string_view delimiters = "<>[]{}:;,";
 
-            trim_end_chars(preamble, whitespaces);
+            strings::trim_end(preamble);
 
             std::size_t find_begin_offset = preamble.size();
 
@@ -217,7 +218,7 @@ namespace spore::codegen
             }
 
             std::string_view type {preamble.data() + index_begin + 1, preamble.data() + preamble.size()};
-            trim_chars(type, whitespaces);
+            strings::trim(type);
 
             return type;
         }
@@ -380,11 +381,11 @@ namespace spore::codegen
             template_param.name = get_name(cursor);
             template_param.is_variadic = template_param.type.ends_with("...");
 
-            trim_begin_chars(epilogue, whitespaces);
+            strings::trim_start(epilogue);
 
             if (epilogue.starts_with(equal_sign))
             {
-                trim_begin_chars(epilogue, equal_sign);
+                strings::trim_start(epilogue, equal_sign);
                 // template_param.default_value = find_expression(epilogue);
             }
 
@@ -708,7 +709,7 @@ namespace spore::codegen
                 CXTranslationUnit_VisitImplicitAttributes);
 
             std::string source;
-            if (!read_file(path, source))
+            if (!files::read_file(path, source))
             {
                 SPDLOG_ERROR("cannot read source file, path={}", path);
                 return false;
@@ -786,7 +787,7 @@ namespace spore::codegen
             {
                 ast_file ast_file = {.path = path};
 
-                if (!read_file(path, ast_file.source))
+                if (!files::read_file(path, ast_file.source))
                 {
                     SPDLOG_ERROR("cannot read source file, path={}", path);
                     return false;

@@ -3,8 +3,8 @@
 #include <chrono>
 #include <execution>
 #include <filesystem>
+#include <map>
 #include <optional>
-#include <ranges>
 #include <string>
 #include <vector>
 
@@ -23,13 +23,15 @@
 #include "spore/codegen/codegen_cache.hpp"
 #include "spore/codegen/codegen_config.hpp"
 #include "spore/codegen/codegen_error.hpp"
-#include "spore/codegen/codegen_helpers.hpp"
 #include "spore/codegen/codegen_options.hpp"
 #include "spore/codegen/codegen_version.hpp"
 #include "spore/codegen/misc/defer.hpp"
 #include "spore/codegen/renderers/codegen_renderer.hpp"
 #include "spore/codegen/renderers/codegen_renderer_composite.hpp"
 #include "spore/codegen/renderers/codegen_renderer_inja.hpp"
+#include "spore/codegen/utils/files.hpp"
+#include "spore/codegen/utils/processes.hpp"
+#include "spore/codegen/utils/strings.hpp"
 
 #ifndef SPORE_CODEGEN_MACRO
 #define SPORE_CODEGEN_MACRO "SPORE_CODEGEN"
@@ -37,7 +39,7 @@
 
 namespace spore::codegen
 {
-    namespace details
+    namespace detail
     {
         std::once_flag setup_once_flag;
 
@@ -107,10 +109,10 @@ namespace spore::codegen
         explicit codegen_app(codegen_options in_options)
             : options(std::move(in_options))
         {
-            std::call_once(details::setup_once_flag, &details::setup_once);
+            std::call_once(detail::setup_once_flag, &detail::setup_once);
 
             std::string config_data;
-            if (!spore::codegen::read_file(options.config, config_data))
+            if (!files::read_file(options.config, config_data))
             {
                 throw codegen_error(codegen_error_code::io, "unable to read config, file={}", options.config);
             }
@@ -132,7 +134,7 @@ namespace spore::codegen
             nlohmann::json::parse(config_data).get_to(config);
 
             std::string cache_data;
-            if (!options.force && spore::codegen::read_file(options.cache, cache_data))
+            if (!options.force && files::read_file(options.cache, cache_data))
             {
                 nlohmann::json::parse(cache_data).get_to(cache);
 
@@ -141,7 +143,7 @@ namespace spore::codegen
                     SPDLOG_INFO("ignoring old cache, file={} version={}", options.cache, cache.version);
                     cache.reset();
                 }
-                else if (cache.check_and_update(options.config) == codegen_cache_status::dirty)
+                else if (cache.check_and_update(options.config) == codegen_cache::status::dirty)
                 {
                     SPDLOG_INFO("ignoring old cache because of new config, file={} config={}", options.cache, options.config);
                     cache.reset();
@@ -172,7 +174,7 @@ namespace spore::codegen
 
             const auto finally = [&]() {
                 nlohmann::json cache_data = nlohmann::json(cache).dump(2);
-                if (!write_file(options.cache, cache_data))
+                if (!files::write_file(options.cache, cache_data))
                 {
                     SPDLOG_WARN("failed to write cache, file={}", options.cache);
                 }
@@ -212,7 +214,7 @@ namespace spore::codegen
                 return;
             }
 
-            details::current_path_scope directory_scope(stage_directory);
+            detail::current_path_scope directory_scope(stage_directory);
             std::vector<std::exception_ptr> exceptions;
 
 #if 0
@@ -376,7 +378,7 @@ namespace spore::codegen
                 std::filesystem::path output_directory = std::filesystem::path(*options.dump_ast) / file_path.parent_path();
                 std::string output = (output_directory / output_filename).string();
 
-                if (!spore::codegen::write_file(output, json_data.dump(2)))
+                if (!files::write_file(output, json_data.dump(2)))
                 {
                     SPDLOG_WARN("failed to write dump file, file={}", output);
                 }
@@ -422,7 +424,7 @@ namespace spore::codegen
 
                     SPDLOG_DEBUG("writing output, file={}", file_task.output);
 
-                    if (!spore::codegen::write_file(file_task.output, result))
+                    if (!files::write_file(file_task.output, result))
                     {
                         throw codegen_error(codegen_error_code::io, "failed to write output, file={}", file_task.output);
                     }
@@ -454,7 +456,7 @@ namespace spore::codegen
             std::vector<std::vector<std::string>> templates;
             templates.reserve(stage.steps.size());
 
-            std::vector<std::vector<codegen_cache_status>> templates_cache_statuses;
+            std::vector<std::vector<codegen_cache::status>> templates_cache_statuses;
             templates_cache_statuses.reserve(stage.steps.size());
 
             for (const codegen_config_step& step : stage.steps)
@@ -472,7 +474,7 @@ namespace spore::codegen
             std::vector<std::filesystem::path> files = glob::rglob(stage.files);
             file_stages.reserve(files.size());
 
-            std::vector<codegen_cache_status> files_cache_statuses;
+            std::vector<codegen_cache::status> files_cache_statuses;
             files_cache_statuses.reserve(files.size());
 
             {
@@ -483,8 +485,8 @@ namespace spore::codegen
                 std::transform(files.begin(), files.end(), std::back_inserter(files_cache_statuses), transform);
             }
 
-            const auto template_dirty_predicate = [](const std::vector<codegen_cache_status>& statuses) {
-                return std::any_of(statuses.begin(), statuses.end(), [](codegen_cache_status status) { return status == codegen_cache_status::dirty; });
+            const auto template_dirty_predicate = [](const std::vector<codegen_cache::status>& statuses) {
+                return std::any_of(statuses.begin(), statuses.end(), [](codegen_cache::status status) { return status == codegen_cache::status::dirty; });
             };
 
             const bool any_template_dirty = std::any_of(templates_cache_statuses.begin(), templates_cache_statuses.end(), template_dirty_predicate);
@@ -493,9 +495,9 @@ namespace spore::codegen
                 for (std::int64_t index = static_cast<std::int64_t>(files.size()) - 1; index >= 0; --index)
                 {
                     const std::filesystem::path& file = files[index];
-                    const codegen_cache_status file_cache_status = files_cache_statuses[index];
+                    const codegen_cache::status file_cache_status = files_cache_statuses[index];
 
-                    if (file_cache_status == codegen_cache_status::up_to_date)
+                    if (file_cache_status == codegen_cache::status::up_to_date)
                     {
                         const auto it_begin = std::next(files.begin(), index);
                         const auto it_end = std::next(it_begin, 1);
@@ -510,13 +512,13 @@ namespace spore::codegen
             {
                 codegen_file_stage file_stage;
                 file_stage.file = file.string();
-                replace_all(file_stage.file, "\\", "/");
+                strings::replace_all(file_stage.file, "\\", "/");
 
                 for (std::size_t index_step = 0; index_step < stage.steps.size(); ++index_step)
                 {
                     const codegen_config_step& step = stage.steps.at(index_step);
                     const std::vector<std::string>& step_templates = templates.at(index_step);
-                    const std::vector<codegen_cache_status>& step_template_cache_statuses = templates_cache_statuses.at(index_step);
+                    const std::vector<codegen_cache::status>& step_template_cache_statuses = templates_cache_statuses.at(index_step);
                     const std::shared_ptr<ast_condition>& step_condition = conditions.at(index_step);
 
                     codegen_file_step file_step;
@@ -525,12 +527,12 @@ namespace spore::codegen
                     for (std::size_t index_template = 0; index_template < step_templates.size(); ++index_template)
                     {
                         const std::string& template_ = step_templates.at(index_template);
-                        const codegen_cache_status template_cache_status = step_template_cache_statuses.at(index_template);
+                        const codegen_cache::status template_cache_status = step_template_cache_statuses.at(index_template);
 
                         // TODO can't check whether output is up to date because of conditions
                         // const bool output_up_to_date = cache.check_and_update(output);
 
-                        if (template_cache_status == codegen_cache_status::dirty)
+                        if (template_cache_status == codegen_cache::status::dirty)
                         {
                             std::filesystem::path output_ext = std::filesystem::path(template_).stem();
                             std::filesystem::path output_filename = fmt::format("{}.{}", file.stem().string(), output_ext.string());
