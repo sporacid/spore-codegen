@@ -61,7 +61,6 @@ function(spore_codegen SPORE_TARGET_NAME)
         "$<$<BOOL:${SPORE_CODEGEN_REFORMAT}>:--reformat;${SPORE_CODEGEN_REFORMAT};>"
         "$<$<BOOL:${SPORE_CODEGEN_DUMP_AST}>:--dump-ast;${SPORE_CODEGEN_DUMP_AST};>"
         "$<$<BOOL:${SPORE_CODEGEN_PARALLELISM}>:--parallelism;${SPORE_CODEGEN_PARALLELISM};>"
-        "$<$<BOOL:${SPORE_CODEGEN_PARALLELISM}>:--clang;${SPORE_CODEGEN_CLANG};>"
         "$<$<BOOL:$<FILTER:${SPORE_CODEGEN_INCLUDES},EXCLUDE,^$>>:--includes;$<JOIN:${SPORE_CODEGEN_INCLUDES},;--includes;>>"
         "$<$<BOOL:$<FILTER:${SPORE_CODEGEN_DEFINITIONS},EXCLUDE,^$>>:--definitions;$<JOIN:${SPORE_CODEGEN_DEFINITIONS},;--definitions;>>"
         "$<$<BOOL:$<FILTER:${SPORE_CODEGEN_TEMPLATE_PATHS},EXCLUDE,^$>>:--template-paths;$<JOIN:${SPORE_CODEGEN_TEMPLATE_PATHS},;--template-paths;>>"

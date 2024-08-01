@@ -45,6 +45,7 @@ namespace spore::codegen
         enum class status
         {
             up_to_date,
+            new_,
             dirty,
         };
 
@@ -69,7 +70,7 @@ namespace spore::codegen
                 entry.hash = std::move(hash);
                 entry.mtime = mtime;
                 entries.insert(it, std::move(entry));
-                return status::dirty;
+                return status::new_;
             }
 
             if (mtime != it->mtime || hash != it->hash)
@@ -87,6 +88,11 @@ namespace spore::codegen
         {
             version = SPORE_CODEGEN_VERSION;
             entries.clear();
+        }
+
+        bool empty() const
+        {
+            return entries.empty();
         }
     };
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <algorithm>
-#include <functional>
+#include <map>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -22,145 +22,6 @@ namespace spore::codegen
 {
     namespace detail
     {
-#if 0
-        constexpr std::string_view whitespaces = " \t\r\n";
-
-        void trim_chars(std::string_view& value, std::string_view chars)
-        {
-            std::size_t index = value.find_first_not_of(chars);
-            value.remove_prefix(std::min(index, value.size()));
-        }
-
-        void trim_end_chars(std::string_view& value, std::string_view chars)
-        {
-            std::size_t index = value.find_last_not_of(chars);
-            value = value.substr(0, std::max(index + 1, std::size_t {0}));
-        }
-#endif
-#if 0
-        template <bool backward_v = false>
-        std::string_view find_template(std::string_view source)
-        {
-            constexpr std::string_view chevrons = "<>";
-            constexpr char chevron_begin = backward_v ? '>' : '<';
-
-            std::string_view template_;
-
-            std::size_t chevron_count = 0;
-            std::size_t chevron_index;
-
-            if constexpr (backward_v)
-            {
-                chevron_index = source.find_last_of(chevrons);
-            }
-            else
-            {
-                chevron_index = source.find_first_of(chevrons);
-            }
-
-            std::size_t index_template_begin = chevron_index;
-            std::size_t index_template_end = std::string_view::npos;
-
-            while (chevron_index != std::string_view::npos && index_template_end == std::string_view::npos)
-            {
-                std::size_t chevron_diff = source.at(chevron_index) == chevron_begin ? 1 : -1;
-                chevron_count += chevron_diff;
-
-                if (chevron_count == 0)
-                {
-                    index_template_end = chevron_index;
-                }
-                else
-                {
-                    if constexpr (backward_v)
-                    {
-                        chevron_index = source.find_last_of(chevrons, chevron_index - 1);
-                    }
-                    else
-                    {
-                        chevron_index = source.find_first_of(chevrons, chevron_index + 1);
-                    }
-                }
-            }
-
-            if (index_template_begin != std::string_view::npos)
-            {
-                template_ = source.substr(index_template_begin, index_template_end - index_template_begin + 1);
-            }
-
-            return template_;
-        }
-
-        template <bool backward_v = false>
-        std::string_view find_expression(std::string_view source)
-        {
-            constexpr std::string_view subexpression_begin = backward_v ? ">]}" : "<[{";
-            constexpr std::string_view subexpression_end = backward_v ? "<[{" : ">]}";
-            constexpr std::string_view expression_end = ":;,?";
-
-            std::array<std::size_t, subexpression_begin.size()> sub_counters {};
-            std::size_t index = 0;
-
-            while (index < source.size())
-            {
-                std::size_t index_sub = subexpression_begin.find(source.at(index));
-
-                if (index_sub != std::string_view::npos)
-                {
-                    // subexpression begin
-                    ++sub_counters[index_sub];
-                }
-                else
-                {
-                    index_sub = subexpression_end.find(source.at(index));
-
-                    if (index_sub != std::string_view::npos)
-                    {
-                        if (std::all_of(sub_counters.begin(), sub_counters.end(), [](std::size_t value) { return value == 0; }))
-                        {
-                            // expression end
-                            break;
-                        }
-
-                        // subexpression end
-                        --sub_counters[index_sub];
-                    }
-                    else
-                    {
-                        std::size_t index_end = expression_end.find(source.at(index));
-
-                        if (index_end != std::string_view::npos)
-                        {
-                            if constexpr (backward_v)
-                            {
-                            }
-                            else
-                            {
-                            }
-
-                            if (expression_end.at(index_end) != ':' || (index + 1 < source.size() && source.at(index + 1) != ':'))
-                            {
-                                // expression end
-                                break;
-                            }
-
-                            // skip ::
-                            ++index;
-                        }
-                    }
-                }
-
-                ++index;
-            }
-
-            std::string_view expression {source.data(), index};
-            trim_chars(expression, whitespaces);
-            trim_end_chars(expression, whitespaces);
-
-            return expression;
-        }
-#endif
-
         std::string_view rfind_template(std::string_view preamble)
         {
             constexpr std::string_view chevrons = "<>";
@@ -326,48 +187,6 @@ namespace spore::codegen
             }
         }
 
-#if 0
-        void add_attributes(std::string_view spelling, std::map<std::string, std::string>& attributes)
-        {
-            constexpr std::string_view key_delimiters = ",";
-            constexpr std::string_view value_delimiters = "=";
-            constexpr std::string_view default_value = "true";
-
-            while (!spelling.empty())
-            {
-                std::size_t index_begin = 0;
-                std::size_t index_end = spelling.find_first_of(key_delimiters);
-                std::size_t count = index_end != std::string_view::npos ? index_end - index_begin : std::string_view::npos;
-
-                std::string_view pair = spelling.substr(index_begin, count);
-                std::size_t index_value = pair.find_first_of(value_delimiters);
-
-                std::string_view key;
-                std::string_view value;
-
-                if (index_value != std::string_view::npos)
-                {
-                    key = pair.substr(0, index_value - 1);
-                    value = pair.substr(index_value + 1);
-                }
-                else
-                {
-                    key = pair;
-                    value = default_value;
-                }
-
-                trim_chars(key, whitespaces);
-                trim_chars(value, whitespaces);
-
-                trim_end_chars(key, whitespaces);
-                trim_end_chars(value, whitespaces);
-
-                attributes.emplace(std::string(key), std::string(value));
-                spelling.remove_prefix(count != std::string_view::npos ? count + 1 : spelling.size());
-            }
-        }
-#endif
-
         ast_template_param make_template_param(CXCursor cursor, ast_file& data)
         {
             constexpr std::string_view equal_sign = "=";
@@ -521,11 +340,6 @@ namespace spore::codegen
             class_.name = get_name(cursor);
             class_.scope = get_scope(cursor);
 
-            if (data.path.ends_with("asset.hpp"))
-            {
-                printf("");
-            }
-
             std::string_view name_template = rfind_template(class_.name);
             class_.name.resize(class_.name.size() - name_template.size());
 
@@ -577,11 +391,6 @@ namespace spore::codegen
                     case CXCursor_TemplateTypeParameter:
                     case CXCursor_NonTypeTemplateParameter: {
                         closure_class.template_params.emplace_back(make_template_param(cursor, closure_data));
-                        //                        std::string_view preamble = get_preamble(cursor, closure_data.source);
-                        //                        ast_template_param& template_param = closure_class.template_params.emplace_back();
-                        //                        template_param.type = rfind_type(preamble);
-                        //                        template_param.name = get_name(cursor);
-                        //                        template_param.is_variadic = template_param.type.ends_with("...");
                         break;
                     }
 
@@ -697,70 +506,6 @@ namespace spore::codegen
         ~ast_parser_clang() noexcept override
         {
             clang_disposeIndex(clang_index);
-        }
-
-        bool parse_file(const std::string& path, ast_file& ast_file) override
-        {
-            constexpr auto flags = static_cast<CXTranslationUnit_Flags>(
-                CXTranslationUnit_Incomplete |
-                CXTranslationUnit_KeepGoing |
-                CXTranslationUnit_SkipFunctionBodies |
-                CXTranslationUnit_IncludeAttributedTypes |
-                CXTranslationUnit_VisitImplicitAttributes);
-
-            std::string source;
-            if (!files::read_file(path, source))
-            {
-                SPDLOG_ERROR("cannot read source file, path={}", path);
-                return false;
-            }
-
-            CXUnsavedFile memory_file {path.data(), source.data(), static_cast<unsigned long>(source.size())};
-            CXTranslationUnit translation_unit = clang_parseTranslationUnit(
-                clang_index, path.data(), args_view.data(), static_cast<int>(args_view.size()), &memory_file, 1, flags);
-
-            if (translation_unit == nullptr)
-            {
-                SPDLOG_ERROR("unable to parse translation unit, path={}", path);
-                return false;
-            }
-
-            defer dispose_translation_unit = [&] { clang_disposeTranslationUnit(translation_unit); };
-            CXCursor cursor = clang_getTranslationUnitCursor(translation_unit);
-
-            ast_file.path = path;
-
-            detail::make_file(cursor, ast_file);
-
-#if 0
-            {
-                std::size_t indent = 0;
-                CXCursorVisitor visitor;
-
-                using closure_t = std::tuple<std::size_t&, CXCursorVisitor>;
-                visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
-                    if (clang_Location_isFromMainFile(clang_getCursorLocation(cursor)))
-                    {
-                        auto& [indent_, visitor_] = *static_cast<closure_t*>(data_ptr);
-                        for (std::size_t index = 0; index < indent_; ++index)
-                            std::cout << "  ";
-                        std::cout << detail::to_string(clang_getCursorKindSpelling(cursor.kind)) << ": " << detail::get_name(cursor) << std::endl;
-                        ++indent_;
-                        clang_visitChildren(cursor, visitor_, data_ptr);
-                        --indent_;
-                    }
-
-                    return CXChildVisit_Continue;
-                };
-
-                closure_t closure {indent, visitor};
-                std::cout << "FILE " << path << std::endl;
-                std::cout << "-------------------" << std::endl;
-                clang_visitChildren(cursor, visitor, &closure);
-                std::cout << "-------------------" << std::endl;
-            }
-#endif
-            return true;
         }
 
         bool parse_files(const std::vector<std::string>& paths, std::vector<ast_file>& ast_files) override

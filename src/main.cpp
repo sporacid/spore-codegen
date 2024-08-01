@@ -6,7 +6,7 @@
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
 
-#include "spore/codegen/codegen_app.hpp"
+#include "spore/codegen/codegen_app_v2.hpp"
 #include "spore/codegen/codegen_options.hpp"
 #include "spore/codegen/codegen_version.hpp"
 
@@ -146,7 +146,7 @@ int main(int argc, const char* argv[])
 
     try
     {
-        spore::codegen::codegen_app(options).run();
+        spore::codegen::codegen_app_v2(options).run();
     }
     catch (const spore::codegen::codegen_error& e)
     {
