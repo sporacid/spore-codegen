@@ -14,6 +14,8 @@
 
 namespace spore::codegen
 {
+    constexpr std::string_view whitespaces = " \t\r\n";
+
     bool write_file(const std::string_view& path, const std::string& content)
     {
         std::filesystem::path parent = std::filesystem::path(path).parent_path();
@@ -55,16 +57,6 @@ namespace spore::codegen
         return true;
     }
 
-    bool starts_with(const std::string& string, const std::string& prefix)
-    {
-        return string.size() >= prefix.size() && 0 == string.compare(0, prefix.size(), prefix);
-    }
-
-    bool ends_with(const std::string& string, const std::string& suffix)
-    {
-        return string.size() >= suffix.size() && 0 == string.compare(string.size() - suffix.size(), suffix.size(), suffix);
-    }
-
     void replace_all(std::string& str, const std::string& from, const std::string& to)
     {
         size_t start_pos = 0;
@@ -91,6 +83,27 @@ namespace spore::codegen
         }
 
         return string;
+    }
+
+    template <typename string_t>
+    void trim_begin_chars(string_t& value, std::string_view chars)
+    {
+        std::size_t index = value.find_first_not_of(chars);
+        value = value.substr(std::min(index, value.size()));
+    }
+
+    template <typename string_t>
+    void trim_end_chars(string_t& value, std::string_view chars)
+    {
+        std::size_t index = value.find_last_not_of(chars);
+        value = value.substr(0, std::max(index + 1, std::size_t {0}));
+    }
+
+    template <typename string_t>
+    void trim_chars(string_t& value, std::string_view chars)
+    {
+        trim_begin_chars(value, chars);
+        trim_end_chars(value, chars);
     }
 
     std::tuple<std::int32_t, std::string, std::string> run(const std::string& command, const std::string& input = std::string {})

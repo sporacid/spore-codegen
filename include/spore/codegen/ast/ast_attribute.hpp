@@ -8,14 +8,14 @@
 
 namespace spore::codegen
 {
-    struct ast_attribute : ast_has_name<ast_attribute>
+    struct ast_attribute
     {
-        std::map<std::string, std::string> values;
+        std::variant<bool, std::int64_t, std::double_t, std::map<std::string, std::string>> value;
     };
 
     template <typename ast_value_t>
     struct ast_has_attributes
     {
-        std::vector<ast_attribute> attributes;
+        std::map<std::string, std::string> attributes;
     };
 }

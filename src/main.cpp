@@ -24,15 +24,17 @@ namespace details
     }
 }
 
+#include "spore/codegen/ast/ast_utils.hpp"
+
 int main(int argc, const char* argv[])
 {
-    for (auto index = 0; index < argc; ++index)
-    {
-        std::cout << argv[index] << " ";
-    }
+    std::map<std::string, std::string> pairs;
+    spore::codegen::ast::parse_pairs_v2(R"(a, b = 1, c = (d = 42, e = "wtf", f = (g = 0)), h = "lol")", pairs);
 
-    
-    std::cout << std::endl; 
+
+    std::map<std::string, std::string> pairs2;
+    spore::codegen::ast::parse_pairs_v2(pairs["c"], pairs2);
+
     spdlog::set_pattern("%l: %v");
 
     argparse::ArgumentParser arg_parser {

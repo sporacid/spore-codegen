@@ -64,35 +64,6 @@ namespace spore::codegen
         json["flags"] = value.flags;
     }
 
-    void to_json(nlohmann::json& json, const ast_attribute& value)
-    {
-        to_json(json, static_cast<const ast_has_name<ast_attribute>&>(value));
-
-        json["id"] = details::make_unique_id();
-        json["values"] = value.values;
-    }
-
-    void to_json(nlohmann::json& json, const std::vector<ast_attribute>& value)
-    {
-        json = nlohmann::json(nlohmann::json::value_t::object);
-
-        for (const ast_attribute& attribute : value)
-        {
-            std::string json_name = attribute.full_name();
-            spore::codegen::replace_all(json_name, "::", "_");
-
-            if (json.contains(json_name))
-            {
-                constexpr bool merge = true;
-                json[json_name].update(attribute, merge);
-            }
-            else
-            {
-                json[json_name] = attribute;
-            }
-        }
-    }
-
     void to_json(nlohmann::json& json, const ast_ref& value)
     {
         to_json(json, static_cast<const ast_has_flags<ast_ref>&>(value));

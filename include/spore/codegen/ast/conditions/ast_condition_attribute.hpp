@@ -43,10 +43,10 @@ namespace spore::codegen
             return std::any_of(attributes.begin(), attributes.end(), predicate);
         }
 
-        static bool matches_attribute(const ast_file& file, const std::string attribute)
+        static bool matches_attribute(const ast_file& file, const std::string& attribute)
         {
-            const auto matches_attribute = [&](const ast_attribute& ast_attribute) {
-                return attribute == ast_attribute.full_name();
+            const auto matches_attribute = [&](const std::pair<const std::string, std::string>& ast_attribute) {
+                return attribute == ast_attribute.first;
             };
 
             const auto matches_object = [&](const auto& ast_object) {

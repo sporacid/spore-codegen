@@ -47,7 +47,7 @@ namespace spore::codegen
                         }
                     }
 
-                    if (spore::codegen::ends_with(full_name, ", "))
+                    if (full_name.ends_with(", "))
                     {
                         full_name.resize(full_name.length() - 2);
                     }
