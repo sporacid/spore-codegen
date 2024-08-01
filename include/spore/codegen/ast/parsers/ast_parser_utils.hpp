@@ -167,7 +167,7 @@ namespace spore::codegen::ast
                     std::string_view value = string.substr(index + 1, index_end - index - 1);
                     nlohmann::json json_value = nlohmann::json::object();
 
-                    if (!parse_pairs_to_json(value, json_value))
+                    if (!parse_pairs(value, json_value))
                     {
                         // invalid inner object
                         return false;
