@@ -45,12 +45,8 @@ namespace spore::codegen
 
         static bool matches_attribute(const ast_file& file, const std::string& attribute)
         {
-            const auto matches_attribute = [&](const std::pair<const std::string, std::string>& ast_attribute) {
-                return attribute == ast_attribute.first;
-            };
-
             const auto matches_object = [&](const auto& ast_object) {
-                return std::any_of(ast_object.attributes.begin(), ast_object.attributes.end(), matches_attribute);
+                return ast_object.attributes.contains(attribute);
             };
 
             bool matches = std::any_of(file.classes.begin(), file.classes.end(), matches_object);

@@ -11,8 +11,8 @@
 #include "clang-c/CXSourceLocation.h"
 #include "clang-c/Index.h"
 
-#include "spore/codegen/ast/ast_utils.hpp"
 #include "spore/codegen/ast/parsers/ast_parser.hpp"
+#include "spore/codegen/ast/parsers/ast_parser_utils.hpp"
 #include "spore/codegen/codegen_helpers.hpp"
 #include "spore/codegen/codegen_options.hpp"
 #include "spore/codegen/misc/defer.hpp"
@@ -391,6 +391,20 @@ namespace spore::codegen
             return template_param;
         }
 
+        nlohmann::json make_attributes(CXCursor cursor)
+        {
+            std::string attributes = get_spelling(cursor);
+
+            nlohmann::json json;
+            if (ast::parse_pairs_to_json(attributes, json))
+            {
+                return json;
+            }
+
+            SPDLOG_WARN("invalid attributes, file={} value={}", get_file(cursor), attributes);
+            return {};
+        }
+
         ast_field make_field(CXCursor cursor, ast_file& data)
         {
             ast_field field;
@@ -407,7 +421,7 @@ namespace spore::codegen
                 switch (cursor.kind)
                 {
                     case CXCursor_AnnotateAttr: {
-                        ast::parse_pairs(get_spelling(cursor), closure_field.attributes);
+                        closure_field.attributes = make_attributes(cursor);
                         break;
                     }
 
@@ -425,6 +439,38 @@ namespace spore::codegen
             return field;
         }
 
+        ast_argument make_argument(CXCursor cursor, ast_file& data)
+        {
+            ast_argument argument;
+            argument.name = get_name(cursor);
+
+            CXType type = clang_getCursorType(cursor);
+            argument.type.name = to_string(clang_getTypeSpelling(type));
+
+            using closure_t = std::tuple<ast_argument&, ast_file&>;
+            const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
+                auto& [closure_argument, closure_data] = *static_cast<closure_t*>(data_ptr);
+                switch (cursor.kind)
+                {
+                    case CXCursor_AnnotateAttr: {
+                        closure_argument.attributes = make_attributes(cursor);
+                        break;
+                    }
+
+                    default: {
+                        return CXChildVisit_Recurse;
+                    }
+                }
+
+                return CXChildVisit_Continue;
+            };
+
+            closure_t closure {argument, data};
+            clang_visitChildren(cursor, visitor, &closure);
+
+            return argument;
+        }
+
         ast_function make_function(CXCursor cursor, ast_file& data)
         {
             ast_function function;
@@ -438,6 +484,11 @@ namespace spore::codegen
                 auto& [closure_function, closure_data] = *static_cast<closure_t*>(data_ptr);
                 switch (cursor.kind)
                 {
+                    case CXCursor_ParmDecl: {
+                        closure_function.arguments.emplace_back(make_argument(cursor, closure_data));
+                        break;
+                    }
+
                     case CXCursor_TemplateTypeParameter:
                     case CXCursor_NonTypeTemplateParameter: {
                         closure_function.template_params.emplace_back(make_template_param(cursor, closure_data));
@@ -445,7 +496,7 @@ namespace spore::codegen
                     }
 
                     case CXCursor_AnnotateAttr: {
-                        ast::parse_pairs(get_spelling(cursor), closure_function.attributes);
+                        closure_function.attributes = make_attributes(cursor);
                         break;
                     }
 
@@ -468,6 +519,11 @@ namespace spore::codegen
             ast_class class_;
             class_.name = get_name(cursor);
             class_.scope = get_scope(cursor);
+
+            if (data.path.ends_with("asset.hpp"))
+            {
+                printf("");
+            }
 
             std::string_view name_template = rfind_template(class_.name);
             class_.name.resize(class_.name.size() - name_template.size());
@@ -493,11 +549,6 @@ namespace spore::codegen
                 default: {
                     break;
                 }
-            }
-
-            if (data.path.ends_with("asset.hpp"))
-            {
-                printf("");
             }
 
             using closure_t = std::tuple<ast_class&, ast_file&>;
@@ -534,7 +585,7 @@ namespace spore::codegen
                     }
 
                     case CXCursor_AnnotateAttr: {
-                        ast::parse_pairs(get_spelling(cursor), closure_class.attributes);
+                        closure_class.attributes = make_attributes(cursor);
                         break;
                     }
 
