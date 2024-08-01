@@ -334,6 +334,20 @@ namespace spore::codegen
             return function;
         }
 
+        ast_constructor make_constructor(CXCursor cursor, ast_file& data)
+        {
+            ast_function function = make_function(cursor, data);
+
+            ast_constructor constructor;
+            constructor.flags = function.flags;
+            constructor.arguments = std::move(function.arguments);
+            constructor.attributes = std::move(function.attributes);
+            constructor.template_params = std::move(function.template_params);
+            constructor.template_specialization_params = std::move(function.template_specialization_params);
+
+            return constructor;
+        }
+
         ast_class make_class(CXCursor cursor, ast_file& data)
         {
             ast_class class_;
@@ -373,6 +387,11 @@ namespace spore::codegen
                 {
                     case CXCursor_FieldDecl: {
                         closure_class.fields.emplace_back(make_field(cursor, closure_data));
+                        break;
+                    }
+
+                    case CXCursor_Constructor: {
+                        closure_class.constructors.emplace_back(make_constructor(cursor, closure_data));
                         break;
                     }
 
