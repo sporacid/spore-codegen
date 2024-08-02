@@ -222,7 +222,7 @@ namespace spore::codegen
             }
 
             SPDLOG_WARN("invalid attributes, file={} value={}", get_file(cursor), attributes);
-            return nlohmann::json::object();
+            return nlohmann::json {};
         }
 
         ast_field make_field(CXCursor cursor, ast_file& data)
@@ -425,6 +425,11 @@ namespace spore::codegen
                         break;
                     }
 
+                    case CXCursor_EnumDecl: {
+                        // TODO @sporacid handle inner enums
+                        break;
+                    }
+
                     default: {
                         return CXChildVisit_Recurse;
                     }
@@ -437,6 +442,75 @@ namespace spore::codegen
             clang_visitChildren(cursor, visitor, &closure);
 
             return class_;
+        }
+
+        ast_enum_value make_enum_value(CXCursor cursor, ast_file& data)
+        {
+            ast_enum_value enum_value;
+            enum_value.name = get_name(cursor);
+            enum_value.value = clang_getEnumConstantDeclValue(cursor);
+
+            using closure_t = std::tuple<ast_enum_value&, ast_file&>;
+            const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
+                auto& [closure_enum_value, closure_data] = *static_cast<closure_t*>(data_ptr);
+                switch (cursor.kind)
+                {
+                    case CXCursor_AnnotateAttr: {
+                        closure_enum_value.attributes = make_attributes(cursor);
+                        break;
+                    }
+
+                    default: {
+                        return CXChildVisit_Recurse;
+                    }
+                }
+
+                return CXChildVisit_Continue;
+            };
+
+            closure_t closure {enum_value, data};
+            clang_visitChildren(cursor, visitor, &closure);
+
+            return enum_value;
+        }
+
+        ast_enum make_enum(CXCursor cursor, ast_file& data)
+        {
+            ast_enum enum_;
+            enum_.name = get_name(cursor);
+            enum_.scope = get_scope(cursor);
+            enum_.type = clang_EnumDecl_isScoped(cursor) ? ast_enum_type::enum_class : ast_enum_type::enum_;
+
+            CXType base_type = clang_getEnumDeclIntegerType(cursor);
+            enum_.base.name = to_string(clang_getTypeSpelling(base_type));
+
+            using closure_t = std::tuple<ast_enum&, ast_file&>;
+            const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
+                auto& [closure_enum, closure_data] = *static_cast<closure_t*>(data_ptr);
+                switch (cursor.kind)
+                {
+                    case CXCursor_EnumConstantDecl: {
+                        closure_enum.values.emplace_back(make_enum_value(cursor, closure_data));
+                        break;
+                    }
+
+                    case CXCursor_AnnotateAttr: {
+                        closure_enum.attributes = make_attributes(cursor);
+                        break;
+                    }
+
+                    default: {
+                        return CXChildVisit_Recurse;
+                    }
+                }
+
+                return CXChildVisit_Continue;
+            };
+
+            closure_t closure {enum_, data};
+            clang_visitChildren(cursor, visitor, &closure);
+
+            return enum_;
         }
 
         void make_file(CXCursor cursor, ast_file& data)
@@ -457,6 +531,11 @@ namespace spore::codegen
                     case CXCursor_StructDecl: {
                         // TODO @sporacid handle inner classes
                         closure_data.classes.emplace_back(make_class(cursor, closure_data));
+                        break;
+                    }
+
+                    case CXCursor_EnumDecl: {
+                        closure_data.enums.emplace_back(make_enum(cursor, closure_data));
                         break;
                     }
 

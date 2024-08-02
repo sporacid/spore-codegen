@@ -127,7 +127,7 @@ namespace spore::codegen
         json["type"] = value.type;
     }
 
-    void to_json(nlohmann::json& json, const ast_class_type& value)
+    void to_json(nlohmann::json& json, ast_class_type value)
     {
         static const std::map<ast_class_type, std::string> value_map {
             {ast_class_type::unknown, "unknown"},
@@ -162,8 +162,22 @@ namespace spore::codegen
         to_json(json, static_cast<const ast_has_attributes<ast_enum_value>&>(value));
 
         json["name"] = value.name;
-        json["value"] = value.value.value_or("");
-        json["has_value"] = value.value.has_value();
+        json["value"] = value.value;
+    }
+
+    void to_json(nlohmann::json& json, ast_enum_type value)
+    {
+        static const std::map<ast_enum_type, std::string> value_map {
+            {ast_enum_type::none, "none"},
+            {ast_enum_type::enum_, "enum"},
+            {ast_enum_type::enum_class, "enum class"},
+        };
+
+        const auto it = value_map.find(value);
+        if (it != value_map.end())
+        {
+            json = it->second;
+        }
     }
 
     void to_json(nlohmann::json& json, const ast_enum& value)
@@ -172,7 +186,9 @@ namespace spore::codegen
         to_json(json, static_cast<const ast_has_attributes<ast_enum>&>(value));
 
         json["id"] = detail::make_unique_id();
-        json["enum_values"] = value.enum_values;
+        json["type"] = value.type;
+        json["base"] = value.base;
+        json["values"] = value.values;
     }
 
     void to_json(nlohmann::json& json, const ast_include& value)
