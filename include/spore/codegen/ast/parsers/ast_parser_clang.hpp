@@ -87,7 +87,8 @@ namespace spore::codegen
         std::string to_string(CXString value)
         {
             defer _ = [&] { clang_disposeString(value); };
-            return clang_getCString(value);
+            const char* c_string = clang_getCString(value);
+            return c_string != nullptr ? c_string : std::string();
         }
 
         std::string get_name(CXCursor cursor)
@@ -187,7 +188,7 @@ namespace spore::codegen
             }
         }
 
-        ast_template_param make_template_param(CXCursor cursor, std::size_t index, ast_file& data)
+        ast_template_param make_template_param(CXCursor cursor, ast_file& data, std::size_t index)
         {
             constexpr std::string_view equal_sign = "=";
 
@@ -264,10 +265,15 @@ namespace spore::codegen
             return field;
         }
 
-        ast_argument make_argument(CXCursor cursor, ast_file& data)
+        ast_argument make_argument(CXCursor cursor, ast_file& data, std::size_t index)
         {
             ast_argument argument;
             argument.name = get_name(cursor);
+
+            if (argument.name.empty())
+            {
+                argument.name = fmt::format("_arg{}", index);
+            }
 
             CXType type = clang_getCursorType(cursor);
             argument.type.name = to_string(clang_getTypeSpelling(type));
@@ -329,13 +335,13 @@ namespace spore::codegen
                 switch (cursor.kind)
                 {
                     case CXCursor_ParmDecl: {
-                        closure_function.arguments.emplace_back(make_argument(cursor, closure_data));
+                        closure_function.arguments.emplace_back(make_argument(cursor, closure_data, closure_function.arguments.size()));
                         break;
                     }
 
                     case CXCursor_TemplateTypeParameter:
                     case CXCursor_NonTypeTemplateParameter: {
-                        closure_function.template_params.emplace_back(make_template_param(cursor, closure_function.template_params.size(), closure_data));
+                        closure_function.template_params.emplace_back(make_template_param(cursor, closure_data, closure_function.template_params.size()));
                         break;
                     }
 
@@ -434,7 +440,7 @@ namespace spore::codegen
 
                     case CXCursor_TemplateTypeParameter:
                     case CXCursor_NonTypeTemplateParameter: {
-                        closure_class.template_params.emplace_back(make_template_param(cursor, closure_class.template_params.size(), closure_data));
+                        closure_class.template_params.emplace_back(make_template_param(cursor, closure_data, closure_class.template_params.size()));
                         break;
                     }
 
@@ -637,9 +643,7 @@ namespace spore::codegen
             constexpr auto flags = static_cast<CXTranslationUnit_Flags>(
                 CXTranslationUnit_Incomplete |
                 CXTranslationUnit_KeepGoing |
-                CXTranslationUnit_SkipFunctionBodies |
-                CXTranslationUnit_IncludeAttributedTypes |
-                CXTranslationUnit_VisitImplicitAttributes);
+                CXTranslationUnit_SkipFunctionBodies);
 
             std::string main_source;
             for (const std::string& path : paths)

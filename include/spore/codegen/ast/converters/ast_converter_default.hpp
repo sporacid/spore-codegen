@@ -192,12 +192,6 @@ namespace spore::codegen
         json["values"] = value.values;
     }
 
-    void to_json(nlohmann::json& json, const ast_include& value)
-    {
-        json["name"] = value.name;
-        json["path"] = value.path;
-    }
-
     void to_json(nlohmann::json& json, const ast_file& value)
     {
         json["id"] = detail::make_unique_id();
@@ -205,7 +199,6 @@ namespace spore::codegen
         json["classes"] = value.classes;
         json["enums"] = value.enums;
         json["functions"] = value.functions;
-        json["includes"] = value.includes;
     }
 
     struct ast_converter_default : ast_converter

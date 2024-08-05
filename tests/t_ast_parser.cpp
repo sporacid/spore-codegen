@@ -38,14 +38,6 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
     REQUIRE(file.classes.size() == 5);
     REQUIRE(file.functions.size() == 3);
 
-    SECTION("parse include is feature complete")
-    {
-        REQUIRE(file.includes.size() == 1);
-        REQUIRE(file.includes[0].type == spore::codegen::ast_include_type::system);
-        REQUIRE(file.includes[0].name == "string");
-        REQUIRE_FALSE(file.includes[0].path.empty());
-    }
-
     SECTION("parse enum is feature complete")
     {
         const auto& enum_ = file.enums[0];
