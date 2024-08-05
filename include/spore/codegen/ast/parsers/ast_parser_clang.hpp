@@ -187,7 +187,7 @@ namespace spore::codegen
             }
         }
 
-        ast_template_param make_template_param(CXCursor cursor, ast_file& data)
+        ast_template_param make_template_param(CXCursor cursor, std::size_t index, ast_file& data)
         {
             constexpr std::string_view equal_sign = "=";
 
@@ -199,6 +199,11 @@ namespace spore::codegen
             template_param.type = rfind_type(preamble);
             template_param.name = get_name(cursor);
             template_param.is_variadic = template_param.type.ends_with("...");
+
+            if (template_param.name.empty())
+            {
+                template_param.name = fmt::format("_t{}", index);
+            }
 
             strings::trim_start(epilogue);
 
@@ -294,10 +299,29 @@ namespace spore::codegen
         ast_function make_function(CXCursor cursor, ast_file& data)
         {
             ast_function function;
-            function.name = get_name(cursor);
+            function.name = get_spelling(cursor);
             function.scope = get_scope(cursor);
 
+            CXType type = clang_getCursorType(cursor);
+            CXType return_type = clang_getResultType(type);
+            function.return_type.name = to_string(clang_getTypeSpelling(return_type));
+
             add_access_flags(cursor, function.flags);
+
+            if (clang_CXXMethod_isConst(cursor))
+            {
+                function.flags = function.flags | ast_flags::const_;
+            }
+
+            if (clang_CXXMethod_isStatic(cursor))
+            {
+                function.flags = function.flags | ast_flags::static_;
+            }
+
+            if (clang_CXXMethod_isVirtual(cursor))
+            {
+                function.flags = function.flags | ast_flags::virtual_;
+            }
 
             using closure_t = std::tuple<ast_function&, ast_file&>;
             const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
@@ -311,7 +335,7 @@ namespace spore::codegen
 
                     case CXCursor_TemplateTypeParameter:
                     case CXCursor_NonTypeTemplateParameter: {
-                        closure_function.template_params.emplace_back(make_template_param(cursor, closure_data));
+                        closure_function.template_params.emplace_back(make_template_param(cursor, closure_function.template_params.size(), closure_data));
                         break;
                     }
 
@@ -395,8 +419,9 @@ namespace spore::codegen
                         break;
                     }
 
+                    case CXCursor_FunctionDecl:
                     case CXCursor_FunctionTemplate:
-                    case CXCursor_FunctionDecl: {
+                    case CXCursor_CXXMethod: {
                         closure_class.functions.emplace_back(make_function(cursor, closure_data));
                         break;
                     }
@@ -409,7 +434,7 @@ namespace spore::codegen
 
                     case CXCursor_TemplateTypeParameter:
                     case CXCursor_NonTypeTemplateParameter: {
-                        closure_class.template_params.emplace_back(make_template_param(cursor, closure_data));
+                        closure_class.template_params.emplace_back(make_template_param(cursor, closure_class.template_params.size(), closure_data));
                         break;
                     }
 
@@ -540,9 +565,10 @@ namespace spore::codegen
                     }
 
                     case CXCursor_FunctionTemplate:
-                    case CXCursor_FunctionDecl: {
+                    case CXCursor_FunctionDecl:
+                    case CXCursor_CXXMethod: {
                         closure_data.functions.emplace_back(make_function(cursor, closure_data));
-                        return CXChildVisit_Continue;
+                        break;
                     }
 
                     default:

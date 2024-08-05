@@ -11,14 +11,15 @@ namespace spore::codegen
         volatile_ = 1 << 1,
         mutable_ = 1 << 2,
         static_ = 1 << 3,
-        public_ = 1 << 4,
-        private_ = 1 << 5,
-        protected_ = 1 << 6,
-        constexpr_ = 1 << 7,
-        consteval_ = 1 << 8,
-        lvalue_ref = 1 << 9,
-        rvalue_ref = 1 << 10,
-        pointer = 1 << 11,
+        virtual_ = 1 << 4,
+        public_ = 1 << 5,
+        private_ = 1 << 6,
+        protected_ = 1 << 7,
+        constexpr_ = 1 << 8,
+        consteval_ = 1 << 9,
+        lvalue_ref = 1 << 10,
+        rvalue_ref = 1 << 11,
+        pointer = 1 << 12,
     };
 
     constexpr ast_flags operator~(ast_flags flags)

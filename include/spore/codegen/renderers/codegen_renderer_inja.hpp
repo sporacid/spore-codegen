@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <string>
+#include <vector>
 
 #pragma warning(push)
 #pragma warning(disable : 4244)
@@ -131,7 +132,7 @@ namespace spore::codegen
                 });
 
             inja_env.add_callback("cpp_name", 1,
-                [](inja::Arguments& args) {
+                [](inja::Arguments& args) -> std::string {
                     std::string value = args.at(0)->get<std::string>();
                     return detail::to_cpp_name(value);
                 });

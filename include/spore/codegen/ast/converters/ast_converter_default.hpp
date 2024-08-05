@@ -25,6 +25,7 @@ namespace spore::codegen
         json["volatile"] = (value & ast_flags::volatile_) == ast_flags::volatile_;
         json["mutable"] = (value & ast_flags::mutable_) == ast_flags::mutable_;
         json["static"] = (value & ast_flags::static_) == ast_flags::static_;
+        json["virtual"] = (value & ast_flags::static_) == ast_flags::virtual_;
         json["public"] = (value & ast_flags::public_) == ast_flags::public_;
         json["private"] = (value & ast_flags::private_) == ast_flags::private_;
         json["protected"] = (value & ast_flags::protected_) == ast_flags::protected_;
@@ -55,7 +56,7 @@ namespace spore::codegen
     template <typename ast_object_t>
     void to_json(nlohmann::json& json, const ast_has_attributes<ast_object_t>& value)
     {
-        json["attributes"] = value.attributes;
+        json["attributes"] = value.attributes.is_object() ? value.attributes : nlohmann::json::object();
     }
 
     template <typename ast_object_t>

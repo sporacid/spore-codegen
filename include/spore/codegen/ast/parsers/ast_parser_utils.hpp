@@ -68,9 +68,10 @@ namespace spore::codegen::ast
             if (const auto it_json = json.find(key); it_json != json.end())
             {
                 nlohmann::json& existing_value = *it_json;
-                if (existing_value.is_array())
+                if (existing_value.is_array() && value.is_array())
                 {
-                    existing_value.emplace_back(std::move(value));
+                    existing_value.insert(existing_value.end(), value.begin(), value.end());
+                    // existing_value.emplace_back(std::move(value));
                 }
                 else if (existing_value.is_object() && value.is_object())
                 {
@@ -78,10 +79,11 @@ namespace spore::codegen::ast
                 }
                 else
                 {
-                    nlohmann::json json_array;
-                    json_array.emplace_back(std::move(existing_value));
-                    json_array.emplace_back(std::move(value));
-                    existing_value = std::move(json_array);
+                    existing_value = std::move(value);
+                    // nlohmann::json json_array;
+                    // json_array.emplace_back(std::move(existing_value));
+                    // json_array.emplace_back(std::move(value));
+                    // existing_value = std::move(json_array);
                 }
             }
             else
@@ -165,7 +167,7 @@ namespace spore::codegen::ast
                     }
 
                     std::string_view value = string.substr(index + 1, index_end - index - 1);
-                    nlohmann::json json_value = nlohmann::json::object();
+                    nlohmann::json json_value;
 
                     if (!parse_pairs(value, json_value))
                     {
