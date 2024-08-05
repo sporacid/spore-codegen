@@ -68,22 +68,17 @@ namespace spore::codegen::ast
             if (const auto it_json = json.find(key); it_json != json.end())
             {
                 nlohmann::json& existing_value = *it_json;
-                if (existing_value.is_array() && value.is_array())
+                if (value.is_array() && existing_value.is_array())
                 {
                     existing_value.insert(existing_value.end(), value.begin(), value.end());
-                    // existing_value.emplace_back(std::move(value));
                 }
-                else if (existing_value.is_object() && value.is_object())
+                else if (value.is_object() && existing_value.is_object())
                 {
                     existing_value.merge_patch(value);
                 }
                 else
                 {
                     existing_value = std::move(value);
-                    // nlohmann::json json_array;
-                    // json_array.emplace_back(std::move(existing_value));
-                    // json_array.emplace_back(std::move(value));
-                    // existing_value = std::move(json_array);
                 }
             }
             else
