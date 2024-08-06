@@ -30,6 +30,49 @@ namespace spore::codegen
             values.insert(values.begin() + index, std::move(value));
         }
 
+        template <typename func_t>
+        void visit_children(CXCursor cursor, func_t&& func)
+        {
+            using closure_t = std::tuple<func_t&&>;
+            const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) -> CXChildVisitResult {
+                auto&& [closure_func] = *static_cast<closure_t*>(data_ptr);
+                return closure_func(cursor, parent);
+            };
+
+            closure_t closure {std::forward<func_t>(func)};
+            clang_visitChildren(cursor, visitor, &closure);
+        }
+
+        template <typename func_t>
+        void visit_tokens(CXCursor cursor, func_t&& func)
+        {
+            CXSourceRange extent = clang_getCursorExtent(cursor);
+            CXTranslationUnit tu = clang_Cursor_getTranslationUnit(cursor);
+
+            CXToken* tokens = nullptr;
+            unsigned token_count = 0;
+
+            clang_tokenize(tu, extent, &tokens, &token_count);
+
+            defer defer_dispose_tokens = [&] { clang_disposeTokens(tu, tokens, token_count); };
+
+            for (auto index_token = 0; index_token < token_count; ++index_token)
+            {
+                CXToken& token = tokens[index_token];
+                func(tu, token, clang_getTokenKind(token));
+            }
+            //
+            //            std::vector<CXCursor> token_cursors;
+            //            token_cursors.resize(token_count);
+            //
+            //            clang_annotateTokens(tu, tokens, token_count, token_cursors.data());
+            //
+            //            for (CXCursor token_cursor : token_cursors)
+            //            {
+            //                func(token_cursor, cursor);
+            //            }
+        }
+
         std::string_view rfind_template(std::string_view preamble)
         {
             constexpr std::string_view chevrons = "<>";
@@ -160,19 +203,19 @@ namespace spore::codegen
             return std::string_view {source.data(), offset};
         }
 
-        std::string_view get_epilogue(CXCursor cursor, std::string_view source)
-        {
-            CXSourceLocation location = clang_getCursorLocation(cursor);
-
-            CXFile file;
-            std::uint32_t line;
-            std::uint32_t column;
-            std::uint32_t offset;
-
-            clang_getFileLocation(location, &file, &line, &column, &offset);
-
-            return std::string_view {source.data() + offset, source.size() - offset};
-        }
+        //        std::string_view get_epilogue(CXCursor cursor, std::string_view source)
+        //        {
+        //            CXSourceLocation location = clang_getCursorLocation(cursor);
+        //
+        //            CXFile file;
+        //            std::uint32_t line;
+        //            std::uint32_t column;
+        //            std::uint32_t offset;
+        //
+        //            clang_getFileLocation(location, &file, &line, &column, &offset);
+        //
+        //            return std::string_view {source.data() + offset, source.size() - offset};
+        //        }
 
         void add_access_flags(CXCursor cursor, ast_flags& flags)
         {
@@ -198,13 +241,12 @@ namespace spore::codegen
 
         ast_template_param make_template_param(CXCursor cursor, ast_file& data, std::size_t index)
         {
-            constexpr std::string_view equal_sign = "=";
+            //            constexpr std::string_view equal_sign = "=";
 
             std::string_view preamble = get_preamble(cursor, data.source);
-            std::string_view epilogue = get_epilogue(cursor, data.source);
+            //            std::string_view epilogue = get_epilogue(cursor, data.source);
 
             ast_template_param template_param;
-            // template_param.type = find_expression<true>(preamble);
             template_param.type = rfind_type(preamble);
             template_param.name = get_name(cursor);
             template_param.is_variadic = template_param.type.ends_with("...");
@@ -214,18 +256,45 @@ namespace spore::codegen
                 template_param.name = fmt::format("_t{}", index);
             }
 
-            strings::trim_start(epilogue);
+            bool is_next_token_value = false;
+            const auto visitor = [&](CXTranslationUnit tu, CXToken token, CXTokenKind kind) {
+                std::string spelling = to_string(clang_getTokenSpelling(tu, token));
+                std::puts(spelling.data());
+                switch (kind)
+                {
+                    case CXToken_Punctuation: {
+                        std::string spelling = to_string(clang_getTokenSpelling(tu, token));
+                        if (spelling == "=")
+                        {
+                            is_next_token_value = true;
+                        }
 
-            if (epilogue.starts_with(equal_sign))
-            {
-                strings::trim_start(epilogue, equal_sign);
-                // template_param.default_value = find_expression(epilogue);
-            }
+                        break;
+                    }
 
+                    case CXToken_Keyword:
+                    case CXToken_Literal: {
+                        if (is_next_token_value)
+                        {
+                            template_param.default_value = to_string(clang_getTokenSpelling(tu, token));
+                            is_next_token_value = false;
+                        }
+
+                        break;
+                    }
+
+                    default: {
+                        break;
+                    }
+                }
+            };
+
+            visit_tokens(cursor, visitor);
             return template_param;
         }
 
-        nlohmann::json make_attributes(CXCursor cursor)
+        nlohmann::json
+        make_attributes(CXCursor cursor)
         {
             std::string attributes = get_spelling(cursor);
 
@@ -249,13 +318,11 @@ namespace spore::codegen
 
             add_access_flags(cursor, field.flags);
 
-            using closure_t = std::tuple<ast_field&, ast_file&>;
-            const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
-                auto& [closure_field, closure_data] = *static_cast<closure_t*>(data_ptr);
+            const auto visitor = [&](CXCursor cursor, CXCursor parent) {
                 switch (cursor.kind)
                 {
                     case CXCursor_AnnotateAttr: {
-                        closure_field.attributes = make_attributes(cursor);
+                        field.attributes = make_attributes(cursor);
                         break;
                     }
 
@@ -267,9 +334,7 @@ namespace spore::codegen
                 return CXChildVisit_Continue;
             };
 
-            closure_t closure {field, data};
-            clang_visitChildren(cursor, visitor, &closure);
-
+            visit_children(cursor, visitor);
             return field;
         }
 
@@ -286,13 +351,11 @@ namespace spore::codegen
             CXType type = clang_getCursorType(cursor);
             argument.type.name = to_string(clang_getTypeSpelling(type));
 
-            using closure_t = std::tuple<ast_argument&, ast_file&>;
-            const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
-                auto& [closure_argument, closure_data] = *static_cast<closure_t*>(data_ptr);
+            const auto visitor = [&](CXCursor cursor, CXCursor parent) {
                 switch (cursor.kind)
                 {
                     case CXCursor_AnnotateAttr: {
-                        closure_argument.attributes = make_attributes(cursor);
+                        argument.attributes = make_attributes(cursor);
                         break;
                     }
 
@@ -304,9 +367,7 @@ namespace spore::codegen
                 return CXChildVisit_Continue;
             };
 
-            closure_t closure {argument, data};
-            clang_visitChildren(cursor, visitor, &closure);
-
+            visit_children(cursor, visitor);
             return argument;
         }
 
@@ -347,24 +408,23 @@ namespace spore::codegen
                 function.flags = function.flags | ast_flags::delete_;
             }
 
-            using closure_t = std::tuple<ast_function&, ast_file&>;
-            const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
-                auto& [closure_function, closure_data] = *static_cast<closure_t*>(data_ptr);
+            const auto visitor = [&](CXCursor cursor, CXCursor parent) {
                 switch (cursor.kind)
                 {
                     case CXCursor_ParmDecl: {
-                        closure_function.arguments.emplace_back(make_argument(cursor, closure_data, closure_function.arguments.size()));
+                        insert_at_end(function.arguments, [&] { return make_argument(cursor, data, function.template_params.size()); });
                         break;
                     }
 
                     case CXCursor_TemplateTypeParameter:
+                    case CXCursor_TemplateTemplateParameter:
                     case CXCursor_NonTypeTemplateParameter: {
-                        closure_function.template_params.emplace_back(make_template_param(cursor, closure_data, closure_function.template_params.size()));
+                        insert_at_end(function.template_params, [&] { return make_template_param(cursor, data, function.template_params.size()); });
                         break;
                     }
 
                     case CXCursor_AnnotateAttr: {
-                        closure_function.attributes = make_attributes(cursor);
+                        function.attributes = make_attributes(cursor);
                         break;
                     }
 
@@ -376,9 +436,7 @@ namespace spore::codegen
                 return CXChildVisit_Continue;
             };
 
-            closure_t closure {function, data};
-            clang_visitChildren(cursor, visitor, &closure);
-
+            visit_children(cursor, visitor);
             return function;
         }
 
@@ -402,13 +460,11 @@ namespace spore::codegen
             enum_value.name = get_name(cursor);
             enum_value.value = clang_getEnumConstantDeclValue(cursor);
 
-            using closure_t = std::tuple<ast_enum_value&, ast_file&>;
-            const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
-                auto& [closure_enum_value, closure_data] = *static_cast<closure_t*>(data_ptr);
+            const auto visitor = [&](CXCursor cursor, CXCursor parent) {
                 switch (cursor.kind)
                 {
                     case CXCursor_AnnotateAttr: {
-                        closure_enum_value.attributes = make_attributes(cursor);
+                        enum_value.attributes = make_attributes(cursor);
                         break;
                     }
 
@@ -420,9 +476,7 @@ namespace spore::codegen
                 return CXChildVisit_Continue;
             };
 
-            closure_t closure {enum_value, data};
-            clang_visitChildren(cursor, visitor, &closure);
-
+            visit_children(cursor, visitor);
             return enum_value;
         }
 
@@ -436,18 +490,16 @@ namespace spore::codegen
             CXType base_type = clang_getEnumDeclIntegerType(cursor);
             enum_.base.name = to_string(clang_getTypeSpelling(base_type));
 
-            using closure_t = std::tuple<ast_enum&, ast_file&>;
-            const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
-                auto& [closure_enum, closure_data] = *static_cast<closure_t*>(data_ptr);
+            const auto visitor = [&](CXCursor cursor, CXCursor parent) {
                 switch (cursor.kind)
                 {
                     case CXCursor_EnumConstantDecl: {
-                        closure_enum.values.emplace_back(make_enum_value(cursor, closure_data));
+                        insert_at_end(enum_.values, [&] { return make_enum_value(cursor, data); });
                         break;
                     }
 
                     case CXCursor_AnnotateAttr: {
-                        closure_enum.attributes = make_attributes(cursor);
+                        enum_.attributes = make_attributes(cursor);
                         break;
                     }
 
@@ -459,9 +511,7 @@ namespace spore::codegen
                 return CXChildVisit_Continue;
             };
 
-            closure_t closure {enum_, data};
-            clang_visitChildren(cursor, visitor, &closure);
-
+            visit_children(cursor, visitor);
             return enum_;
         }
 
@@ -497,54 +547,53 @@ namespace spore::codegen
                 }
             }
 
-            using closure_t = std::tuple<ast_class&, ast_file&>;
-            const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
-                auto& [closure_class, closure_data] = *static_cast<closure_t*>(data_ptr);
+            const auto visitor = [&](CXCursor cursor, CXCursor parent) {
                 switch (cursor.kind)
                 {
                     case CXCursor_TemplateTypeParameter:
+                    case CXCursor_TemplateTemplateParameter:
                     case CXCursor_NonTypeTemplateParameter: {
-                        closure_class.template_params.emplace_back(make_template_param(cursor, closure_data, closure_class.template_params.size()));
+                        insert_at_end(class_.template_params, [&] { return make_template_param(cursor, data, class_.template_params.size()); });
                         break;
                     }
 
                     case CXCursor_AnnotateAttr: {
-                        closure_class.attributes = make_attributes(cursor);
+                        class_.attributes = make_attributes(cursor);
                         break;
                     }
 
                     case CXCursor_CXXBaseSpecifier: {
-                        ast_ref& base = closure_class.bases.emplace_back();
+                        ast_ref& base = class_.bases.emplace_back();
                         base.name = get_name(cursor);
                         break;
                     }
 
                     case CXCursor_FieldDecl: {
-                        insert_at_end(closure_class.fields, [&] { return make_field(cursor, closure_data); });
+                        insert_at_end(class_.fields, [&] { return make_field(cursor, data); });
                         break;
                     }
 
                     case CXCursor_Constructor: {
-                        insert_at_end(closure_class.constructors, [&] { return make_constructor(cursor, closure_data); });
+                        insert_at_end(class_.constructors, [&] { return make_constructor(cursor, data); });
                         break;
                     }
 
                     case CXCursor_FunctionDecl:
                     case CXCursor_FunctionTemplate:
                     case CXCursor_CXXMethod: {
-                        insert_at_end(closure_class.functions, [&] { return make_function(cursor, closure_data); });
+                        insert_at_end(class_.functions, [&] { return make_function(cursor, data); });
                         break;
                     }
 
                     case CXCursor_StructDecl:
                     case CXCursor_ClassDecl:
                     case CXCursor_ClassTemplate: {
-                        insert_at_end(closure_data.classes, [&] { return make_class(cursor, closure_data); });
+                        insert_at_end(data.classes, [&] { return make_class(cursor, data); });
                         break;
                     }
 
                     case CXCursor_EnumDecl: {
-                        insert_at_end(closure_data.enums, [&] { return make_enum(cursor, closure_data); });
+                        insert_at_end(data.enums, [&] { return make_enum(cursor, data); });
                         break;
                     }
 
@@ -556,39 +605,31 @@ namespace spore::codegen
                 return CXChildVisit_Continue;
             };
 
-            closure_t closure {class_, data};
-            clang_visitChildren(cursor, visitor, &closure);
-
+            visit_children(cursor, visitor);
             return class_;
         }
 
         void make_file(CXCursor cursor, CXCursor parent, ast_file& data)
         {
-            using closure_t = std::tuple<ast_file&>;
-            const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
-                const auto& [closure_data] = *static_cast<closure_t*>(data_ptr);
-
-                std::string spelling = get_spelling(cursor);
-                std::string parent_spelling = get_spelling(parent);
-
+            const auto visitor = [&](CXCursor cursor, CXCursor parent) {
                 switch (cursor.kind)
                 {
                     case CXCursor_ClassTemplate:
                     case CXCursor_ClassDecl:
                     case CXCursor_StructDecl: {
-                        insert_at_end(closure_data.classes, [&] { return make_class(cursor, closure_data); });
+                        insert_at_end(data.classes, [&] { return make_class(cursor, data); });
                         break;
                     }
 
                     case CXCursor_EnumDecl: {
-                        insert_at_end(closure_data.enums, [&] { return make_enum(cursor, closure_data); });
+                        insert_at_end(data.enums, [&] { return make_enum(cursor, data); });
                         break;
                     }
 
                     case CXCursor_FunctionTemplate:
                     case CXCursor_FunctionDecl:
                     case CXCursor_CXXMethod: {
-                        insert_at_end(closure_data.functions, [&] { return make_function(cursor, closure_data); });
+                        insert_at_end(data.functions, [&] { return make_function(cursor, data); });
                         break;
                     }
 
@@ -600,10 +641,9 @@ namespace spore::codegen
                 return CXChildVisit_Continue;
             };
 
-            closure_t closure {data};
-            if (visitor(cursor, parent, &closure) == CXChildVisit_Recurse)
+            if (visitor(cursor, parent) == CXChildVisit_Recurse)
             {
-                clang_visitChildren(cursor, visitor, &closure);
+                visit_children(cursor, visitor);
             }
         }
     }
@@ -735,22 +775,18 @@ namespace spore::codegen
             defer dispose_translation_unit = [&] { clang_disposeTranslationUnit(translation_unit); };
             CXCursor cursor = clang_getTranslationUnitCursor(translation_unit);
 
-            using closure_t = std::tuple<std::vector<ast_file>&, std::map<std::string_view, std::size_t>&>;
-            const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
-                const auto& [closure_ast_files, closure_file_map] = *static_cast<closure_t*>(data_ptr);
-
-                const auto it_file = closure_file_map.find(detail::get_file(cursor));
-                if (it_file != closure_file_map.end())
+            const auto visitor = [&](CXCursor cursor, CXCursor parent) {
+                const auto it_file = file_map.find(detail::get_file(cursor));
+                if (it_file != file_map.end())
                 {
                     std::size_t index = it_file->second;
-                    detail::make_file(cursor, parent, closure_ast_files[index]);
+                    detail::make_file(cursor, parent, ast_files[index]);
                 }
 
                 return CXChildVisit_Continue;
             };
 
-            closure_t closure {ast_files, file_map};
-            clang_visitChildren(cursor, visitor, &closure);
+            detail::visit_children(cursor, visitor);
             return true;
         }
     };

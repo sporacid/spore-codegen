@@ -52,7 +52,7 @@ namespace _namespace1::_namespace2
         ATTRIBUTE(_field)
         _value_t _value;
 
-        template <typename _inner_value_t>
+        template <typename _inner_value_t = int>
         struct ATTRIBUTE(_inner) _inner_template
         {
         };
@@ -80,4 +80,9 @@ struct ATTRIBUTE(a, b = 1, c = "2", d = 3.0, e = (f = 4, g = (h = 5))) _attribut
 {
     ATTRIBUTE(a, a = false)
     int _overridden_field = 0;
+};
+
+template <typename value_t, int size_v, typename... args_t>
+struct _template
+{
 };

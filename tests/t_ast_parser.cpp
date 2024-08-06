@@ -40,8 +40,9 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
 
     ast_file& ast_file = ast_files.at(0);
 
-    REQUIRE(ast_file.classes.size() == 6);
+    REQUIRE(ast_file.classes.size() == 7);
     REQUIRE(ast_file.functions.size() == 3);
+    REQUIRE(ast_file.enums.size() == 1);
 
     SECTION("parse enum is feature complete")
     {
@@ -155,8 +156,8 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
             REQUIRE(class_.functions[1].template_params[0].default_value.has_value() == false);
             REQUIRE(class_.functions[1].template_params[1].type == "int");
             REQUIRE(class_.functions[1].template_params[1].name == "_n");
-            // REQUIRE(class_.functions[1].template_params[1].default_value.has_value());
-            // REQUIRE(class_.functions[1].template_params[1].default_value == "42");
+            REQUIRE(class_.functions[1].template_params[1].default_value.has_value());
+            REQUIRE(class_.functions[1].template_params[1].default_value == "42");
             REQUIRE(class_.functions[1].arguments.size() == 1);
             REQUIRE(class_.functions[1].arguments[0].name == "_arg");
             REQUIRE(class_.functions[1].arguments[0].type.name == "_value_t");
@@ -196,8 +197,8 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
         REQUIRE(class_.template_params[0].default_value.has_value() == false);
         REQUIRE(class_.template_params[1].type == "int");
         REQUIRE(class_.template_params[1].name == "_n");
-        // REQUIRE(class_.template_params[1].default_value.has_value());
-        // REQUIRE(class_.template_params[1].default_value == "42");
+        REQUIRE(class_.template_params[1].default_value.has_value());
+        REQUIRE(class_.template_params[1].default_value == "42");
 
         REQUIRE(class_.fields.size() == 1);
 
@@ -219,7 +220,8 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
         REQUIRE(class_.type == spore::codegen::ast_class_type::struct_);
         REQUIRE(class_.template_params[0].type == "typename");
         REQUIRE(class_.template_params[0].name == "_inner_value_t");
-        REQUIRE(class_.template_params[0].default_value.has_value() == false);
+        REQUIRE(class_.template_params[0].default_value.has_value());
+        REQUIRE(class_.template_params[0].default_value.value() == "int");
     }
 
     SECTION("parse free function is feature complete")
@@ -253,8 +255,8 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
         REQUIRE(ast_file.functions[1].template_params[0].default_value.has_value() == false);
         REQUIRE(ast_file.functions[1].template_params[1].type == "int");
         REQUIRE(ast_file.functions[1].template_params[1].name == "_n");
-        // REQUIRE(ast_file.functions[1].template_params[1].default_value.has_value());
-        // REQUIRE(ast_file.functions[1].template_params[1].default_value == "42");
+        REQUIRE(ast_file.functions[1].template_params[1].default_value.has_value());
+        REQUIRE(ast_file.functions[1].template_params[1].default_value == "42");
         REQUIRE(ast_file.functions[1].arguments.size() == 1);
         REQUIRE(ast_file.functions[1].arguments[0].name == "_arg");
         REQUIRE(ast_file.functions[1].arguments[0].type.name == "_value_t");
@@ -300,5 +302,20 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
         REQUIRE(class_.fields.size() == 1);
         REQUIRE(class_.fields[0].attributes.contains("a"));
         REQUIRE(class_.fields[0].attributes["a"] == false);
+    }
+
+    SECTION("parse template is feature complete")
+    {
+        ast_class& class_ = ast_file.classes[6];
+
+        REQUIRE(class_.name == "_template");
+        REQUIRE(class_.template_params.size() == 3);
+        REQUIRE(class_.template_params[0].name == "value_t");
+        REQUIRE(class_.template_params[0].type == "typename");
+        REQUIRE(class_.template_params[1].name == "size_v");
+        REQUIRE(class_.template_params[1].type == "int");
+        REQUIRE(class_.template_params[2].name == "args_t");
+        REQUIRE(class_.template_params[2].type == "typename...");
+        REQUIRE(class_.template_params[2].is_variadic);
     }
 }
