@@ -16,7 +16,6 @@
 #include "spore/codegen/codegen_options.hpp"
 #include "spore/codegen/misc/defer.hpp"
 #include "spore/codegen/utils/files.hpp"
-#include "spore/codegen/utils/strings.hpp"
 
 namespace spore::codegen
 {
@@ -43,7 +42,49 @@ namespace spore::codegen
             values.insert(values.begin() + index, std::move(value));
         }
 
-        std::string to_string(CXString value)
+        void append_token(std::string& tokens, std::string_view token)
+        {
+            constexpr unsigned char no_whitespace_before[] {0, '>', ',', ';', '.'};
+            constexpr unsigned char no_whitespace_after[] {0, '<', '.'};
+
+            const unsigned char first = !token.empty() ? *token.begin() : 0;
+            const unsigned char last = !tokens.empty() ? *tokens.rbegin() : 0;
+
+            const bool no_whitespace =
+                std::find(std::begin(no_whitespace_before), std::end(no_whitespace_before), first) != std::end(no_whitespace_before) ||
+                std::find(std::begin(no_whitespace_after), std::end(no_whitespace_after), last) != std::end(no_whitespace_after);
+
+            if (!no_whitespace)
+            {
+                tokens += " ";
+            }
+
+            tokens += token;
+        }
+
+        void add_access_flags(CXCursor cursor, ast_flags& flags)
+        {
+            CX_CXXAccessSpecifier access_spec = clang_getCXXAccessSpecifier(cursor);
+            switch (access_spec)
+            {
+                case CX_CXXPublic:
+                    flags = flags | ast_flags::public_;
+                    break;
+
+                case CX_CXXPrivate:
+                    flags = flags | ast_flags::private_;
+                    break;
+
+                case CX_CXXProtected:
+                    flags = flags | ast_flags::protected_;
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        std::string get_string(CXString value)
         {
             defer _ = [&] { clang_disposeString(value); };
             const char* c_string = clang_getCString(value);
@@ -53,19 +94,31 @@ namespace spore::codegen
         std::string get_name(CXCursor cursor)
         {
             CXString string = clang_getCursorDisplayName(cursor);
-            return to_string(string);
+            return get_string(string);
         }
 
         std::string get_spelling(CXCursor cursor)
         {
             CXString string = clang_getCursorSpelling(cursor);
-            return to_string(string);
+            return get_string(string);
+        }
+
+        std::string get_spelling(CXType type)
+        {
+            CXString string = clang_getTypeSpelling(type);
+            return get_string(string);
         }
 
         std::string get_spelling(CXTranslationUnit tu, CXToken token)
         {
             CXString string = clang_getTokenSpelling(tu, token);
-            return to_string(string);
+            return get_string(string);
+        }
+
+        std::string get_type_spelling(CXCursor cursor)
+        {
+            CXType type = clang_getCursorType(cursor);
+            return get_spelling(type);
         }
 
         std::string get_file(CXCursor cursor)
@@ -73,7 +126,7 @@ namespace spore::codegen
             CXSourceLocation location = clang_getCursorLocation(cursor);
             CXFile file;
             clang_getFileLocation(location, &file, nullptr, nullptr, nullptr);
-            return to_string(clang_getFileName(file));
+            return get_string(clang_getFileName(file));
         }
 
         std::string get_scope(CXCursor cursor)
@@ -119,56 +172,42 @@ namespace spore::codegen
 
             std::copy(token_ptr, token_ptr + token_count, std::back_inserter(tokens));
             return tokens;
-            //            std::vector<std::string> token_values;
-            //            token_values.reserve(token_count);
-            //
-            //            const auto transformer = [&](CXToken token) {
-            //                return get_spelling(tu, token);
-            //            };
-            //
-            //            std::transform(tokens, tokens + token_count, std::back_inserter(token_values), transformer);
         }
 
-        void append_token(std::string& tokens, std::string_view token)
+        std::optional<std::string> get_default_value(CXTranslationUnit tu, const std::vector<CXToken>& tokens)
         {
-            constexpr unsigned char no_whitespace_before[] {0, '>', ',', ';', '.'};
-            constexpr unsigned char no_whitespace_after[] {0, '<', '.'};
+            std::optional<std::string> default_value;
 
-            const unsigned char first = !token.empty() ? *token.begin() : 0;
-            const unsigned char last = !tokens.empty() ? *tokens.rbegin() : 0;
+            const auto predicate_default_value = [&](CXToken token) {
+                return clang_getTokenKind(token) == CXToken_Punctuation && get_spelling(tu, token) == "=";
+            };
 
-            const bool no_whitespace =
-                std::find(std::begin(no_whitespace_before), std::end(no_whitespace_before), first) != std::end(no_whitespace_before) ||
-                std::find(std::begin(no_whitespace_after), std::end(no_whitespace_after), last) != std::end(no_whitespace_after);
-
-            if (!no_whitespace)
+            const auto it_default_value = std::find_if(tokens.begin(), tokens.end(), predicate_default_value);
+            if (it_default_value != tokens.end())
             {
-                tokens += " ";
+                for (auto it_token = it_default_value + 1; it_token != tokens.end(); ++it_token)
+                {
+                    std::string spelling = get_spelling(tu, *it_token);
+
+                    if (default_value.has_value())
+                    {
+                        append_token(default_value.value(), spelling);
+                    }
+                    else
+                    {
+                        default_value = std::move(spelling);
+                    }
+                }
             }
 
-            tokens += token;
+            return default_value;
         }
 
-        void add_access_flags(CXCursor cursor, ast_flags& flags)
+        std::optional<std::string> get_default_value(CXCursor cursor)
         {
-            CX_CXXAccessSpecifier access_spec = clang_getCXXAccessSpecifier(cursor);
-            switch (access_spec)
-            {
-                case CX_CXXPublic:
-                    flags = flags | ast_flags::public_;
-                    break;
-
-                case CX_CXXPrivate:
-                    flags = flags | ast_flags::private_;
-                    break;
-
-                case CX_CXXProtected:
-                    flags = flags | ast_flags::protected_;
-                    break;
-
-                default:
-                    break;
-            }
+            CXTranslationUnit tu = clang_Cursor_getTranslationUnit(cursor);
+            std::vector<CXToken> tokens = get_tokens(tu, cursor);
+            return get_default_value(tu, tokens);
         }
 
         nlohmann::json make_attributes(CXCursor cursor)
@@ -261,8 +300,7 @@ namespace spore::codegen
 
                     if (template_param.default_value.has_value())
                     {
-                        // template_param.default_value.value() += get_spelling(tu, token);
-                        append_token(template_param.type, spelling);
+                        append_token(template_param.default_value.value(), spelling);
                     }
                     else
                     {
@@ -278,14 +316,13 @@ namespace spore::codegen
         {
             ast_argument argument;
             argument.name = get_name(cursor);
+            argument.default_value = get_default_value(cursor);
+            argument.type.name = get_type_spelling(cursor);
 
             if (argument.name.empty())
             {
                 argument.name = fmt::format("_arg{}", index);
             }
-
-            CXType type = clang_getCursorType(cursor);
-            argument.type.name = to_string(clang_getTypeSpelling(type));
 
             const auto visitor = [&](CXCursor cursor, CXCursor parent) {
                 switch (cursor.kind)
@@ -315,7 +352,7 @@ namespace spore::codegen
 
             CXType type = clang_getCursorType(cursor);
             CXType return_type = clang_getResultType(type);
-            function.return_type.name = to_string(clang_getTypeSpelling(return_type));
+            function.return_type.name = get_string(clang_getTypeSpelling(return_type));
 
             add_access_flags(cursor, function.flags);
 
@@ -424,7 +461,7 @@ namespace spore::codegen
             enum_.type = clang_EnumDecl_isScoped(cursor) ? ast_enum_type::enum_class : ast_enum_type::enum_;
 
             CXType base_type = clang_getEnumDeclIntegerType(cursor);
-            enum_.base.name = to_string(clang_getTypeSpelling(base_type));
+            enum_.base.name = get_string(clang_getTypeSpelling(base_type));
 
             const auto visitor = [&](CXCursor cursor, CXCursor parent) {
                 switch (cursor.kind)
@@ -455,9 +492,8 @@ namespace spore::codegen
         {
             ast_field field;
             field.name = get_name(cursor);
-
-            CXType type = clang_getCursorType(cursor);
-            field.type.name = to_string(clang_getTypeSpelling(type));
+            field.default_value = get_default_value(cursor);
+            field.type.name = get_type_spelling(cursor);
 
             add_access_flags(cursor, field.flags);
 
@@ -642,7 +678,7 @@ namespace spore::codegen
         std::vector<std::string> args;
         std::vector<const char*> args_view;
         CXIndex clang_index;
-        bool print_diagnostics;
+        bool debug;
 
         explicit ast_parser_clang(const codegen_options& options)
         {
@@ -680,7 +716,7 @@ namespace spore::codegen
                 [](const std::string& value) { return value.data(); });
 
             clang_index = clang_createIndex(0, 0);
-            print_diagnostics = options.debug;
+            debug = options.debug;
         }
 
         ~ast_parser_clang() noexcept override
@@ -695,13 +731,8 @@ namespace spore::codegen
                 CXTranslationUnit_KeepGoing |
                 CXTranslationUnit_SkipFunctionBodies);
 
-            std::string main_source;
-            for (const std::string& path : paths)
-            {
-                main_source += "#include \"";
-                main_source += path;
-                main_source += "\"\n";
-            }
+            std::size_t file_index = 0;
+            std::map<std::string_view, std::size_t> file_map;
 
             ast_files.clear();
             ast_files.reserve(paths.size());
@@ -716,32 +747,36 @@ namespace spore::codegen
                     return false;
                 }
 
+                file_map.emplace(path, file_index++);
                 ast_files.emplace_back(std::move(ast_file));
             }
 
-            std::vector<CXUnsavedFile> source_files;
-            source_files.reserve(ast_files.size() + 1);
+            std::string main_source;
+            for (const std::string& path : paths)
+            {
+                main_source += "#include \"";
+                main_source += path;
+                main_source += "\"\n";
+            }
+
+            std::vector<CXUnsavedFile> unsaved_files;
+            unsaved_files.reserve(ast_files.size() + 1);
 
             for (std::size_t index = 0; index < paths.size(); ++index)
             {
                 const std::string& source = ast_files[index].source;
-                source_files.emplace_back() = CXUnsavedFile {paths[index].data(), source.data(), static_cast<unsigned long>(source.size())};
+                unsaved_files.emplace_back() = CXUnsavedFile {paths[index].data(), source.data(), static_cast<unsigned long>(source.size())};
             }
 
-            std::size_t index = 0;
-            std::map<std::string_view, std::size_t> file_map;
-
-            for (const std::string& path : paths)
-            {
-                file_map.emplace(path, index++);
-            }
-
-            constexpr std::string_view source_file = "source.cpp";
-            source_files.emplace_back() = CXUnsavedFile {source_file.data(), main_source.data(), static_cast<unsigned long>(main_source.size())};
+            constexpr std::string_view source_file = "__main.cpp";
+            unsaved_files.emplace_back() = CXUnsavedFile {source_file.data(), main_source.data(), static_cast<unsigned long>(main_source.size())};
 
             CXTranslationUnit translation_unit = nullptr;
             CXErrorCode error = clang_parseTranslationUnit2(
-                clang_index, source_file.data(), args_view.data(), static_cast<int>(args_view.size()), source_files.data(), static_cast<unsigned long>(source_files.size()), flags, &translation_unit);
+                clang_index, source_file.data(),
+                args_view.data(), static_cast<int>(args_view.size()),
+                unsaved_files.data(), static_cast<unsigned long>(unsaved_files.size()),
+                flags, &translation_unit);
 
             if (error != CXError_Success)
             {
@@ -749,20 +784,19 @@ namespace spore::codegen
                 return false;
             }
 
-            if (print_diagnostics)
+            defer dispose_translation_unit = [&] { clang_disposeTranslationUnit(translation_unit); };
+
+            if (debug)
             {
                 std::size_t diagnostics_count = clang_getNumDiagnostics(translation_unit);
                 for (std::size_t diagnostics_index = 0; diagnostics_index < diagnostics_count; ++diagnostics_index)
                 {
                     CXDiagnostic diagnostic = clang_getDiagnostic(translation_unit, diagnostics_index);
                     defer dispose_diagnostic = [&] { clang_disposeDiagnostic(diagnostic); };
-                    std::string diagnostic_str = detail::to_string(clang_formatDiagnostic(diagnostic, clang_defaultDiagnosticDisplayOptions()));
+                    std::string diagnostic_str = detail::get_string(clang_formatDiagnostic(diagnostic, clang_defaultDiagnosticDisplayOptions()));
                     std::puts(diagnostic_str.data());
                 }
             }
-
-            defer dispose_translation_unit = [&] { clang_disposeTranslationUnit(translation_unit); };
-            CXCursor cursor = clang_getTranslationUnitCursor(translation_unit);
 
             const auto visitor = [&](CXCursor cursor, CXCursor parent) {
                 const auto it_file = file_map.find(detail::get_file(cursor));
@@ -775,7 +809,9 @@ namespace spore::codegen
                 return CXChildVisit_Continue;
             };
 
+            CXCursor cursor = clang_getTranslationUnitCursor(translation_unit);
             detail::visit_children(cursor, visitor);
+
             return true;
         }
     };

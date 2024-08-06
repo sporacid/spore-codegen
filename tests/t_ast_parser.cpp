@@ -97,7 +97,7 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
 
             REQUIRE(class_.fields[0].name == "_i");
             REQUIRE(class_.fields[0].type.name == "int");
-            // REQUIRE(class_.fields[0].default_value == "42");
+            REQUIRE(class_.fields[0].default_value == "42");
             REQUIRE(class_.fields[0].attributes.size() == 1);
             REQUIRE(class_.fields[0].attributes.contains("_field"));
             REQUIRE(class_.fields[0].attributes["_field"] == true);
