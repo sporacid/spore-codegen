@@ -59,7 +59,7 @@ namespace spore::codegen
             for (auto index_token = 0; index_token < token_count; ++index_token)
             {
                 CXToken& token = tokens[index_token];
-                func(tu, token, clang_getTokenKind(token));
+                func(tu, token);
             }
             //
             //            std::vector<CXCursor> token_cursors;
@@ -154,6 +154,12 @@ namespace spore::codegen
             return to_string(string);
         }
 
+        std::string get_spelling(CXTranslationUnit tu, CXToken token)
+        {
+            CXString string = clang_getTokenSpelling(tu, token);
+            return to_string(string);
+        }
+
         std::string get_file(CXCursor cursor)
         {
             CXSourceLocation location = clang_getCursorLocation(cursor);
@@ -189,6 +195,32 @@ namespace spore::codegen
             return scope;
         }
 
+        std::vector<CXToken> get_tokens(CXTranslationUnit tu, CXCursor cursor)
+        {
+            CXSourceRange extent = clang_getCursorExtent(cursor);
+
+            CXToken* token_ptr = nullptr;
+            unsigned token_count = 0;
+
+            clang_tokenize(tu, extent, &token_ptr, &token_count);
+
+            defer defer_dispose_tokens = [&] { clang_disposeTokens(tu, token_ptr, token_count); };
+
+            std::vector<CXToken> tokens;
+            tokens.reserve(token_count);
+
+            std::copy(token_ptr, token_ptr + token_count, std::back_inserter(tokens));
+            return tokens;
+            //            std::vector<std::string> token_values;
+            //            token_values.reserve(token_count);
+            //
+            //            const auto transformer = [&](CXToken token) {
+            //                return get_spelling(tu, token);
+            //            };
+            //
+            //            std::transform(tokens, tokens + token_count, std::back_inserter(token_values), transformer);
+        }
+
         std::string_view get_preamble(CXCursor cursor, std::string_view source)
         {
             CXSourceLocation location = clang_getCursorLocation(cursor);
@@ -217,6 +249,26 @@ namespace spore::codegen
         //            return std::string_view {source.data() + offset, source.size() - offset};
         //        }
 
+        void append_token(std::string& tokens, std::string_view token)
+        {
+            constexpr unsigned char no_whitespace_before[] {0, '>', ',', ';', '.'};
+            constexpr unsigned char no_whitespace_after[] {0, '<', '.'};
+
+            const unsigned char first = !token.empty() ? *token.begin() : 0;
+            const unsigned char last = !tokens.empty() ? *tokens.rbegin() : 0;
+
+            const bool no_whitespace =
+                std::find(std::begin(no_whitespace_before), std::end(no_whitespace_before), first) != std::end(no_whitespace_before) ||
+                std::find(std::begin(no_whitespace_after), std::end(no_whitespace_after), last) != std::end(no_whitespace_after);
+
+            if (!no_whitespace)
+            {
+                tokens += " ";
+            }
+
+            tokens += token;
+        }
+
         void add_access_flags(CXCursor cursor, ast_flags& flags)
         {
             CX_CXXAccessSpecifier access_spec = clang_getCXXAccessSpecifier(cursor);
@@ -241,60 +293,94 @@ namespace spore::codegen
 
         ast_template_param make_template_param(CXCursor cursor, ast_file& data, std::size_t index)
         {
-            //            constexpr std::string_view equal_sign = "=";
-
-            std::string_view preamble = get_preamble(cursor, data.source);
-            //            std::string_view epilogue = get_epilogue(cursor, data.source);
-
             ast_template_param template_param;
-            template_param.type = rfind_type(preamble);
-            template_param.name = get_name(cursor);
-            template_param.is_variadic = template_param.type.ends_with("...");
 
-            if (template_param.name.empty())
+            CXTranslationUnit tu = clang_Cursor_getTranslationUnit(cursor);
+            std::vector<CXToken> tokens = get_tokens(tu, cursor);
+
+            std::size_t depth = 0;
+            const auto predicate_name = [&](CXToken token) {
+                CXTokenKind kind = clang_getTokenKind(token);
+                if (kind == CXToken_Punctuation)
+                {
+                    std::string spelling = get_spelling(tu, token);
+                    std::size_t depth_diff = spelling == "<" ? 1 : (spelling == ">" ? -1 : 0);
+                    depth += depth_diff;
+                    return false;
+                }
+
+                return depth == 0 && kind == CXToken_Identifier;
+            };
+
+            const auto predicate_default_value = [&](CXToken token) {
+                return clang_getTokenKind(token) == CXToken_Punctuation && get_spelling(tu, token) == "=";
+            };
+
+            using iterator_t = decltype(tokens.begin());
+            iterator_t it_type;
+
+            const auto it_name = std::find_if(tokens.begin(), tokens.end(), predicate_name);
+            const auto it_default_value = std::find_if((it_name != tokens.end() ? it_name : tokens.begin()), tokens.end(), predicate_default_value);
+
+            if (it_name == tokens.end())
+            {
+                if (it_default_value == tokens.end())
+                {
+                    it_type = tokens.end();
+                }
+                else
+                {
+                    it_type = it_default_value;
+                }
+            }
+            else
+            {
+                it_type = it_name;
+            }
+
+            if (it_name != tokens.end())
+            {
+                template_param.name = get_spelling(tu, *it_name);
+            }
+            else
             {
                 template_param.name = fmt::format("_t{}", index);
             }
 
-            bool is_next_token_value = false;
-            const auto visitor = [&](CXTranslationUnit tu, CXToken token, CXTokenKind kind) {
-                std::string spelling = to_string(clang_getTokenSpelling(tu, token));
-                std::puts(spelling.data());
-                switch (kind)
+            for (CXToken token : std::span {tokens.begin(), it_type})
+            {
+                std::string spelling = get_spelling(tu, token);
+
+                if (spelling == "...")
                 {
-                    case CXToken_Punctuation: {
-                        std::string spelling = to_string(clang_getTokenSpelling(tu, token));
-                        if (spelling == "=")
-                        {
-                            is_next_token_value = true;
-                        }
+                    template_param.is_variadic = true;
+                }
 
-                        break;
+                append_token(template_param.type, spelling);
+            }
+
+            if (it_default_value != tokens.end())
+            {
+                for (CXToken token : std::span {it_default_value + 1, tokens.end()})
+                {
+                    std::string spelling = get_spelling(tu, token);
+
+                    if (template_param.default_value.has_value())
+                    {
+                        // template_param.default_value.value() += get_spelling(tu, token);
+                        append_token(template_param.type, spelling);
                     }
-
-                    case CXToken_Keyword:
-                    case CXToken_Literal: {
-                        if (is_next_token_value)
-                        {
-                            template_param.default_value = to_string(clang_getTokenSpelling(tu, token));
-                            is_next_token_value = false;
-                        }
-
-                        break;
-                    }
-
-                    default: {
-                        break;
+                    else
+                    {
+                        template_param.default_value = std::move(spelling);
                     }
                 }
-            };
+            }
 
-            visit_tokens(cursor, visitor);
             return template_param;
         }
 
-        nlohmann::json
-        make_attributes(CXCursor cursor)
+        nlohmann::json make_attributes(CXCursor cursor)
         {
             std::string attributes = get_spelling(cursor);
 

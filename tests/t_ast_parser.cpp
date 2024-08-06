@@ -309,13 +309,18 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
         ast_class& class_ = ast_file.classes[6];
 
         REQUIRE(class_.name == "_template");
-        REQUIRE(class_.template_params.size() == 3);
+        REQUIRE(class_.template_params.size() == 4);
         REQUIRE(class_.template_params[0].name == "value_t");
         REQUIRE(class_.template_params[0].type == "typename");
         REQUIRE(class_.template_params[1].name == "size_v");
         REQUIRE(class_.template_params[1].type == "int");
-        REQUIRE(class_.template_params[2].name == "args_t");
-        REQUIRE(class_.template_params[2].type == "typename...");
-        REQUIRE(class_.template_params[2].is_variadic);
+
+
+        REQUIRE(class_.template_params[2].name == "template_t");
+        REQUIRE(class_.template_params[2].type == "template <typename arg_t, typename, int> typename");
+
+        REQUIRE(class_.template_params[3].name == "variadic_t");
+        REQUIRE(class_.template_params[3].type == "typename...");
+        REQUIRE(class_.template_params[3].is_variadic);
     }
 }
