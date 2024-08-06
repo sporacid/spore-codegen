@@ -2,21 +2,23 @@
 
 #include <string>
 
+#define ATTRIBUTE(...) [[clang::annotate(#__VA_ARGS__)]]
+
 namespace spore::codegen::examples::json
 {
-    struct [[json]] generic_pair
+    struct ATTRIBUTE(json) generic_pair
     {
-        [[json(name = "Key")]] std::string key;
-        [[json(name = "Value")]] std::string value;
-        [[json(ignore)]] std::uint32_t version = 0;
+        ATTRIBUTE(json = "Key") std::string key;
+        ATTRIBUTE(json = "Value") std::string value;
+        ATTRIBUTE(json = false) std::uint32_t version = 0;
     };
 
     template <typename value_t>
-    struct [[json]] template_pair
+    struct ATTRIBUTE(json) template_pair
     {
-        [[json(name = "Key")]] std::string key;
-        [[json(name = "Value")]] value_t value;
-        [[json(ignore)]] std::uint32_t version = 0;
+        ATTRIBUTE(json = "Key") std::string key;
+        ATTRIBUTE(json = "Value") value_t value;
+        ATTRIBUTE(json = false) std::uint32_t version = 0;
     };
 }
 

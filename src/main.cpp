@@ -110,11 +110,6 @@ int main(int argc, const char* argv[])
         return static_cast<int>(spore::codegen::codegen_error_code::invalid);
     }
 
-    if (arg_parser.get<bool>("--debug"))
-    {
-        spdlog::set_level(spdlog::level::debug);
-    }
-
     spore::codegen::codegen_options options {
         .output = arg_parser.get<std::string>("--output"),
         .config = arg_parser.get<std::string>("--config"),
@@ -126,7 +121,13 @@ int main(int argc, const char* argv[])
         .definitions = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--definitions"),
         .user_data = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--user-data"),
         .force = arg_parser.get<bool>("--force"),
+        .debug = arg_parser.get<bool>("--debug"),
     };
+
+    if (options.debug)
+    {
+        spdlog::set_level(spdlog::level::debug);
+    }
 
     try
     {

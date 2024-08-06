@@ -121,12 +121,27 @@ namespace spore::codegen
                 throw codegen_error(codegen_error_code::io, "unable to read config, file={}", options.config);
             }
 
-            nlohmann::json::parse(config_data).get_to(config);
+            try
+            {
+                nlohmann::json::parse(config_data).get_to(config);
+            }
+            catch (...)
+            {
+                throw codegen_error(codegen_error_code::configuring, "invalid config, file={}", options.config);
+            }
 
             std::string cache_data;
             if (!options.force && files::read_file(options.cache, cache_data))
             {
-                nlohmann::json::parse(cache_data).get_to(cache);
+                try
+                {
+                    nlohmann::json::parse(cache_data).get_to(cache);
+                }
+                catch (...)
+                {
+                    SPDLOG_INFO("ignoring invalid cache, file={}", options.cache);
+                    cache.reset();
+                }
 
                 if (cache.version != SPORE_CODEGEN_VERSION)
                 {
@@ -143,6 +158,7 @@ namespace spore::codegen
             }
 
             options.definitions.emplace_back(SPORE_CODEGEN_MACRO, "1");
+            options.template_paths.emplace_back(std::filesystem::current_path().string());
 
             for (const std::pair<std::string, std::string>& pair : options.user_data)
             {
@@ -249,7 +265,7 @@ namespace spore::codegen
                     const file_data& file = data.files.at(dirty_indices.at(index_file));
                     const ast_file& ast = asts.at(index_file);
 
-                    if (step.condition && step.condition->matches_condition(ast))
+                    if (step.condition == nullptr || step.condition->matches_condition(ast))
                     {
                         render_file(step, file, ast);
                     }
@@ -379,7 +395,7 @@ namespace spore::codegen
                     continue;
                 }
 
-                const auto action_predicate = [&](const std::string& template_path) {
+                const auto predicate = [&](const std::string& template_path) {
                     std::filesystem::path possible_template = std::filesystem::path(template_path) / template_;
 
                     SPDLOG_DEBUG("  search template, file={}", possible_template.string());
@@ -393,7 +409,7 @@ namespace spore::codegen
                     return false;
                 };
 
-                if (!std::any_of(options.template_paths.begin(), options.template_paths.end(), action_predicate))
+                if (!std::any_of(options.template_paths.begin(), options.template_paths.end(), predicate))
                 {
                     throw codegen_error(codegen_error_code::configuring, "could not find template file, file={}", template_);
                 }

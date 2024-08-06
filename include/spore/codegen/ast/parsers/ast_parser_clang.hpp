@@ -22,6 +22,14 @@ namespace spore::codegen
 {
     namespace detail
     {
+        template <typename value_t, typename func_t>
+        void insert_at_end(std::vector<value_t>& values, func_t&& func)
+        {
+            std::size_t index = values.size();
+            value_t value = func();
+            values.insert(values.begin() + index, std::move(value));
+        }
+
         std::string_view rfind_template(std::string_view preamble)
         {
             constexpr std::string_view chevrons = "<>";
@@ -329,6 +337,16 @@ namespace spore::codegen
                 function.flags = function.flags | ast_flags::virtual_;
             }
 
+            if (clang_CXXMethod_isDefaulted(cursor))
+            {
+                function.flags = function.flags | ast_flags::default_;
+            }
+
+            if (clang_CXXMethod_isDeleted(cursor))
+            {
+                function.flags = function.flags | ast_flags::delete_;
+            }
+
             using closure_t = std::tuple<ast_function&, ast_file&>;
             const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
                 auto& [closure_function, closure_data] = *static_cast<closure_t*>(data_ptr);
@@ -376,103 +394,6 @@ namespace spore::codegen
             constructor.template_specialization_params = std::move(function.template_specialization_params);
 
             return constructor;
-        }
-
-        ast_class make_class(CXCursor cursor, ast_file& data)
-        {
-            ast_class class_;
-            class_.name = get_name(cursor);
-            class_.scope = get_scope(cursor);
-
-            std::string_view name_template = rfind_template(class_.name);
-            class_.name.resize(class_.name.size() - name_template.size());
-
-            CXCursorKind cursor_kind = cursor.kind;
-            if (cursor_kind == CXCursor_ClassTemplate)
-            {
-                cursor_kind = clang_getTemplateCursorKind(cursor);
-            }
-
-            switch (cursor_kind)
-            {
-                case CXCursor_StructDecl: {
-                    class_.type = ast_class_type::struct_;
-                    break;
-                }
-
-                case CXCursor_ClassDecl: {
-                    class_.type = ast_class_type::class_;
-                    break;
-                }
-
-                default: {
-                    break;
-                }
-            }
-
-            using closure_t = std::tuple<ast_class&, ast_file&>;
-            const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
-                auto& [closure_class, closure_data] = *static_cast<closure_t*>(data_ptr);
-                switch (cursor.kind)
-                {
-                    case CXCursor_FieldDecl: {
-                        closure_class.fields.emplace_back(make_field(cursor, closure_data));
-                        break;
-                    }
-
-                    case CXCursor_Constructor: {
-                        closure_class.constructors.emplace_back(make_constructor(cursor, closure_data));
-                        break;
-                    }
-
-                    case CXCursor_FunctionDecl:
-                    case CXCursor_FunctionTemplate:
-                    case CXCursor_CXXMethod: {
-                        closure_class.functions.emplace_back(make_function(cursor, closure_data));
-                        break;
-                    }
-
-                    case CXCursor_CXXBaseSpecifier: {
-                        ast_ref& base = closure_class.bases.emplace_back();
-                        base.name = get_name(cursor);
-                        break;
-                    }
-
-                    case CXCursor_TemplateTypeParameter:
-                    case CXCursor_NonTypeTemplateParameter: {
-                        closure_class.template_params.emplace_back(make_template_param(cursor, closure_data, closure_class.template_params.size()));
-                        break;
-                    }
-
-                    case CXCursor_AnnotateAttr: {
-                        closure_class.attributes = make_attributes(cursor);
-                        break;
-                    }
-
-                    case CXCursor_StructDecl:
-                    case CXCursor_ClassDecl:
-                    case CXCursor_ClassTemplate: {
-                        // TODO @sporacid handle inner classes
-                        break;
-                    }
-
-                    case CXCursor_EnumDecl: {
-                        // TODO @sporacid handle inner enums
-                        break;
-                    }
-
-                    default: {
-                        return CXChildVisit_Recurse;
-                    }
-                }
-
-                return CXChildVisit_Continue;
-            };
-
-            closure_t closure {class_, data};
-            clang_visitChildren(cursor, visitor, &closure);
-
-            return class_;
         }
 
         ast_enum_value make_enum_value(CXCursor cursor, ast_file& data)
@@ -544,48 +465,146 @@ namespace spore::codegen
             return enum_;
         }
 
-        void make_file(CXCursor cursor, ast_file& data)
+        ast_class make_class(CXCursor cursor, ast_file& data)
         {
-            using closure_t = std::tuple<CXCursorVisitor, ast_file&>;
-            const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
-                const auto& [closure_visitor, closure_data] = *static_cast<closure_t*>(data_ptr);
+            ast_class class_;
+            class_.name = get_name(cursor);
+            class_.scope = get_scope(cursor);
 
+            std::string_view name_template = rfind_template(class_.name);
+            class_.name.resize(class_.name.size() - name_template.size());
+
+            CXCursorKind cursor_kind = cursor.kind;
+            if (cursor_kind == CXCursor_ClassTemplate)
+            {
+                cursor_kind = clang_getTemplateCursorKind(cursor);
+            }
+
+            switch (cursor_kind)
+            {
+                case CXCursor_StructDecl: {
+                    class_.type = ast_class_type::struct_;
+                    break;
+                }
+
+                case CXCursor_ClassDecl: {
+                    class_.type = ast_class_type::class_;
+                    break;
+                }
+
+                default: {
+                    break;
+                }
+            }
+
+            using closure_t = std::tuple<ast_class&, ast_file&>;
+            const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
+                auto& [closure_class, closure_data] = *static_cast<closure_t*>(data_ptr);
                 switch (cursor.kind)
                 {
-                    case CXCursor_Namespace: {
-                        clang_visitChildren(cursor, closure_visitor, data_ptr);
+                    case CXCursor_TemplateTypeParameter:
+                    case CXCursor_NonTypeTemplateParameter: {
+                        closure_class.template_params.emplace_back(make_template_param(cursor, closure_data, closure_class.template_params.size()));
                         break;
                     }
 
-                    case CXCursor_ClassTemplate:
+                    case CXCursor_AnnotateAttr: {
+                        closure_class.attributes = make_attributes(cursor);
+                        break;
+                    }
+
+                    case CXCursor_CXXBaseSpecifier: {
+                        ast_ref& base = closure_class.bases.emplace_back();
+                        base.name = get_name(cursor);
+                        break;
+                    }
+
+                    case CXCursor_FieldDecl: {
+                        insert_at_end(closure_class.fields, [&] { return make_field(cursor, closure_data); });
+                        break;
+                    }
+
+                    case CXCursor_Constructor: {
+                        insert_at_end(closure_class.constructors, [&] { return make_constructor(cursor, closure_data); });
+                        break;
+                    }
+
+                    case CXCursor_FunctionDecl:
+                    case CXCursor_FunctionTemplate:
+                    case CXCursor_CXXMethod: {
+                        insert_at_end(closure_class.functions, [&] { return make_function(cursor, closure_data); });
+                        break;
+                    }
+
+                    case CXCursor_StructDecl:
                     case CXCursor_ClassDecl:
-                    case CXCursor_StructDecl: {
-                        // TODO @sporacid handle inner classes
-                        closure_data.classes.emplace_back(make_class(cursor, closure_data));
+                    case CXCursor_ClassTemplate: {
+                        insert_at_end(closure_data.classes, [&] { return make_class(cursor, closure_data); });
                         break;
                     }
 
                     case CXCursor_EnumDecl: {
-                        closure_data.enums.emplace_back(make_enum(cursor, closure_data));
+                        insert_at_end(closure_data.enums, [&] { return make_enum(cursor, closure_data); });
+                        break;
+                    }
+
+                    default: {
+                        return CXChildVisit_Recurse;
+                    }
+                }
+
+                return CXChildVisit_Continue;
+            };
+
+            closure_t closure {class_, data};
+            clang_visitChildren(cursor, visitor, &closure);
+
+            return class_;
+        }
+
+        void make_file(CXCursor cursor, CXCursor parent, ast_file& data)
+        {
+            using closure_t = std::tuple<ast_file&>;
+            const auto visitor = [](CXCursor cursor, CXCursor parent, CXClientData data_ptr) {
+                const auto& [closure_data] = *static_cast<closure_t*>(data_ptr);
+
+                std::string spelling = get_spelling(cursor);
+                std::string parent_spelling = get_spelling(parent);
+
+                switch (cursor.kind)
+                {
+                    case CXCursor_ClassTemplate:
+                    case CXCursor_ClassDecl:
+                    case CXCursor_StructDecl: {
+                        insert_at_end(closure_data.classes, [&] { return make_class(cursor, closure_data); });
+                        break;
+                    }
+
+                    case CXCursor_EnumDecl: {
+                        insert_at_end(closure_data.enums, [&] { return make_enum(cursor, closure_data); });
                         break;
                     }
 
                     case CXCursor_FunctionTemplate:
                     case CXCursor_FunctionDecl:
                     case CXCursor_CXXMethod: {
-                        closure_data.functions.emplace_back(make_function(cursor, closure_data));
+                        insert_at_end(closure_data.functions, [&] { return make_function(cursor, closure_data); });
                         break;
                     }
 
-                    default:
+                    default: {
                         return CXChildVisit_Recurse;
+                    }
                 }
 
                 return CXChildVisit_Continue;
             };
 
-            closure_t closure {visitor, data};
-            clang_visitChildren(cursor, visitor, &closure);
+            closure_t closure {data};
+            if (visitor(cursor, parent, &closure) == CXChildVisit_Recurse)
+            {
+                clang_visitChildren(cursor, visitor, &closure);
+            }
         }
     }
 
@@ -594,6 +613,7 @@ namespace spore::codegen
         std::vector<std::string> args;
         std::vector<const char*> args_view;
         CXIndex clang_index;
+        bool print_diagnostics;
 
         explicit ast_parser_clang(const codegen_options& options)
         {
@@ -631,6 +651,7 @@ namespace spore::codegen
                 [](const std::string& value) { return value.data(); });
 
             clang_index = clang_createIndex(0, 0);
+            print_diagnostics = options.debug;
         }
 
         ~ast_parser_clang() noexcept override
@@ -689,13 +710,26 @@ namespace spore::codegen
             constexpr std::string_view source_file = "source.cpp";
             source_files.emplace_back() = CXUnsavedFile {source_file.data(), main_source.data(), static_cast<unsigned long>(main_source.size())};
 
-            CXTranslationUnit translation_unit = clang_parseTranslationUnit(
-                clang_index, source_file.data(), args_view.data(), static_cast<int>(args_view.size()), source_files.data(), static_cast<unsigned long>(source_files.size()), flags);
+            CXTranslationUnit translation_unit = nullptr;
+            CXErrorCode error = clang_parseTranslationUnit2(
+                clang_index, source_file.data(), args_view.data(), static_cast<int>(args_view.size()), source_files.data(), static_cast<unsigned long>(source_files.size()), flags, &translation_unit);
 
-            if (translation_unit == nullptr)
+            if (error != CXError_Success)
             {
-                SPDLOG_ERROR("unable to parse translation unit");
+                SPDLOG_ERROR("unable to parse translation unit, code={}", static_cast<int>(error));
                 return false;
+            }
+
+            if (print_diagnostics)
+            {
+                std::size_t diagnostics_count = clang_getNumDiagnostics(translation_unit);
+                for (std::size_t diagnostics_index = 0; diagnostics_index < diagnostics_count; ++diagnostics_index)
+                {
+                    CXDiagnostic diagnostic = clang_getDiagnostic(translation_unit, diagnostics_index);
+                    defer dispose_diagnostic = [&] { clang_disposeDiagnostic(diagnostic); };
+                    std::string diagnostic_str = detail::to_string(clang_formatDiagnostic(diagnostic, clang_defaultDiagnosticDisplayOptions()));
+                    std::puts(diagnostic_str.data());
+                }
             }
 
             defer dispose_translation_unit = [&] { clang_disposeTranslationUnit(translation_unit); };
@@ -709,7 +743,7 @@ namespace spore::codegen
                 if (it_file != closure_file_map.end())
                 {
                     std::size_t index = it_file->second;
-                    detail::make_file(cursor, closure_ast_files[index]);
+                    detail::make_file(cursor, parent, closure_ast_files[index]);
                 }
 
                 return CXChildVisit_Continue;
@@ -717,7 +751,6 @@ namespace spore::codegen
 
             closure_t closure {ast_files, file_map};
             clang_visitChildren(cursor, visitor, &closure);
-
             return true;
         }
     };
