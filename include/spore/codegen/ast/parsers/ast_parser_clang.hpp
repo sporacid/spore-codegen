@@ -227,60 +227,18 @@ namespace spore::codegen
         ast_template_param make_template_param(CXCursor cursor, std::size_t index)
         {
             ast_template_param template_param;
+            template_param.name = get_name(cursor);
 
-            CXTranslationUnit tu = clang_Cursor_getTranslationUnit(cursor);
-            std::vector<CXToken> tokens = get_tokens(tu, cursor);
-
-            std::size_t depth = 0;
-            const auto predicate_name = [&](CXToken token) {
-                CXTokenKind kind = clang_getTokenKind(token);
-                if (kind == CXToken_Punctuation)
-                {
-                    std::string spelling = get_spelling(tu, token);
-                    std::size_t depth_diff = spelling == "<" ? 1 : (spelling == ">" ? -1 : 0);
-                    depth += depth_diff;
-                    return false;
-                }
-
-                return depth == 0 && kind == CXToken_Identifier;
-            };
-
-            const auto predicate_default_value = [&](CXToken token) {
-                return clang_getTokenKind(token) == CXToken_Punctuation && get_spelling(tu, token) == "=";
-            };
-
-            using iterator_t = decltype(tokens.begin());
-            iterator_t it_type;
-
-            const auto it_name = std::find_if(tokens.begin(), tokens.end(), predicate_name);
-            const auto it_default_value = std::find_if((it_name != tokens.end() ? it_name : tokens.begin()), tokens.end(), predicate_default_value);
-
-            if (it_name == tokens.end())
-            {
-                if (it_default_value == tokens.end())
-                {
-                    it_type = tokens.end();
-                }
-                else
-                {
-                    it_type = it_default_value;
-                }
-            }
-            else
-            {
-                it_type = it_name;
-            }
-
-            if (it_name != tokens.end())
-            {
-                template_param.name = get_spelling(tu, *it_name);
-            }
-            else
+            if (template_param.name.empty())
             {
                 template_param.name = fmt::format("_t{}", index);
             }
 
-            for (CXToken token : std::span {tokens.begin(), it_type})
+            CXTranslationUnit tu = clang_Cursor_getTranslationUnit(cursor);
+            std::vector<CXToken> tokens = get_tokens(tu, cursor);
+
+            std::string* token_ptr = &template_param.type;
+            for (CXToken token : tokens)
             {
                 std::string spelling = get_spelling(tu, token);
 
@@ -289,23 +247,17 @@ namespace spore::codegen
                     template_param.is_variadic = true;
                 }
 
-                append_token(template_param.type, spelling);
-            }
-
-            if (it_default_value != tokens.end())
-            {
-                for (CXToken token : std::span {it_default_value + 1, tokens.end()})
+                if (spelling == template_param.name)
                 {
-                    std::string spelling = get_spelling(tu, token);
-
-                    if (template_param.default_value.has_value())
-                    {
-                        append_token(template_param.default_value.value(), spelling);
-                    }
-                    else
-                    {
-                        template_param.default_value = std::move(spelling);
-                    }
+                    token_ptr = nullptr;
+                }
+                else if (spelling == "=")
+                {
+                    token_ptr = &template_param.default_value.emplace();
+                }
+                else if (token_ptr != nullptr)
+                {
+                    append_token(*token_ptr, spelling);
                 }
             }
 

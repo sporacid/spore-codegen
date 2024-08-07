@@ -238,8 +238,8 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
         REQUIRE(ast_file.functions[0].arguments.size() == 1);
         REQUIRE(ast_file.functions[0].arguments[0].name == "_arg");
         REQUIRE(ast_file.functions[0].arguments[0].type.name == "int");
-        // REQUIRE(ast_file.functions[0].arguments[0].default_value.has_value());
-        // REQUIRE(ast_file.functions[0].arguments[0].default_value.value() == "42");
+        REQUIRE(ast_file.functions[0].arguments[0].default_value.has_value());
+        REQUIRE(ast_file.functions[0].arguments[0].default_value.value() == "42");
         REQUIRE(ast_file.functions[0].arguments[0].attributes.size() == 1);
         REQUIRE(ast_file.functions[0].arguments[0].attributes.contains("_argument"));
         REQUIRE(ast_file.functions[0].arguments[0].attributes["_argument"] == true);
@@ -309,18 +309,17 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
         ast_class& class_ = ast_file.classes[6];
 
         REQUIRE(class_.name == "_template");
-        REQUIRE(class_.template_params.size() == 4);
+        REQUIRE(class_.template_params.size() == 5);
         REQUIRE(class_.template_params[0].name == "value_t");
         REQUIRE(class_.template_params[0].type == "typename");
         REQUIRE(class_.template_params[1].name == "size_v");
         REQUIRE(class_.template_params[1].type == "int");
-
-
         REQUIRE(class_.template_params[2].name == "template_t");
         REQUIRE(class_.template_params[2].type == "template <typename arg_t, typename, int> typename");
-
-        REQUIRE(class_.template_params[3].name == "variadic_t");
-        REQUIRE(class_.template_params[3].type == "typename...");
-        REQUIRE(class_.template_params[3].is_variadic);
+        REQUIRE(class_.template_params[3].name == "concept_t");
+        REQUIRE(class_.template_params[3].type == "concept_");
+        REQUIRE(class_.template_params[4].name == "variadic_t");
+        REQUIRE(class_.template_params[4].type == "typename...");
+        REQUIRE(class_.template_params[4].is_variadic);
     }
 }

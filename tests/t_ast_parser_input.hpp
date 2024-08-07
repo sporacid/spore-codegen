@@ -82,7 +82,10 @@ struct ATTRIBUTE(a, b = 1, c = "2", d = 3.0, e = (f = 4, g = (h = 5))) _attribut
     int _overridden_field = 0;
 };
 
-template <typename value_t, int size_v, template <typename arg_t, typename, int> typename template_t, typename... variadic_t>
+template <typename>
+concept concept_ = true;
+
+template <typename value_t, int size_v, template <typename arg_t, typename, int> typename template_t, concept_ concept_t, typename... variadic_t>
 struct _template
 {
 };
