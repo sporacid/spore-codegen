@@ -9,14 +9,15 @@ option(SPORE_BUILD_TESTS "Whether to build tests" ON)
 
 set(CMAKE_CXX_STANDARD 20)
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-
-if (NOT SPORE_VERSION)
-  include(SporeVersion)
-  spore_get_version(SPORE_VERSION)
+if (EXISTS VERSION)
+  file(READ VERSION SPORE_VERSION)
+else ()
+  set(SPORE_VERSION 1.0.0)
 endif ()
 
 project(spore-codegen VERSION ${SPORE_VERSION})
+
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/include/spore/codegen/codegen_version.hpp.in

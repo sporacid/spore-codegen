@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - sporacid/changes-for-engine
 permissions:
   contents: write
 jobs:
@@ -34,24 +33,13 @@ jobs:
           buildPreset: 'ninja-vcpkg-release'
           testPreset: 'ninja-vcpkg-test-release'
           testPresetAdditionalArgs: "['--no-tests=error','--output-on-failure','--verbose']"
-        # env:
-        #   CC: clang
-        #   CXX: clang++
-      # - name: Setup Dependencies
-      #   run: |
-      #     sudo apt-get -qq update &&
-      #     sudo apt-get install -y llvm clang libclang-dev libtbb-dev ninja-build
-      # - name: Configure CMake Project
-      #   run: cmake -B.cmake -G 'Ninja'
-      # - name: Build CMake Project
-      #   run: cmake --build .cmake --config Release
-      # - name: Test CMake Project
-      #   run: ctest --test-dir .cmake/tests --no-tests=error --output-on-failure --verbose
       - name: Tag Version
         if: github.ref == 'refs/heads/main'
         run: |
-          GIT_TAG="v$(cat .cmake/CMakeCache.txt | awk -F= '$1~/CMAKE_PROJECT_VERSION:STATIC/{print$2}')" &&
+          VERSION=$(bash .github/scripts/get_version.sh) &&
           git config user.name "${GITHUB_ACTOR}" &&
           git config user.email "${GITHUB_ACTOR}@users.noreply.github.com" &&
-          git tag -af $GIT_TAG -m "Auto-generated semantic tag $GIT_TAG" &&
+          $(echo $GIT_TAG > VERSION) &&
+          git commit -m "chore: Update VERSION" &&
+          git tag -af v$VERSION -m "Auto-generated semantic tag v$VERSION" &&
           git push origin $GIT_TAG --force

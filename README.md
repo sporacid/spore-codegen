@@ -233,7 +233,6 @@ struct [[clang::annotate("flag, value = 1")]] data
 
 Here is a more complex example with macro definitions to simplify usage.
 
-
 ```cpp
 #ifdef SPORE_CODEGEN
 #define ATTRIBUTE(...) [[clang::annotate(#__VA_ARGS__)]]

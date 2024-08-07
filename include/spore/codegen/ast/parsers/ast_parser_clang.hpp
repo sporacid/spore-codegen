@@ -475,6 +475,9 @@ namespace spore::codegen
             class_.name = get_name(cursor);
             class_.scope = get_scope(cursor);
 
+            CXCursor parent = clang_getCursorSemanticParent(cursor);
+            class_.is_inner = parent.kind != CXCursor_Namespace;
+
             std::size_t depth = 0;
             for (std::size_t index_name = class_.name.size() - 1; index_name != std::numeric_limits<std::size_t>::max(); --index_name)
             {

@@ -176,6 +176,7 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
         REQUIRE(class_.scope == "_namespace1::_namespace2::_struct");
         REQUIRE(class_.full_name() == "_namespace1::_namespace2::_struct::_inner");
         REQUIRE(class_.type == spore::codegen::ast_class_type::struct_);
+        REQUIRE(class_.is_inner_type);
     }
 
     SECTION("parse class template is feature complete")
