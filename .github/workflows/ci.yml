@@ -24,7 +24,10 @@ jobs:
       - name: Install LLVM
         uses: KyleMayes/install-llvm-action@v2
         with:
-          version: "17.0"
+          version: 17.0
+          env: true
+      - name: Export CXX Flags
+        run: echo "CXXFLAGS=-isystem${{ env.LLVM_PATH }}/lib/clang/17/include" >> $GITHUB_ENV
       - name: Install CMake
         uses: lukka/get-cmake@latest
       - name: Install Vcpkg
@@ -41,10 +44,11 @@ jobs:
       - name: Tag Version
         if: github.ref == 'refs/heads/main'
         run: |
-          VERSION=$(bash .github/scripts/get_version.sh) &&
           git config user.name "${GITHUB_ACTOR}" &&
           git config user.email "${GITHUB_ACTOR}@users.noreply.github.com" &&
+          VERSION=$(bash .github/scripts/get_version.sh) &&
           $(echo $GIT_TAG > VERSION) &&
-          git commit -m "chore: Update VERSION" &&
+          git add VERSION &&
+          git commit -m "chore: Update version to $VERSION" &&
           git tag -af v$VERSION -m "Auto-generated semantic tag v$VERSION" &&
           git push origin $GIT_TAG --force

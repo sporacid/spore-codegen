@@ -13,7 +13,6 @@ namespace spore::codegen::detail
     {
         codegen_options options {
             .cpp_standard = "c++20",
-            .debug = true,
         };
         return std::make_shared<ast_parser_t>(options);
     }

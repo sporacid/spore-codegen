@@ -12,13 +12,15 @@ namespace spore::codegen
         std::string output;
         std::string config;
         std::string cache;
+        std::string debug;
         std::string cpp_standard;
         std::string reformat;
         std::vector<std::string> includes;
         std::vector<std::string> template_paths;
+        std::vector<std::string> additional_args;
         std::vector<std::pair<std::string, std::string>> definitions;
         std::vector<std::pair<std::string, std::string>> user_data;
         bool force = false;
-        bool debug = false;
+        bool verbose = false;
     };
 }
