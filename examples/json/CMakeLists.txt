@@ -1,6 +1,6 @@
 set(
   SPORE_CODEGEN_EXAMPLES_JSON_TARGET "${PROJECT_NAME}-examples-json-bin"
-  CACHE STRING "Target for the JSON serialziation example"
+  CACHE STRING "Target for the JSON serialization example"
 )
 
 file(

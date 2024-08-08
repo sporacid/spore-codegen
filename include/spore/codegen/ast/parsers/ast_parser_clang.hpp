@@ -633,13 +633,14 @@ namespace spore::codegen
 
     struct ast_parser_clang : ast_parser
     {
+        CXIndex clang_index;
         std::vector<std::string> args;
         std::vector<const char*> args_view;
-        CXIndex clang_index;
-        bool debug;
 
         explicit ast_parser_clang(const codegen_options& options)
         {
+            clang_index = clang_createIndex(0, 0);
+
             args.emplace_back("-xc++");
             args.emplace_back("-E");
             args.emplace_back("-P");
@@ -665,6 +666,7 @@ namespace spore::codegen
                 }
             }
 
+            std::copy(options.additional_args.begin(), options.additional_args.end(), std::back_inserter(args));
             std::sort(args.begin(), args.end());
             args.erase(std::unique(args.begin(), args.end()), args.end());
 
@@ -672,9 +674,6 @@ namespace spore::codegen
 
             std::transform(args.begin(), args.end(), args_view.begin(),
                 [](const std::string& value) { return value.data(); });
-
-            clang_index = clang_createIndex(0, 0);
-            debug = options.debug;
         }
 
         ~ast_parser_clang() noexcept override
@@ -744,14 +743,16 @@ namespace spore::codegen
 
             defer dispose_translation_unit = [&] { clang_disposeTranslationUnit(translation_unit); };
 
-            if (debug)
+            std::size_t diagnostics_count = clang_getNumDiagnostics(translation_unit);
+            if (diagnostics_count > 0)
             {
-                std::size_t diagnostics_count = clang_getNumDiagnostics(translation_unit);
+                SPDLOG_WARN("clang diagnostics --");
+
                 for (std::size_t diagnostics_index = 0; diagnostics_index < diagnostics_count; ++diagnostics_index)
                 {
                     CXDiagnostic diagnostic = clang_getDiagnostic(translation_unit, diagnostics_index);
                     defer dispose_diagnostic = [&] { clang_disposeDiagnostic(diagnostic); };
-                    std::string diagnostic_str = detail::get_string(clang_formatDiagnostic(diagnostic, clang_defaultDiagnosticDisplayOptions()));
+                    std::string diagnostic_str = "  " + detail::get_string(clang_formatDiagnostic(diagnostic, clang_defaultDiagnosticDisplayOptions()));
                     std::puts(diagnostic_str.data());
                 }
             }

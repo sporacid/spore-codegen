@@ -60,14 +60,16 @@ Spore codegen is a command line application that can be added to any build pipel
 | Output directory     | `-o`       | `--output`         | `.codegen`        | Output directory where to write generated files.                                                                                                        |
 | Configuration file   | `-c`       | `--config`         | `codegen.json`    | Configuration file to use. Contains all codegen steps to execute, which files to process and with which templates.                                      |
 | Cache file           | `-C`       | `--cache`          | `cache.json`      | Cache file to use. Hash of output and template files will be written to this file to skip future generation if unnecessary.                             |
+| Debug mode           | `-g`       | `--debug`          | `debug.json`      | Output debug file with JSON objects for each templates.                                                                                                 |
 | Include directories  | `-I`       | `--includes`       | Empty             | List of include directories to be passed to `libclang`. Used for AST parsing.                                                                           |
 | Macro definitions    | `-D`       | `--definitions`    | Empty             | Macro definitions to be passed to `libclang`. Used for AST preprocessing. Can either be passed as `DEFINITION` or `DEFINITION=VALUE`.                   |
 | User data            | `-d`       | `--user-data`      | Empty             | Additional user data to be passed to the rendering stage. Can be passed as `key=value` and will be accessible through the `user_data` JSON property.    |
 | C++ standard         | `-s`       | `--cpp-standard`   | `c++14`           | C++ standard to be passed to `libclang`. Can be prefixed with `c++` or not (e.g. `c++17` or `17`).                                                      |
 | Reformat command     | `-r`       | `--reformat`       | `clang-format -i` | Set the command to execute to reformat output files. The command will be supplied a single argument which will be the relative path to the output file. |
+| Template directories | `-T`       | `--template-paths` | Empty             | List of directories in which to search for templates in case the template is not found in the command's working directory.                              |
 | Force generate       | `-F`       | `--force`          | `false`           | Skip cache and force generate all input files.                                                                                                          |
-| Debug mode           | `-g`       | `--debug`          | `false`           | Enable debug logs and dump `debug.json` file in output directory.                                                                                       |
-| Template directories | `-T`       | `--template-paths` | Empty             | List of directories in which to search for templates in case the template is not found in the command's WORKING_DIRECTORY                               |
+| Debug mode           | `-V`       | `--verbose`        | `false`           | Enable verbose output.                                                                                                                                  |
+| Additional arguments | N/A        | `--`               | Empty             | List of additional arguments to pass verbatim to `libclang` (e.g. `-- -v -stdlib=libc++`).                                                              |
 
 For a minimally working setup, you need at least a configuration file. By default, the application will look for a
 the `codegen.json` file at the root of your project.
@@ -81,11 +83,17 @@ the `codegen.json` file at the root of your project.
       "files": "**/*.hpp",
       "steps": [
         {
-          "name": "json",
+          "name": "generated",
           "directory": "include",
           "templates": [
             "templates/generated.hpp.inja"
-          ]
+          ],
+          "condition": {
+            "type": "attribute",
+            "value": {
+              "generated": true
+            }
+          }
         }
       ]
     }
@@ -139,7 +147,9 @@ spore_codegen(
   CONFIG
   "codegen.json"
   CACHE
-  "codegen.cache.json"
+  "cache.json"
+  DEBUG
+  "debug.json"
   CXX_STANDARD
   "c++17"
   DEFINITIONS
@@ -151,9 +161,13 @@ spore_codegen(
   USER_DATA
   "key1=value1"
   "key2=value2"
-  FORCE
   REFORMAT
-  DEBUG
+  "clang-format -i"
+  ADDITIONAL_ARGS
+  "-v"
+  "-isystem/system/include"
+  FORCE
+  VERBOSE
 )
 
 # With all defaults

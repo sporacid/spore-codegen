@@ -13,6 +13,10 @@
       "binaryDir": "${sourceDir}/.cmake/${presetName}",
       "generator": "Ninja",
       "cacheVariables": {
+        "CMAKE_VERBOSE_MAKEFILE": {
+          "type": "BOOL",
+          "value": "ON"
+        },
         "CMAKE_TOOLCHAIN_FILE": {
           "type": "FILEPATH",
           "value": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"

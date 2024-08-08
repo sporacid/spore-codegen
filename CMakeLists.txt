@@ -50,7 +50,6 @@ elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
   )
   add_link_options(
     "$<$<CXX_COMPILER_ID:MSVC>:/DEBUG;/INCREMENTAL:NO;/OPT:REF;/OPT:ICF>"
-
   )
 endif ()
 

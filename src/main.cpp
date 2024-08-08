@@ -9,7 +9,7 @@
 #include "spore/codegen/codegen_options.hpp"
 #include "spore/codegen/codegen_version.hpp"
 
-namespace details
+namespace spore::codegen::detail
 {
     std::pair<std::string, std::string> parse_pair(const std::string& pair)
     {
@@ -18,10 +18,19 @@ namespace details
         std::string value = equal_sign != std::string::npos ? pair.substr(equal_sign + 1) : "";
         return {std::move(name), std::move(value)};
     }
+
+    std::size_t get_rest_index(std::size_t argc, const char* argv[])
+    {
+        const auto predicate = [](const char* arg) { return std::strcmp(arg, "--") == 0; };
+        const char** end = std::find_if(argv, argv + argc, predicate);
+        return end != nullptr ? end - argv : argc;
+    }
 }
 
 int main(int argc, const char* argv[])
 {
+    using namespace spore::codegen;
+
     spdlog::set_pattern("%l: %v");
 
     argparse::ArgumentParser arg_parser {
@@ -45,6 +54,11 @@ int main(int argc, const char* argv[])
         .default_value(std::string {"cache.json"});
 
     arg_parser
+        .add_argument("-g", "--debug")
+        .help("output debug file with JSON objects for each templates")
+        .default_value(std::string {"debug.json"});
+
+    arg_parser
         .add_argument("-I", "--includes")
         .help("include paths to add to clang compilation")
         .default_value(std::vector<std::string> {})
@@ -61,14 +75,14 @@ int main(int argc, const char* argv[])
         .help("compiler definitions to add to clang compilation")
         .default_value(std::vector<std::pair<std::string, std::string>> {})
         .append()
-        .action(&details::parse_pair);
+        .action(&detail::parse_pair);
 
     arg_parser
         .add_argument("-d", "--user-data")
         .help("additional user data to be passed to the rendering stage, can be accessed through the `user_data` JSON property")
         .default_value(std::vector<std::pair<std::string, std::string>> {})
         .append()
-        .action(&details::parse_pair);
+        .action(&detail::parse_pair);
 
     arg_parser
         .add_argument("-s", "--cpp-standard")
@@ -94,26 +108,28 @@ int main(int argc, const char* argv[])
         .implicit_value(true);
 
     arg_parser
-        .add_argument("-g", "--debug")
-        .help("sets output verbosity to debug")
+        .add_argument("-V", "--verbose")
+        .help("enable verbose output")
         .default_value(false)
         .implicit_value(true);
 
+    std::size_t rest_index = detail::get_rest_index(argc, argv);
     try
     {
-        arg_parser.parse_args(argc, argv);
+        arg_parser.parse_args(static_cast<int>(rest_index), argv);
     }
     catch (const std::exception& e)
     {
         std::cout << e.what() << std::endl;
         std::cout << arg_parser;
-        return static_cast<int>(spore::codegen::codegen_error_code::invalid);
+        return static_cast<int>(codegen_error_code::invalid);
     }
 
-    spore::codegen::codegen_options options {
+    codegen_options options {
         .output = arg_parser.get<std::string>("--output"),
         .config = arg_parser.get<std::string>("--config"),
         .cache = arg_parser.get<std::string>("--cache"),
+        .debug = arg_parser.get<std::string>("--debug"),
         .cpp_standard = arg_parser.get<std::string>("--cpp-standard"),
         .reformat = arg_parser.get<std::string>("--reformat"),
         .includes = arg_parser.get<std::vector<std::string>>("--includes"),
@@ -121,19 +137,34 @@ int main(int argc, const char* argv[])
         .definitions = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--definitions"),
         .user_data = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--user-data"),
         .force = arg_parser.get<bool>("--force"),
-        .debug = arg_parser.get<bool>("--debug"),
+        .verbose = arg_parser.get<bool>("--verbose"),
     };
 
-    if (options.debug)
+    for (std::size_t index = rest_index + 1; index < argc; ++index)
+    {
+        options.additional_args.emplace_back(argv[index]);
+    }
+
+    if (options.debug == "false")
+    {
+        options.debug = std::string();
+    }
+
+    if (options.reformat == "false")
+    {
+        options.reformat = std::string();
+    }
+
+    if (options.verbose)
     {
         spdlog::set_level(spdlog::level::debug);
     }
 
     try
     {
-        spore::codegen::codegen_app(options).run();
+        codegen_app(options).run();
     }
-    catch (const spore::codegen::codegen_error& e)
+    catch (const codegen_error& e)
     {
         SPDLOG_ERROR(e.what());
         return static_cast<int>(e.error_code);
@@ -141,13 +172,13 @@ int main(int argc, const char* argv[])
     catch (const std::exception& e)
     {
         SPDLOG_ERROR("failed to run codegen: {}", e.what());
-        return static_cast<int>(spore::codegen::codegen_error_code::unknown);
+        return static_cast<int>(codegen_error_code::unknown);
     }
     catch (...)
     {
         SPDLOG_ERROR("failed to run codegen");
-        return static_cast<int>(spore::codegen::codegen_error_code::unknown);
+        return static_cast<int>(codegen_error_code::unknown);
     }
 
-    return static_cast<int>(spore::codegen::codegen_error_code::none);
+    return static_cast<int>(codegen_error_code::none);
 }

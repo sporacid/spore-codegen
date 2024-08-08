@@ -90,6 +90,7 @@ namespace spore::codegen
             normalize_path(options.config);
             normalize_path(options.output);
             normalize_path(options.cache, &options.output);
+            normalize_path(options.debug, &options.output);
 
             std::string config_data;
             if (!files::read_file(options.config, config_data))
@@ -183,14 +184,24 @@ namespace spore::codegen
                 SPDLOG_WARN("failed to write cache, file={}", options.cache);
             }
 
-            if (options.debug)
+            if (!options.debug.empty())
             {
-                std::string debug_file = (std::filesystem::path(options.output) / "debug.json").string();
-                std::string debug_data = nlohmann::json(debug_map).dump(2);
-
-                if (!files::write_file(debug_file, debug_data))
+                std::string debug_data;
+                if (files::read_file(options.debug, debug_data))
                 {
-                    SPDLOG_WARN("failed to write debug data, file={}", debug_file);
+                    std::map<std::string, nlohmann::json> old_debug_map;
+                    nlohmann::json debug_json = nlohmann::json::parse(debug_data);
+                    debug_json.get_to(old_debug_map);
+
+                    old_debug_map.insert(debug_map.begin(), debug_map.end());
+                    debug_map = std::move(old_debug_map);
+                }
+
+                debug_data = nlohmann::json(debug_map).dump(2);
+
+                if (!files::write_file(options.debug, debug_data))
+                {
+                    SPDLOG_WARN("failed to write debug data, file={}", options.debug);
                 }
             }
         }
@@ -304,7 +315,7 @@ namespace spore::codegen
                     processes.emplace_back(std::make_unique<TinyProcessLib::Process>(command));
                 }
 
-                if (options.debug)
+                if (!options.debug.empty())
                 {
                     debug_map.emplace(output, json_data);
                 }
