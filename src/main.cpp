@@ -54,11 +54,6 @@ int main(int argc, const char* argv[])
         .default_value(std::string {"cache.json"});
 
     arg_parser
-        .add_argument("-g", "--debug")
-        .help("output debug file with JSON objects for each templates")
-        .default_value(std::string {"debug.json"});
-
-    arg_parser
         .add_argument("-I", "--includes")
         .help("include paths to add to clang compilation")
         .default_value(std::vector<std::string> {})
@@ -113,6 +108,12 @@ int main(int argc, const char* argv[])
         .default_value(false)
         .implicit_value(true);
 
+    arg_parser
+        .add_argument("-g", "--debug")
+        .help("whether to output debug file with JSON objects for each templates")
+        .default_value(false)
+        .implicit_value(true);
+
     std::size_t rest_index = detail::get_rest_index(argc, argv);
     try
     {
@@ -129,7 +130,6 @@ int main(int argc, const char* argv[])
         .output = arg_parser.get<std::string>("--output"),
         .config = arg_parser.get<std::string>("--config"),
         .cache = arg_parser.get<std::string>("--cache"),
-        .debug = arg_parser.get<std::string>("--debug"),
         .cpp_standard = arg_parser.get<std::string>("--cpp-standard"),
         .reformat = arg_parser.get<std::string>("--reformat"),
         .includes = arg_parser.get<std::vector<std::string>>("--includes"),
@@ -137,17 +137,13 @@ int main(int argc, const char* argv[])
         .definitions = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--definitions"),
         .user_data = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--user-data"),
         .force = arg_parser.get<bool>("--force"),
+        .debug = arg_parser.get<bool>("--debug"),
         .verbose = arg_parser.get<bool>("--verbose"),
     };
 
     for (std::size_t index = rest_index + 1; index < argc; ++index)
     {
         options.additional_args.emplace_back(argv[index]);
-    }
-
-    if (options.debug == "false")
-    {
-        options.debug = std::string();
     }
 
     if (options.reformat == "false")

@@ -60,7 +60,6 @@ Spore codegen is a command line application that can be added to any build pipel
 | Output directory     | `-o`       | `--output`         | `.codegen`        | Output directory where to write generated files.                                                                                                        |
 | Configuration file   | `-c`       | `--config`         | `codegen.json`    | Configuration file to use. Contains all codegen steps to execute, which files to process and with which templates.                                      |
 | Cache file           | `-C`       | `--cache`          | `cache.json`      | Cache file to use. Hash of output and template files will be written to this file to skip future generation if unnecessary.                             |
-| Debug mode           | `-g`       | `--debug`          | `debug.json`      | Output debug file with JSON objects for each templates.                                                                                                 |
 | Include directories  | `-I`       | `--includes`       | Empty             | List of include directories to be passed to `libclang`. Used for AST parsing.                                                                           |
 | Macro definitions    | `-D`       | `--definitions`    | Empty             | Macro definitions to be passed to `libclang`. Used for AST preprocessing. Can either be passed as `DEFINITION` or `DEFINITION=VALUE`.                   |
 | User data            | `-d`       | `--user-data`      | Empty             | Additional user data to be passed to the rendering stage. Can be passed as `key=value` and will be accessible through the `user_data` JSON property.    |
@@ -68,6 +67,7 @@ Spore codegen is a command line application that can be added to any build pipel
 | Reformat command     | `-r`       | `--reformat`       | `clang-format -i` | Set the command to execute to reformat output files. The command will be supplied a single argument which will be the relative path to the output file. |
 | Template directories | `-T`       | `--template-paths` | Empty             | List of directories in which to search for templates in case the template is not found in the command's working directory.                              |
 | Force generate       | `-F`       | `--force`          | `false`           | Skip cache and force generate all input files.                                                                                                          |
+| Debug mode           | `-g`       | `--debug`          | `false`           | Enable `debug.json` file with objects for each templates.                                                                                               |
 | Debug mode           | `-V`       | `--verbose`        | `false`           | Enable verbose output.                                                                                                                                  |
 | Additional arguments | N/A        | `--`               | Empty             | List of additional arguments to pass verbatim to `libclang` (e.g. `-- -v -stdlib=libc++`).                                                              |
 
@@ -148,8 +148,6 @@ spore_codegen(
   "codegen.json"
   CACHE
   "cache.json"
-  DEBUG
-  "debug.json"
   CXX_STANDARD
   "c++17"
   DEFINITIONS
@@ -167,6 +165,7 @@ spore_codegen(
   "-v"
   "-isystem/system/include"
   FORCE
+  DEBUG
   VERBOSE
 )
 
@@ -204,20 +203,75 @@ Here is a trivial example to give an idea of that an `inja` template looks like.
 {% endfor %}
 ```
 
+#### Inja Template Functions
+
 Some additional functions have been added to the `inja` templating engine to simplify code generation.
 
-| Function                          | Example                                                              | Description                                                                              |
-|-----------------------------------|----------------------------------------------------------------------|------------------------------------------------------------------------------------------|
-| `this`                            | `{{ this }}`                                                         | Access the current object.                                                               |
-| `truthy(any)`                     | `{% if truthy(class.attributes.json) %}{% endif %}`                  | Evaluates whether a given value is truthy.                                               |
-| `truthy(any, string)`             | `{% if truthy(class.attributes, "json.values.ignore") %}{% endif %}` | Evaluates whether a given value with an hypothetical property path is truthy.            |
-| `json(any)`                       | `{{ json(this) }}`                                                   | Dump the given value to JSON with an indent of 2.                                        |
-| `json(any, number)`               | `{{ json(this, 4) }}`                                                | Dump the given value to JSON with the given indent.                                      |
-| `include(string, object)`         | `{{ include("class.inja", class) }}`                                 | Include a template with the given object.                                                |
-| `contains(string, string)`        | `{{ contains(class.name, "_test") }}`                                | Checks whether a string contains a given substring.                                      |
-| `replace(string, string, string)` | `{{ replace(class.name, "_t", "_test") }}`                           | Replaces a given substring within string with another given substring.                   |
-| `cpp_name(string)`                | `{{ cpp_name(path) }}`                                               | Replace any invalid C++ character for an underscore (e.g. `/some-name` -> `_path_name`). |
-| `abs_path(string)`                | `{{ abs_path(path) }}`                                               | Transform for the given path to an absolute path.                                        |
+| Function                          | Example                                                | Description                                                                              |
+|-----------------------------------|--------------------------------------------------------|------------------------------------------------------------------------------------------|
+| `this`                            | `{{ this }}`                                           | Access the current object.                                                               |
+| `include(string, object)`         | `{{ include("class.inja", class) }}`                   | Include a template with the given object.                                                |
+| `json(any)`                       | `{{ json(this) }}`                                     | Dump the given value to JSON with an indent of 2.                                        |
+| `json(any, number)`               | `{{ json(this, 4) }}`                                  | Dump the given value to JSON with the given indent.                                      |
+| `truthy(any)`                     | `{% if truthy(class.attributes.json) %}{% endif %}`    | Evaluates whether a given value is truthy.                                               |
+| `truthy(any, string)`             | `{% if truthy(class.attributes, "json") %}{% endif %}` | Evaluates whether a given value at the given path is truthy.                             |
+| `contains(string, string)`        | `{{ contains(class.name, "_test") }}`                  | Checks whether a string contains a given substring.                                      |
+| `starts_with(string, string)`     | `{{ starts_with(class.name, "prefix_") }}`             | Checks whether a string starts with the given substring.                                 |
+| `ends_with(string, string)`       | `{{ ends_with(class.name, "_suffix") }}`               | Checks whether a string ends with the given substring.                                   |
+| `trim_start(string)`              | `{{ trim_start(class.name) }}`                         | Remove any leading whitespaces from the given string.                                    |
+| `trim_start(string, string)`      | `{{ trim_start(class.name, "_") }}`                    | Remove any leading characters from the given string.                                     |
+| `trim_end(string)`                | `{{ trim_end(class.name) }}`                           | Remove any trailing whitespaces from the given string.                                   |
+| `trim_end(string, string)`        | `{{ trim_end(class.name, "_") }}`                      | Remove any trailing characters from the given string.                                    |
+| `trim(string)`                    | `{{ trim(class.name) }}`                               | Remove any leading and trailing whitespaces from the given string.                       |
+| `trim(string, string)`            | `{{ trim(class.name, "_") }}`                          | Remove any leading and  trailing characters from the given string.                       |
+| `replace(string, string, string)` | `{{ replace(class.name, "_t", "_test") }}`             | Replaces a given substring within string with another given substring.                   |
+| `cpp_name(string)`                | `{{ cpp_name(path) }}`                                 | Replace any invalid C++ character for an underscore (e.g. `/some-name` -> `_path_name`). |
+| `fs.absolute(string)`             | `{{ fs.absolute(path) }}`                              | Get the absolute path of the given path.                                                 |
+| `fs.directory(string)`            | `{{ fs.directory(path) }}`                             | Get the directory path of the given path.                                                |
+| `fs.filename(string)`             | `{{ fs.filename(path) }}`                              | Get the file name of the given path.                                                     |
+| `fs.extension(string)`            | `{{ fs.extension(path) }}`                             | Get the file extension of the given path.                                                |
+
+### JSON Context
+
+The JSON context given to any text template has the following format. For more information on the format of these object, 
+you can have a look at [AST objects](https://github.com/sporacid/spore-codegen/tree/main/include/spore/codegen/ast) and
+[codegen data](https://github.com/sporacid/spore-codegen/blob/main/include/spore/codegen/codegen_data.hpp).
+
+```json
+{
+  "$": {
+    "stage": {
+      /* Current stage data */
+    },
+    "step": {
+      /* Current step data */
+    },
+    "template": {
+      /* Current template data */
+    },
+    "file": {
+      /* Current file data */
+    },
+    "output": {
+      /* Current output data */
+    },
+    "user_data": {
+      /* User data from command line */
+    }
+  },
+  "id": 1,
+  "path": "file.hpp",
+  "classes": [
+    /* All classes found within file.hpp */
+  ],
+  "enums": [
+    /* All enums found within file.hpp */
+  ],
+  "functions": [
+    /* All free functions found within file.hpp */
+  ]
+}
+```
 
 ### Additional Template Engines
 
