@@ -571,12 +571,20 @@ namespace spore::codegen
                     case CXCursor_StructDecl:
                     case CXCursor_ClassDecl:
                     case CXCursor_ClassTemplate: {
-                        insert_end(file.classes, [&] { return make_class(cursor, file); });
+                        if (clang_isCursorDefinition(cursor))
+                        {
+                            insert_end(file.classes, [&] { return make_class(cursor, file); });
+                        }
+
                         break;
                     }
 
                     case CXCursor_EnumDecl: {
-                        insert_end(file.enums, [&] { return make_enum(cursor); });
+                        if (clang_isCursorDefinition(cursor))
+                        {
+                            insert_end(file.enums, [&] { return make_enum(cursor); });
+                        }
+
                         break;
                     }
 
@@ -600,12 +608,20 @@ namespace spore::codegen
                     case CXCursor_ClassTemplate:
                     case CXCursor_ClassDecl:
                     case CXCursor_StructDecl: {
-                        insert_end(file.classes, [&] { return make_class(cursor, file); });
+                        if (clang_isCursorDefinition(cursor))
+                        {
+                            insert_end(file.classes, [&] { return make_class(cursor, file); });
+                        }
+
                         break;
                     }
 
                     case CXCursor_EnumDecl: {
-                        insert_end(file.enums, [&] { return make_enum(cursor); });
+                        if (clang_isCursorDefinition(cursor))
+                        {
+                            insert_end(file.enums, [&] { return make_enum(cursor); });
+                        }
+
                         break;
                     }
 
