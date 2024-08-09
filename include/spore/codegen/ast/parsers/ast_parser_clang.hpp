@@ -755,6 +755,8 @@ namespace spore::codegen
                     std::string diagnostic_str = "  " + detail::get_string(clang_formatDiagnostic(diagnostic, clang_defaultDiagnosticDisplayOptions()));
                     std::puts(diagnostic_str.data());
                 }
+
+                std::fflush(stdout);
             }
 
             const auto visitor = [&](CXCursor cursor, CXCursor parent) {

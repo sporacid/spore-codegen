@@ -28,6 +28,10 @@ add_compile_options(
   "$<$<CXX_COMPILER_ID:MSVC>:/bigobj>"
 )
 
+add_compile_definitions(
+  SPDLOG_NO_SOURCE_LOC
+)
+
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_compile_definitions(
     SPDLOG_ACTIVE_LEVEL=0

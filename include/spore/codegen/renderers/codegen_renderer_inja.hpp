@@ -13,53 +13,13 @@
 #include "spdlog/spdlog.h"
 
 #include "spore/codegen/renderers/codegen_renderer.hpp"
+#include "spore/codegen/utils/json.hpp"
 #include "spore/codegen/utils/strings.hpp"
 
 namespace spore::codegen
 {
     namespace detail
     {
-        bool is_truthy(const nlohmann::json& json)
-        {
-            bool truthy = false;
-            switch (json.type())
-            {
-                case nlohmann::json::value_t::string:
-                    truthy = !json.get<std::string>().empty();
-                    break;
-                case nlohmann::json::value_t::array:
-                    truthy = !json.get<std::vector<nlohmann::json>>().empty();
-                    break;
-                case nlohmann::json::value_t::object:
-                    truthy = !json.get<std::map<std::string, nlohmann::json>>().empty();
-                    break;
-                case nlohmann::json::value_t::number_integer:
-                    truthy = json.get<std::int64_t>() != 0;
-                    break;
-                case nlohmann::json::value_t::number_unsigned:
-                    truthy = json.get<std::uint64_t>() != 0;
-                    break;
-                case nlohmann::json::value_t::number_float:
-                    truthy = json.get<double>() != 0.;
-                    break;
-                case nlohmann::json::value_t::boolean:
-                    truthy = json.get<bool>();
-                    break;
-                default:
-                    break;
-            }
-            return truthy;
-        }
-
-        bool is_truthy(const nlohmann::json& json, std::string property)
-        {
-            property.insert(property.begin(), '/');
-            std::replace(property.begin(), property.end(), '.', '/');
-
-            nlohmann::json::json_pointer json_pointer(property);
-            return json.contains(json_pointer) && is_truthy(json[json_pointer]);
-        }
-
         std::string to_cpp_name(const std::string& value)
         {
             std::string cpp_name = value;
@@ -72,7 +32,7 @@ namespace spore::codegen
             return cpp_name;
         }
 
-        std::string render_include_template(inja::Environment& env, const inja::Arguments& args, const std::vector<std::string>& template_paths)
+        std::string include_template(inja::Environment& env, const inja::Arguments& args, const std::vector<std::string>& template_paths)
         {
             if (args.empty())
             {
@@ -126,35 +86,88 @@ namespace spore::codegen
             inja_env.add_callback("truthy", 1,
                 [](inja::Arguments& args) {
                     const nlohmann::json& json = *args.at(0);
-                    return detail::is_truthy(json);
+                    return json::truthy(json);
                 });
 
             inja_env.add_callback("truthy", 2,
                 [](inja::Arguments& args) {
                     const nlohmann::json& json = *args.at(0);
                     std::string property = args.at(1)->get<std::string>();
-                    return detail::is_truthy(json, std::move(property));
-                });
-
-            inja_env.add_callback("cpp_name", 1,
-                [](inja::Arguments& args) -> std::string {
-                    std::string value = args.at(0)->get<std::string>();
-                    return detail::to_cpp_name(value);
+                    return json::truthy(json, std::move(property));
                 });
 
             inja_env.add_callback("contains", 2,
                 [](inja::Arguments& args) {
-                    std::string value = args.at(0)->get<std::string>();
-                    std::string str = args.at(1)->get<std::string>();
+                    const std::string& value = args.at(0)->get<std::string>();
+                    const std::string& str = args.at(1)->get<std::string>();
                     return value.find(str) != std::string::npos;
                 });
 
             inja_env.add_callback("replace", 3,
                 [](inja::Arguments& args) {
                     std::string value = args.at(0)->get<std::string>();
-                    std::string from = args.at(1)->get<std::string>();
-                    std::string to = args.at(2)->get<std::string>();
+                    const std::string& from = args.at(1)->get<std::string>();
+                    const std::string& to = args.at(2)->get<std::string>();
                     strings::replace_all(value, from, to);
+                    return value;
+                });
+
+            inja_env.add_callback("starts_with", 2,
+                [](inja::Arguments& args) {
+                    const std::string& value = args.at(0)->get<std::string>();
+                    const std::string& prefix = args.at(1)->get<std::string>();
+                    return value.starts_with(prefix);
+                });
+
+            inja_env.add_callback("ends_with", 2,
+                [](inja::Arguments& args) {
+                    const std::string& value = args.at(0)->get<std::string>();
+                    const std::string& suffix = args.at(1)->get<std::string>();
+                    return value.ends_with(suffix);
+                });
+
+            inja_env.add_callback("trim_start", 1,
+                [](inja::Arguments& args) {
+                    std::string value = args.at(0)->get<std::string>();
+                    strings::trim_start(value);
+                    return value;
+                });
+
+            inja_env.add_callback("trim_start", 2,
+                [](inja::Arguments& args) {
+                    std::string value = args.at(0)->get<std::string>();
+                    const std::string& chars = args.at(1)->get<std::string>();
+                    strings::trim_start(value, chars);
+                    return value;
+                });
+
+            inja_env.add_callback("trim_end", 1,
+                [](inja::Arguments& args) {
+                    std::string value = args.at(0)->get<std::string>();
+                    strings::trim_end(value);
+                    return value;
+                });
+
+            inja_env.add_callback("trim_end", 2,
+                [](inja::Arguments& args) {
+                    std::string value = args.at(0)->get<std::string>();
+                    const std::string& chars = args.at(1)->get<std::string>();
+                    strings::trim_end(value, chars);
+                    return value;
+                });
+
+            inja_env.add_callback("trim", 1,
+                [](inja::Arguments& args) {
+                    std::string value = args.at(0)->get<std::string>();
+                    strings::trim(value);
+                    return value;
+                });
+
+            inja_env.add_callback("trim", 2,
+                [](inja::Arguments& args) {
+                    std::string value = args.at(0)->get<std::string>();
+                    const std::string& chars = args.at(1)->get<std::string>();
+                    strings::trim(value, chars);
                     return value;
                 });
 
@@ -168,18 +181,42 @@ namespace spore::codegen
                 [](inja::Arguments& args) {
                     const nlohmann::json& json = *args.at(0);
                     std::size_t indent = *args.at(1);
-                    return json.dump(indent);
+                    return json.dump(static_cast<int>(indent));
                 });
 
-            inja_env.add_callback("abs_path", 1,
+            inja_env.add_callback("fs.absolute", 1,
                 [](inja::Arguments& args) {
-                    std::string value = args.at(0)->get<std::string>();
+                    const std::string& value = args.at(0)->get<std::string>();
                     return std::filesystem::absolute(std::filesystem::path(value)).string();
+                });
+
+            inja_env.add_callback("fs.extension", 1,
+                [](inja::Arguments& args) {
+                    const std::string& value = args.at(0)->get<std::string>();
+                    return std::filesystem::path(value).extension().string();
+                });
+
+            inja_env.add_callback("fs.filename", 1,
+                [](inja::Arguments& args) {
+                    const std::string& value = args.at(0)->get<std::string>();
+                    return std::filesystem::path(value).filename().string();
+                });
+
+            inja_env.add_callback("fs.directory", 1,
+                [](inja::Arguments& args) {
+                    const std::string& value = args.at(0)->get<std::string>();
+                    return std::filesystem::path(value).parent_path().string();
+                });
+
+            inja_env.add_callback("cpp_name", 1,
+                [](inja::Arguments& args) -> std::string {
+                    const std::string& value = args.at(0)->get<std::string>();
+                    return detail::to_cpp_name(value);
                 });
 
             inja_env.add_callback("include",
                 [&, template_paths](inja::Arguments& args) {
-                    return detail::render_include_template(inja_env, args, template_paths);
+                    return detail::include_template(inja_env, args, template_paths);
                 });
         }
 

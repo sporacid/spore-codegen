@@ -133,13 +133,13 @@ namespace spore::codegen::ast
                     {
                         std::string value;
                         set_token(value, index);
-                        json_value = nlohmann::json::parse(std::move(value), nullptr, false, false);
-                    }
+                        json_value = nlohmann::json::parse(value, nullptr, false, false);
 
-                    if (json_value.is_discarded())
-                    {
-                        // invalid json
-                        return false;
+                        if (json_value.is_discarded())
+                        {
+                            // parse as string
+                            json_value = nlohmann::json(value);
+                        }
                     }
 
                     add_pair(std::move(key), std::move(json_value));

@@ -11,11 +11,18 @@
 
 namespace spore::codegen
 {
+    struct codegen_output_data
+    {
+        std::size_t id = 0;
+        std::size_t template_id = 0;
+        std::string path;
+        bool matched = false;
+    };
+
     struct codegen_template_data
     {
         std::size_t id = 0;
         std::string path;
-        std::string output_suffix;
         codegen_cache_status status = codegen_cache_status::new_;
     };
 
@@ -23,7 +30,7 @@ namespace spore::codegen
     {
         std::size_t id = 0;
         std::string path;
-        std::string output_prefix;
+        std::vector<codegen_output_data> outputs;
         codegen_cache_status status = codegen_cache_status::new_;
     };
 
@@ -41,12 +48,19 @@ namespace spore::codegen
         std::vector<codegen_step_data> steps;
     };
 
+    inline void to_json(nlohmann::json& json, const codegen_output_data& value)
+    {
+        json["id"] = value.id;
+        json["template_id"] = value.template_id;
+        json["path"] = value.path;
+        json["matched"] = value.matched;
+    }
+
     inline void to_json(nlohmann::json& json, const codegen_template_data& value)
     {
         json["id"] = value.id;
         json["path"] = value.path;
         json["status"] = value.status;
-        json["output_suffix"] = value.output_suffix;
     }
 
     inline void to_json(nlohmann::json& json, const codegen_file_data& value)
@@ -54,7 +68,7 @@ namespace spore::codegen
         json["id"] = value.id;
         json["path"] = value.path;
         json["status"] = value.status;
-        json["output_prefix"] = value.output_prefix;
+        json["outputs"] = value.outputs;
     }
 
     inline void to_json(nlohmann::json& json, const codegen_step_data& value)

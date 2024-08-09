@@ -40,13 +40,13 @@ namespace spore::codegen
         {
             for (auto it_attribute = attributes.begin(); it_attribute != attributes.end(); ++it_attribute)
             {
-                if (matches_attribute(file, it_attribute.key(), it_attribute.value()))
+                if (!matches_attribute(file, it_attribute.key(), it_attribute.value()))
                 {
-                    return true;
+                    return false;
                 }
             }
 
-            return false;
+            return true;
         }
 
         static bool matches_attribute(const ast_file& file, const std::string& key, const nlohmann::json& attribute)
