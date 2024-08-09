@@ -20,6 +20,7 @@ add_library(
 
 find_path(SPORE_PICOSHA2_INCLUDE_DIRS "picosha2.h")
 
+find_package(Clang CONFIG REQUIRED)
 find_package(argparse CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(inja CONFIG REQUIRED)
@@ -27,18 +28,19 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(p-ranav-glob CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(tiny-process-library CONFIG REQUIRED)
-find_package(Clang CONFIG REQUIRED)
+find_package(yaml-cpp CONFIG REQUIRED)
 
 target_link_libraries(
   ${SPORE_CODEGEN_LIBRARY_TARGET}
   INTERFACE
     fmt::fmt
+    libclang
     nlohmann_json::nlohmann_json
     pantor::inja
     p-ranav::glob
     spdlog::spdlog
     tiny-process-library::tiny-process-library
-    libclang
+    yaml-cpp
 )
 
 target_include_directories(
@@ -103,7 +105,7 @@ install(
 
 install(
   FILES
-  ${PROJECT_SOURCE_DIR}/cmake/SporeCodegen.cmake
-  ${PROJECT_SOURCE_DIR}/cmake/FindClangFormat.cmake
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake
+    ${PROJECT_SOURCE_DIR}/cmake/SporeCodegen.cmake
+    ${PROJECT_SOURCE_DIR}/cmake/FindClangFormat.cmake
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/cmake
 )
