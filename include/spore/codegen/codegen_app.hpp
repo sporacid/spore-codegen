@@ -292,7 +292,7 @@ namespace spore::codegen
                 const codegen_template_data& template_ = step.templates.at(index);
                 json_data["$"]["template"] = template_;
 
-                std::string output = fmt::format("{}.{}", file.output_prefix, template_.output_suffix);
+                std::string output = fmt::format("{}{}", file.output_prefix, template_.output_suffix);
 
                 SPDLOG_DEBUG("rendering output, file={}", output);
 
@@ -341,6 +341,8 @@ namespace spore::codegen
 
         inline void make_stage_data(const codegen_config_stage& stage, codegen_stage_data& data)
         {
+            data.id = make_unique_id<codegen_stage_data>();
+
             for (const codegen_config_step& step : stage.steps)
             {
                 std::vector<std::filesystem::path> step_files = glob::rglob(stage.files);
@@ -350,10 +352,17 @@ namespace spore::codegen
 
                 const auto transform_template = [&](std::string& template_) {
                     codegen_cache_status status = cache.check_and_update(template_);
-                    std::filesystem::path output_suffix = std::filesystem::path(template_).stem();
+                    std::string output_suffix = std::filesystem::path(template_).stem().string();
+
+                    if (!output_suffix.starts_with('.'))
+                    {
+                        output_suffix.insert(output_suffix.begin(), '.');
+                    }
+
                     return codegen_template_data {
+                        .id = make_unique_id<codegen_template_data>(),
                         .path = std::move(template_),
-                        .output_suffix = output_suffix.string(),
+                        .output_suffix = std::move(output_suffix),
                         .status = status,
                     };
                 };
@@ -365,6 +374,7 @@ namespace spore::codegen
                     std::filesystem::path output_prefix = std::filesystem::absolute(output_directory / output_stem);
                     codegen_cache_status status = cache.check_and_update(file_string);
                     return codegen_file_data {
+                        .id = make_unique_id<codegen_file_data>(),
                         .path = std::move(file_string),
                         .output_prefix = output_prefix.string(),
                         .status = status,
@@ -372,6 +382,7 @@ namespace spore::codegen
                 };
 
                 codegen_step_data& step_data = data.steps.emplace_back();
+                step_data.id = make_unique_id<codegen_step_data>();
 
                 if (step.condition.has_value())
                 {
