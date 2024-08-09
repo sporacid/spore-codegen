@@ -12,6 +12,7 @@
     "picosha2",
     "spdlog",
     "tiny-process-library",
+    "yaml-cpp",
     {
       "name": "llvm",
       "default-features": false,

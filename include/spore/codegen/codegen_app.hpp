@@ -92,33 +92,19 @@ namespace spore::codegen
             normalize_path(options.output);
             normalize_path(options.cache, &options.output);
 
-            std::string config_data;
-            if (!files::read_file(options.config, config_data))
+            nlohmann::json config_json;
+            nlohmann::json cache_json;
+
+            if (!files::read_file(options.config, config_json))
             {
-                throw codegen_error(codegen_error_code::io, "unable to read config, file={}", options.config);
+                throw codegen_error(codegen_error_code::io, "invalid config, file={}", options.config);
             }
 
-            try
-            {
-                nlohmann::json::parse(config_data).get_to(config);
-            }
-            catch (...)
-            {
-                throw codegen_error(codegen_error_code::configuring, "invalid config, file={}", options.config);
-            }
+            config = config_json;
 
-            std::string cache_data;
-            if (!options.force && files::read_file(options.cache, cache_data))
+            if (!options.force && files::read_file(options.cache, cache_json))
             {
-                try
-                {
-                    nlohmann::json::parse(cache_data).get_to(cache);
-                }
-                catch (...)
-                {
-                    SPDLOG_INFO("ignoring invalid cache, file={}", options.cache);
-                    cache.reset();
-                }
+                cache = cache_json;
 
                 if (cache.version != SPORE_CODEGEN_VERSION)
                 {
@@ -137,9 +123,9 @@ namespace spore::codegen
             options.definitions.emplace_back(SPORE_CODEGEN_MACRO, "1");
             options.template_paths.emplace_back(std::filesystem::current_path().string());
 
-            for (const std::pair<std::string, std::string>& pair : options.user_data)
+            for (const auto& [key, value] : options.user_data)
             {
-                user_data[pair.first] = pair.second;
+                user_data[key] = value;
             }
 
             parser = std::make_shared<ast_parser_clang>(options);
@@ -177,9 +163,7 @@ namespace spore::codegen
 
             std::for_each(config.stages.begin(), config.stages.end(), action);
 
-            std::string cache_data = nlohmann::json(cache).dump(2);
-
-            if (!files::write_file(options.cache, cache_data))
+            if (!files::write_file(options.cache, cache))
             {
                 SPDLOG_WARN("failed to write cache, file={}", options.cache);
             }
@@ -189,17 +173,16 @@ namespace spore::codegen
                 std::string debug_file = (std::filesystem::path(options.output) / "debug.json").string();
                 std::string debug_data;
 
-                if (files::read_file(debug_file, debug_data))
+                nlohmann::json debug_json;
+                if (files::read_file(debug_file, debug_json))
                 {
                     std::map<std::string, nlohmann::json> old_debug_map;
-                    nlohmann::json debug_json = nlohmann::json::parse(debug_data);
                     debug_json.get_to(old_debug_map);
-
                     old_debug_map.insert(debug_map.begin(), debug_map.end());
                     debug_map = std::move(old_debug_map);
                 }
 
-                debug_data = nlohmann::json(debug_map).dump(2);
+                debug_json = nlohmann::json(debug_map);
 
                 if (!files::write_file(debug_file, debug_data))
                 {

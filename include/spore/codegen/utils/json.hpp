@@ -1,7 +1,10 @@
 #pragma once
 
+#include <cmath>
+#include <cstdint>
+#include <map>
 #include <string>
-#include <string_view>
+#include <vector>
 
 #include "nlohmann/json.hpp"
 
@@ -28,7 +31,7 @@ namespace spore::codegen::json
                 truthy = json.get<std::uint64_t>() != 0;
                 break;
             case nlohmann::json::value_t::number_float:
-                truthy = json.get<double>() != 0.;
+                truthy = json.get<std::double_t>() != 0.;
                 break;
             case nlohmann::json::value_t::boolean:
                 truthy = json.get<bool>();
