@@ -47,8 +47,10 @@ jobs:
           git config user.name "${GITHUB_ACTOR}" &&
           git config user.email "${GITHUB_ACTOR}@users.noreply.github.com" &&
           VERSION=$(bash .github/scripts/get_version.sh) &&
-          $(echo $GIT_TAG > VERSION) &&
+          $(echo -n $VERSION > VERSION) &&
+          git checkout -B releases/v${VERSION%.*.*} &&
           git add VERSION &&
-          git commit -m "chore: Update version to $VERSION" &&
+          git commit -m "chore: Update version to v$VERSION" &&
           git tag -af v$VERSION -m "Auto-generated semantic tag v$VERSION" &&
-          git push origin $GIT_TAG --force
+          git push --set-upstream origin releases/v${VERSION%.*.*} --force &&
+          git push origin v$VERSION --force
