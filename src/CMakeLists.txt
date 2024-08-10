@@ -1,15 +1,15 @@
 set(
-  SPORE_CODEGEN_BINARY_TARGET "${PROJECT_NAME}-bin"
+  SPORE_CODEGEN_BINARY_TARGET ${PROJECT_NAME}-bin
   CACHE STRING "Target for the main codegen application"
 )
 
 set(
-  SPORE_CODEGEN_LIBRARY_TARGET "${PROJECT_NAME}-lib"
+  SPORE_CODEGEN_LIBRARY_TARGET ${PROJECT_NAME}-lib
   CACHE STRING "Target for the main codegen library"
 )
 
 set(
-  SPORE_CODEGEN_BINARY_NAME "spore-codegen"
+  SPORE_CODEGEN_BINARY_NAME spore-codegen
   CACHE STRING "Output name for the main codegen application"
 )
 
@@ -18,9 +18,12 @@ add_library(
   INTERFACE
 )
 
-find_path(SPORE_PICOSHA2_INCLUDE_DIRS "picosha2.h")
+find_path(
+  SPORE_PICOSHA2_INCLUDE_DIRS
+  picosha2.h
+)
 
-find_package(Clang CONFIG REQUIRED)
+find_package(Clang REQUIRED)
 find_package(argparse CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(inja CONFIG REQUIRED)
@@ -34,13 +37,13 @@ target_link_libraries(
   ${SPORE_CODEGEN_LIBRARY_TARGET}
   INTERFACE
     fmt::fmt
-    libclang
     nlohmann_json::nlohmann_json
     pantor::inja
     p-ranav::glob
     spdlog::spdlog
     tiny-process-library::tiny-process-library
     yaml-cpp
+    ${CLANG_LIBRARIES}
 )
 
 target_include_directories(

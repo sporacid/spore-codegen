@@ -13,7 +13,7 @@ at [this repository](https://github.com/sporacid/spore-codegen-example).
 
 ### vcpkg
 
-`vcpkg` is required to fetch the required dependencies.
+vcpkg is required to fetch the required dependencies.
 
 #### Windows
 
@@ -33,6 +33,23 @@ git clone https://github.com/microsoft/vcpkg
 cd vcpkg
 sudo sh bootstrap-vcpkg.sh
 export VCPKG_ROOT=$(cwd)
+```
+
+### LLVM
+
+LLVM is required for libclang. Although we used to depend on it through vcpkg, it takes too much time building, so we
+expect LLVM to be already installed.
+
+#### Windows
+
+You can find binary distributions of LLVM on their [github](https://github.com/llvm/llvm-project/releases). Afterward,
+you need to set the `LLVM_DIR` environment variable to the root of the LLVM install directory.
+
+#### Ubuntu
+
+```shell
+sudo apt-get -qq update
+sudo apt-get install llvm llvm-dev
 ```
 
 ## How to build
@@ -68,13 +85,14 @@ Spore codegen is a command line application that can be added to any build pipel
 | Template directories | `-T`       | `--template-paths` | Empty             | List of directories in which to search for templates in case the template is not found in the command's working directory.                              |
 | Force generate       | `-F`       | `--force`          | `false`           | Skip cache and force generate all input files.                                                                                                          |
 | Debug mode           | `-g`       | `--debug`          | `false`           | Enable `debug.json` file with objects for each templates.                                                                                               |
-| Debug mode           | `-V`       | `--verbose`        | `false`           | Enable verbose output.                                                                                                                                  |
+| Verbose mode         | `-V`       | `--verbose`        | `false`           | Enable verbose output.                                                                                                                                  |
 | Additional arguments | N/A        | `--`               | Empty             | List of additional arguments to pass verbatim to `libclang` (e.g. `-- -v -stdlib=libc++`).                                                              |
 
 For a minimally working setup, you need at least a configuration file. By default, the application will look for a
 the `codegen.json` file at the root of your project.
 
-```json{
+```json
+{
   "version": 1,
   "stages": [
     {
@@ -233,7 +251,8 @@ Some additional functions have been added to the `inja` templating engine to sim
 
 ### JSON Context
 
-The JSON context given to any text template has the following format. For more information on the format of these object, 
+The JSON context given to any text template has the following format. For more information on the format of these
+object,
 you can have a look at [AST objects](https://github.com/sporacid/spore-codegen/tree/main/include/spore/codegen/ast) and
 [codegen data](https://github.com/sporacid/spore-codegen/blob/main/include/spore/codegen/codegen_data.hpp).
 
