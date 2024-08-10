@@ -17,7 +17,11 @@ endif ()
 
 project(spore-codegen VERSION ${SPORE_VERSION})
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+set(
+  CMAKE_MODULE_PATH
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake
+    ${CMAKE_MODULE_PATH}
+)
 
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/include/spore/codegen/codegen_version.hpp.in

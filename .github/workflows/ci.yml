@@ -18,16 +18,16 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get -qq update &&
-          sudo apt-get install -y build-essential libtbb-dev ninja-build jq &&
-          jq '.registries[0].packages += ["llvm"]' vcpkg-configuration.json > vcpkg-configuration.json.tmp &&
-          mv vcpkg-configuration.json.tmp vcpkg-configuration.json
+          sudo apt-get install -y build-essential libtbb-dev ninja-build
       - name: Install LLVM
         uses: KyleMayes/install-llvm-action@v2
         with:
           version: 17.0
           env: true
-      - name: Export CXX Flags
-        run: echo "CXXFLAGS=-isystem${{ env.LLVM_PATH }}/lib/clang/17/include" >> $GITHUB_ENV
+      - name: Export LLVM Environment
+        run: |
+          echo "LLVM_DIR=${{ env.LLVM_PATH }}" >> $GITHUB_ENV &&
+          echo "CXXFLAGS=-isystem${{ env.LLVM_PATH }}/lib/clang/17/include" >> $GITHUB_ENV
       - name: Install CMake
         uses: lukka/get-cmake@latest
       - name: Install Vcpkg
