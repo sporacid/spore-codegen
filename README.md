@@ -11,30 +11,6 @@ at [this repository](https://github.com/sporacid/spore-codegen-example).
 
 ## Requirements
 
-### vcpkg
-
-vcpkg is required to fetch the required dependencies.
-
-#### Windows
-
-```cmd
-set VCPKG_DEFAULT_TRIPLET="x64-windows"
-git clone https://github.com/microsoft/vcpkg
-cd vcpkg
-./bootstrap-vcpkg.bat
-set VCPKG_ROOT="%cd%"
-```
-
-#### Ubuntu
-
-```shell
-export VCPKG_DEFAULT_TRIPLET="x64-linux"
-git clone https://github.com/microsoft/vcpkg
-cd vcpkg
-sudo sh bootstrap-vcpkg.sh
-export VCPKG_ROOT=$(cwd)
-```
-
 ### LLVM
 
 LLVM is required for libclang. Although we used to depend on it through vcpkg, it takes too much time building, so we
@@ -50,6 +26,34 @@ you need to set the `LLVM_DIR` environment variable to the root of the LLVM inst
 ```shell
 sudo apt-get -qq update
 sudo apt-get install llvm llvm-dev
+```
+
+### Vcpkg
+
+Vcpkg is required to fetch the required dependencies. To allow your project to integrate with `spore-codegen` through
+CMake and vcpkg, it's important to set `VCPKG_KEEP_ENV_VARS` environment variable to include `LLVM_DIR` to so that the
+variable can be forwarded correctly. If you're not using the `LLVM_DIR` variable, this is not required.
+
+#### Windows
+
+```cmd
+set VCPKG_DEFAULT_TRIPLET="x64-windows"
+git clone https://github.com/microsoft/vcpkg
+cd vcpkg
+./bootstrap-vcpkg.bat
+set VCPKG_ROOT="%cd%"
+set VCPKG_KEEP_ENV_VARS="LLVM_DIR"
+```
+
+#### Ubuntu
+
+```shell
+export VCPKG_DEFAULT_TRIPLET="x64-linux"
+git clone https://github.com/microsoft/vcpkg
+cd vcpkg
+sudo sh bootstrap-vcpkg.sh
+export VCPKG_ROOT=$(cwd)
+export VCPKG_KEEP_ENV_VARS="LLVM_DIR"
 ```
 
 ## How to build

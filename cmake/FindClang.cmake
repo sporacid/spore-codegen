@@ -1,15 +1,23 @@
-if (DEFINED ENV{LLVM_DIR})
+include(FindPackageMessage)
+
+if (DEFINED LLVM_DIR)
+  set(_LLVM_DIR ${LLVM_DIR})
+elseif (DEFINED ENV{LLVM_DIR})
+  set(_LLVM_DIR $ENV{LLVM_DIR})
+endif ()
+
+if (DEFINED _LLVM_DIR)
   set(
     CLANG_LIBRARY_PATHS
-      $ENV{LLVM_DIR}/bin
-      $ENV{LLVM_DIR}/bin/clang
-      $ENV{LLVM_DIR}/lib
-      $ENV{LLVM_DIR}/lib/clang
+      ${_LLVM_DIR}/bin
+      ${_LLVM_DIR}/bin/clang
+      ${_LLVM_DIR}/lib
+      ${_LLVM_DIR}/lib/clang
   )
 
   set(
     CLANG_INCLUDE_PATHS
-      $ENV{LLVM_DIR}/include
+      ${_LLVM_DIR}/include
   )
 endif ()
 
@@ -30,12 +38,24 @@ find_path(
 
 if (CLANG_LIBRARIES AND CLANG_INCLUDE_DIRS)
   set(CLANG_FOUND TRUE)
-  message(STATUS "Clang was found, libraries=${CLANG_LIBRARIES} includes=${CLANG_INCLUDE_DIRS}")
+  find_package_message(
+    Clang
+    "Clang was found, library=${CLANG_LIBRARIES} include=${CLANG_INCLUDE_DIRS}"
+    "[${CLANG_LIBRARIES}][${CLANG_INCLUDE_DIRS}]"
+  )
 else ()
   set(CLANG_FOUND FALSE)
   if (CLANG_REQUIRED)
     message(FATAL_ERROR "Clang was not found")
-  else()
-    message(STATUS "Clang was not found")
+  else ()
+    find_package_message(
+      Clang
+      "Clang was not found, directory=${_LLVM_DIR}"
+      "[${_LLVM_DIR}]"
+    )
   endif ()
 endif ()
+
+unset(_LLVM_DIR)
+unset(CLANG_LIBRARY_PATHS)
+unset(CLANG_INCLUDE_PATHS)
