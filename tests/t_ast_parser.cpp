@@ -39,7 +39,7 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
 
     ast_file& ast_file = ast_files.at(0);
 
-    REQUIRE(ast_file.classes.size() == 7);
+    REQUIRE(ast_file.classes.size() == 8);
     REQUIRE(ast_file.functions.size() == 3);
     REQUIRE(ast_file.enums.size() == 2);
 
@@ -333,5 +333,26 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
         REQUIRE(class_.template_params[4].name == "variadic_t");
         REQUIRE(class_.template_params[4].type == "typename...");
         REQUIRE(class_.template_params[4].is_variadic);
+    }
+
+    SECTION("parse unnamed template is feature complete")
+    {
+        ast_class& class_ = ast_file.classes[7];
+
+        REQUIRE(class_.name == "_unnamed_template");
+        REQUIRE(class_.template_params.size() == 5);
+        REQUIRE(class_.template_params[0].name == "_t0");
+        REQUIRE(class_.template_params[0].type == "typename");
+        REQUIRE(class_.template_params[1].name == "_t1");
+        REQUIRE(class_.template_params[1].type == "int");
+        REQUIRE(class_.template_params[2].name == "_t2");
+        REQUIRE(class_.template_params[2].type == "template <typename, typename, int> typename");
+        REQUIRE(class_.template_params[3].name == "_t3");
+        REQUIRE(class_.template_params[3].type == "concept_");
+
+        // TODO @sporacid Fix unnamed variadic templates
+        // REQUIRE(class_.template_params[4].name == "_t4");
+        // REQUIRE(class_.template_params[4].type == "typename...");
+        // REQUIRE(class_.template_params[4].is_variadic);
     }
 }

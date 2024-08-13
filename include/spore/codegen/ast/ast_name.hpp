@@ -35,7 +35,14 @@ namespace spore::codegen
                     {
                         for (const ast_template_param& template_param : has_template_params.template_params)
                         {
-                            full_name += template_param.name + ", ";
+                            full_name += template_param.name;
+
+                            if (template_param.is_variadic)
+                            {
+                                full_name += "...";
+                            }
+
+                            full_name += ", ";
                         }
                     }
                     else if (has_template_params.is_template_specialization())
