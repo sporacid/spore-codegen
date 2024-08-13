@@ -46,47 +46,25 @@ int main(int argc, const char* argv[])
     arg_parser
         .add_argument("-c", "--config")
         .help("codegen configuration file to use")
-        .default_value(std::string {"codegen.json"});
+        .default_value(std::string {"codegen.yml"});
 
     arg_parser
         .add_argument("-C", "--cache")
         .help("codegen cache file to use")
-        .default_value(std::string {"cache.json"});
+        .default_value(std::string {"cache.yml"});
 
     arg_parser
-        .add_argument("-I", "--includes")
-        .help("include paths to add to clang compilation")
-        .default_value(std::vector<std::string> {})
-        .append();
-
-    arg_parser
-        .add_argument("-T", "--template-paths")
+        .add_argument("-t", "--templates")
         .help("paths to search for templates")
         .default_value(std::vector<std::string> {})
         .append();
 
     arg_parser
-        .add_argument("-D", "--definitions")
-        .help("compiler definitions to add to clang compilation")
-        .default_value(std::vector<std::pair<std::string, std::string>> {})
-        .append()
-        .action(&detail::parse_pair);
-
-    arg_parser
-        .add_argument("-d", "--user-data")
+        .add_argument("-D", "--user-data")
         .help("additional user data to be passed to the rendering stage, can be accessed through the `user_data` JSON property")
         .default_value(std::vector<std::pair<std::string, std::string>> {})
         .append()
         .action(&detail::parse_pair);
-
-    arg_parser
-        .add_argument("-s", "--cpp-standard")
-        .help("c++ standard for clang compilation")
-        .default_value(std::string {"c++14"})
-        .action([](const std::string& cpp_standard) {
-            const bool starts_with_cpp = cpp_standard.find("c++") == 0;
-            return starts_with_cpp ? cpp_standard : "c++" + cpp_standard;
-        });
 
     arg_parser
         .add_argument("-r", "--reformat")
@@ -97,20 +75,14 @@ int main(int argc, const char* argv[])
         });
 
     arg_parser
-        .add_argument("-F", "--force")
+        .add_argument("-f", "--force")
         .help("force generation for all input files even if files haven't changed")
         .default_value(false)
         .implicit_value(true);
 
     arg_parser
-        .add_argument("-V", "--verbose")
-        .help("enable verbose output")
-        .default_value(false)
-        .implicit_value(true);
-
-    arg_parser
-        .add_argument("-g", "--debug")
-        .help("whether to output debug file with JSON objects for each templates")
+        .add_argument("-d", "--debug")
+        .help("enable debug output")
         .default_value(false)
         .implicit_value(true);
 
@@ -130,15 +102,11 @@ int main(int argc, const char* argv[])
         .output = arg_parser.get<std::string>("--output"),
         .config = arg_parser.get<std::string>("--config"),
         .cache = arg_parser.get<std::string>("--cache"),
-        .cpp_standard = arg_parser.get<std::string>("--cpp-standard"),
         .reformat = arg_parser.get<std::string>("--reformat"),
-        .includes = arg_parser.get<std::vector<std::string>>("--includes"),
-        .template_paths = arg_parser.get<std::vector<std::string>>("--template-paths"),
-        .definitions = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--definitions"),
+        .templates = arg_parser.get<std::vector<std::string>>("--templates"),
         .user_data = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--user-data"),
         .force = arg_parser.get<bool>("--force"),
         .debug = arg_parser.get<bool>("--debug"),
-        .verbose = arg_parser.get<bool>("--verbose"),
     };
 
     for (std::size_t index = rest_index + 1; index < argc; ++index)
@@ -151,7 +119,7 @@ int main(int argc, const char* argv[])
         options.reformat = std::string();
     }
 
-    if (options.verbose)
+    if (options.debug)
     {
         spdlog::set_level(spdlog::level::debug);
     }

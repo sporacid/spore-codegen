@@ -28,7 +28,6 @@ find_package(argparse CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(inja CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
-find_package(p-ranav-glob CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(tiny-process-library CONFIG REQUIRED)
 find_package(yaml-cpp CONFIG REQUIRED)
@@ -39,7 +38,6 @@ target_link_libraries(
     fmt::fmt
     nlohmann_json::nlohmann_json
     pantor::inja
-    p-ranav::glob
     spdlog::spdlog
     tiny-process-library::tiny-process-library
     yaml-cpp
@@ -50,6 +48,7 @@ target_include_directories(
   ${SPORE_CODEGEN_LIBRARY_TARGET}
   INTERFACE
     ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/thirdparty
     ${SPORE_PICOSHA2_INCLUDE_DIRS}
     ${CLANG_INCLUDE_DIRS}
 )

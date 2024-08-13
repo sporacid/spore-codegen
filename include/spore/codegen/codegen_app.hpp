@@ -33,10 +33,6 @@
 #include "spore/codegen/renderers/codegen_renderer_inja.hpp"
 #include "spore/codegen/utils/files.hpp"
 
-#ifndef SPORE_CODEGEN_MACRO
-#define SPORE_CODEGEN_MACRO "SPORE_CODEGEN"
-#endif
-
 namespace spore::codegen
 {
     namespace detail
@@ -64,7 +60,6 @@ namespace spore::codegen
         std::shared_ptr<ast_converter> converter;
         std::shared_ptr<codegen_renderer> renderer;
         std::vector<process_ptr> processes;
-        std::map<std::string, nlohmann::json> debug_map;
 
         explicit codegen_app(codegen_options in_options)
             : options(std::move(in_options))
@@ -120,18 +115,17 @@ namespace spore::codegen
                 cache.check_and_update(options.config);
             }
 
-            options.definitions.emplace_back(SPORE_CODEGEN_MACRO, "1");
-            options.template_paths.emplace_back(std::filesystem::current_path().string());
-
             for (const auto& [key, value] : options.user_data)
             {
                 user_data[key] = value;
             }
 
-            parser = std::make_shared<ast_parser_clang>(options);
+            options.templates.emplace_back(std::filesystem::current_path().string());
+
+            parser = std::make_shared<ast_parser_clang>(options.additional_args);
             converter = std::make_shared<ast_converter_default>();
             renderer = std::make_shared<codegen_renderer_composite>(
-                std::make_shared<codegen_renderer_inja>(options.template_paths));
+                std::make_shared<codegen_renderer_inja>(options.templates));
         }
 
         inline void run()
@@ -166,28 +160,6 @@ namespace spore::codegen
             if (!files::write_file(options.cache, cache))
             {
                 SPDLOG_WARN("failed to write cache, file={}", options.cache);
-            }
-
-            if (options.debug)
-            {
-                std::string debug_file = (std::filesystem::path(options.output) / "debug.json").string();
-                std::string debug_data;
-
-                nlohmann::json debug_json;
-                if (files::read_file(debug_file, debug_json))
-                {
-                    std::map<std::string, nlohmann::json> old_debug_map;
-                    debug_json.get_to(old_debug_map);
-                    old_debug_map.insert(debug_map.begin(), debug_map.end());
-                    debug_map = std::move(old_debug_map);
-                }
-
-                debug_json = nlohmann::json(debug_map);
-
-                if (!files::write_file(debug_file, debug_data))
-                {
-                    SPDLOG_WARN("failed to write debug data, file={}", debug_file);
-                }
             }
         }
 
@@ -323,11 +295,6 @@ namespace spore::codegen
                         std::string command = fmt::format("{} {}", options.reformat, output.path);
                         processes.emplace_back(std::make_unique<TinyProcessLib::Process>(command));
                     }
-
-                    if (options.debug)
-                    {
-                        debug_map.emplace(output.path, json_data);
-                    }
                 }
             }
         }
@@ -458,7 +425,7 @@ namespace spore::codegen
                     return false;
                 };
 
-                if (!std::any_of(options.template_paths.begin(), options.template_paths.end(), predicate))
+                if (!std::any_of(options.templates.begin(), options.templates.end(), predicate))
                 {
                     throw codegen_error(codegen_error_code::configuring, "could not find template file, file={}", template_);
                 }

@@ -11,10 +11,10 @@ namespace spore::codegen::detail
     template <typename ast_parser_t>
     std::shared_ptr<ast_parser_t> make_parser()
     {
-        codegen_options options {
-            .cpp_standard = "c++20",
+        constexpr std::string_view args[] {
+            "-std=c++20",
         };
-        return std::make_shared<ast_parser_t>(options);
+        return std::make_shared<ast_parser_t>(args);
     }
 
     std::string get_input_file()

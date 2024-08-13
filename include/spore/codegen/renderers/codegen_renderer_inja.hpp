@@ -184,6 +184,19 @@ namespace spore::codegen
                     return json.dump(static_cast<int>(indent));
                 });
 
+            inja_env.add_callback("yaml", 1,
+                [](inja::Arguments& args) {
+                    const nlohmann::json& json = *args.at(0);
+                    return yaml::to_yaml(json, 2);
+                });
+
+            inja_env.add_callback("yaml", 2,
+                [](inja::Arguments& args) {
+                    const nlohmann::json& json = *args.at(0);
+                    std::size_t indent = *args.at(1);
+                    return yaml::to_yaml(json, indent);
+                });
+
             inja_env.add_callback("fs.absolute", 1,
                 [](inja::Arguments& args) {
                     const std::string& value = args.at(0)->get<std::string>();

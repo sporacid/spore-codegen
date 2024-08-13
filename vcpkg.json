@@ -8,7 +8,6 @@
     "fmt",
     "inja",
     "nlohmann-json",
-    "p-ranav-glob",
     "picosha2",
     "spdlog",
     "tiny-process-library",

@@ -76,51 +76,36 @@ cmake --build .cmake --config Release
 
 Spore codegen is a command line application that can be added to any build pipeline.
 
-| Argument             | Short Name | Long Name          | Default Value     | Description                                                                                                                                             |
-|----------------------|------------|--------------------|-------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Output directory     | `-o`       | `--output`         | `.codegen`        | Output directory where to write generated files.                                                                                                        |
-| Configuration file   | `-c`       | `--config`         | `codegen.json`    | Configuration file to use. Contains all codegen steps to execute, which files to process and with which templates.                                      |
-| Cache file           | `-C`       | `--cache`          | `cache.json`      | Cache file to use. Hash of output and template files will be written to this file to skip future generation if unnecessary.                             |
-| Include directories  | `-I`       | `--includes`       | Empty             | List of include directories to be passed to `libclang`. Used for AST parsing.                                                                           |
-| Macro definitions    | `-D`       | `--definitions`    | Empty             | Macro definitions to be passed to `libclang`. Used for AST preprocessing. Can either be passed as `DEFINITION` or `DEFINITION=VALUE`.                   |
-| User data            | `-d`       | `--user-data`      | Empty             | Additional user data to be passed to the rendering stage. Can be passed as `key=value` and will be accessible through the `user_data` JSON property.    |
-| C++ standard         | `-s`       | `--cpp-standard`   | `c++14`           | C++ standard to be passed to `libclang`. Can be prefixed with `c++` or not (e.g. `c++17` or `17`).                                                      |
-| Reformat command     | `-r`       | `--reformat`       | `clang-format -i` | Set the command to execute to reformat output files. The command will be supplied a single argument which will be the relative path to the output file. |
-| Template directories | `-T`       | `--template-paths` | Empty             | List of directories in which to search for templates in case the template is not found in the command's working directory.                              |
-| Force generate       | `-F`       | `--force`          | `false`           | Skip cache and force generate all input files.                                                                                                          |
-| Debug mode           | `-g`       | `--debug`          | `false`           | Enable `debug.json` file with objects for each templates.                                                                                               |
-| Verbose mode         | `-V`       | `--verbose`        | `false`           | Enable verbose output.                                                                                                                                  |
-| Additional arguments | N/A        | `--`               | Empty             | List of additional arguments to pass verbatim to `libclang` (e.g. `-- -v -stdlib=libc++`).                                                              |
+| Argument             | Short | Long          | Default           | Description                                                                                                                                             |
+|----------------------|-------|---------------|-------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Output directory     | `-o`  | `--output`    | `.codegen`        | Output directory where to write generated files.                                                                                                        |
+| Configuration file   | `-c`  | `--config`    | `codegen.yml`     | Configuration file to use. Contains all codegen steps to execute, which files to process and with which templates.                                      |
+| Cache file           | `-C`  | `--cache`     | `cache.yml`       | Cache file to use. Hash of output and template files will be written to this file to skip future generation if unnecessary.                             |
+| Template directories | `-t`  | `--templates` | Empty             | List of directories in which to search for templates in case the template is not found in the command's working directory.                              |
+| User data            | `-D`  | `--user-data` | Empty             | Additional user data to be passed to the rendering stage. Can be passed as `key=value` and will be accessible through the `$.user_data` JSON property.  |
+| Reformat command     | `-r`  | `--reformat`  | `clang-format -i` | Set the command to execute to reformat output files. The command will be supplied a single argument which will be the relative path to the output file. |
+| Force generate       | `-f`  | `--force`     | `false`           | Skip cache and force generate all input files.                                                                                                          |
+| Debug mode           | `-d`  | `--debug`     | `false`           | Enable debug output.                                                                                                                                    |
+| Additional arguments | N/A   | `--`          | Empty             | List of additional arguments to pass verbatim to `libclang` (e.g. `-- -std=c++20 -Iproject/include -v`).                                                |
 
 For a minimally working setup, you need at least a configuration file. By default, the application will look for a
-the `codegen.json` file at the root of your project.
+the `codegen.yml` file at the root of your project.
 
-```json
-{
-  "version": 1,
-  "stages": [
-    {
-      "name": "headers",
-      "directory": "include",
-      "files": "**/*.hpp",
-      "steps": [
-        {
-          "name": "generated",
-          "directory": "include",
-          "templates": [
-            "templates/generated.hpp.inja"
-          ],
-          "condition": {
-            "type": "attribute",
-            "value": {
-              "generated": true
-            }
-          }
-        }
-      ]
-    }
-  ]
-}
+```yaml
+version: 1
+stages:
+  - name: headers
+    directory: include
+    files: "**/*.hpp"
+    steps:
+      - name: generated
+        directory: include
+        templates:
+          - templates/generated.hpp.inja
+        condition:
+          type: attribute
+          value:
+            generated: true
 ```
 
 The base name of the template file and the directory and base name of the input file will be used to generate the output
@@ -136,7 +121,7 @@ with the `SPORE_CODEGEN` guard to prevent circular inclusion during generation.
 
 ```cpp
 #ifndef SPORE_CODEGEN
-#include "project/header.generated.inl"
+#  include "project/header.generated.inl"
 #endif
 ```
 
@@ -145,9 +130,9 @@ To simplify usage, you can define this macro somewhere in your project.
 ```cpp
 #ifndef SPORE_CODEGEN
 // dummy file to include only when in codegen
-#define GENERATED(File) "project/codegen.hpp"
+#  define GENERATED(File) "project/codegen.hpp"
 #else
-#define GENERATED(File) File
+#  define GENERATED(File) File
 #endif
 
 #include GENERATED("project/header.generated.inl")
@@ -155,46 +140,71 @@ To simplify usage, you can define this macro somewhere in your project.
 
 ### CMake Integration
 
-Scripts in `cmake/spore.cmake` can be included to have access to automatic integration to your `cmake` project. The
+Scripts in `cmake/SporeCodegen.cmake` can be included to have access to automatic integration to your `cmake` project.
+The
 function `spore_codegen` will automatically deduce definitions and include directories from your target and make the
 codegen target a dependency to your target. You can provide the same arguments as the command line to the function, and
 they will be forwarded to the executable.
 
 ```cmake
-# With all arguments
-spore_codegen(
-  "target"
-  OUTPUT
-  ".codegen"
-  CONFIG
-  "codegen.json"
-  CACHE
-  "cache.json"
-  CXX_STANDARD
-  "c++17"
-  DEFINITIONS
-  "DEFINITION1=value1"
-  "DEFINITION2=value2"
-  INCLUDES
-  "additional/include1"
-  "additional/include2"
-  USER_DATA
-  "key1=value1"
-  "key2=value2"
-  REFORMAT
-  "clang-format -i"
-  ADDITIONAL_ARGS
-  "-v"
-  "-isystem/system/include"
-  FORCE
-  DEBUG
-  VERBOSE
-)
-
 # With all defaults
 spore_codegen(
-  "target"
+  target
 )
+
+# With all arguments
+spore_codegen(
+  target
+  OUTPUT .codegen
+  CONFIG codegen.yml
+  CACHE cache.yml
+  REFORMAT clang-format -i
+  USER_DATA
+    key1=value1
+    key2=value2
+  ADDITIONAL_ARGS
+    -isystem/system/include
+    -v
+  FORCE
+  DEBUG
+)
+```
+
+### Vcpkg Integration
+
+`spore-codegen` is available through a [custom vcpkg repository](https://github.com/sporacid/spore-vcpkg).
+
+`vcpkg-configuration.json`:
+```json
+{
+  "registries": [
+    {
+      "kind": "git",
+      "repository": "https://github.com/sporacid/spore-vcpkg",
+      "baseline": "<commit sha>",
+      "packages": [
+        "spore-*"
+      ]
+    }
+  ]
+}
+```
+
+`vcpkg.json`:
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "project",
+  "version": "1.0",
+  "builtin-baseline": "<commit sha>",
+  "dependencies": [
+    {
+      "name": "spore-codegen",
+      "host": true
+    }
+  ]
+}
+
 ```
 
 ## Templates
@@ -235,6 +245,8 @@ Some additional functions have been added to the `inja` templating engine to sim
 | `include(string, object)`         | `{{ include("class.inja", class) }}`                   | Include a template with the given object.                                                |
 | `json(any)`                       | `{{ json(this) }}`                                     | Dump the given value to JSON with an indent of 2.                                        |
 | `json(any, number)`               | `{{ json(this, 4) }}`                                  | Dump the given value to JSON with the given indent.                                      |
+| `yaml(any)`                       | `{{ yaml(this) }}`                                     | Dump the given value to YAML with an indent of 2.                                        |
+| `yaml(any, number)`               | `{{ yaml(this, 4) }}`                                  | Dump the given value to YAML with the given indent.                                      |
 | `truthy(any)`                     | `{% if truthy(class.attributes.json) %}{% endif %}`    | Evaluates whether a given value is truthy.                                               |
 | `truthy(any, string)`             | `{% if truthy(class.attributes, "json") %}{% endif %}` | Evaluates whether a given value at the given path is truthy.                             |
 | `contains(string, string)`        | `{{ contains(class.name, "_test") }}`                  | Checks whether a string contains a given substring.                                      |
@@ -329,11 +341,11 @@ Here is a more complex example with macro definitions to simplify usage.
 
 ```cpp
 #ifdef SPORE_CODEGEN
-#define ATTRIBUTE(...) [[clang::annotate(#__VA_ARGS__)]]
-#define GENERATED(File) "project/codegen.hpp"
+#  define ATTRIBUTE(...) [[clang::annotate(#__VA_ARGS__)]]
+#  define GENERATED(File) "project/codegen.hpp"
 #else
-#define ATTRIBUTE(...)
-#define GENERATED(File) File
+#  define ATTRIBUTE(...)
+#  define GENERATED(File) File
 #endif
 
 #define ENUM(...) ATTRIBUTE(enum, __VA_ARGS__)

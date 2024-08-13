@@ -1,0 +1,10 @@
+version: 1
+stages:
+- name: headers
+  directory: include
+  files: "**/*.hpp"
+  steps:
+  - name: enum
+    directory: include
+    templates:
+      - templates/enum.hpp.inja

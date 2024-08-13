@@ -13,7 +13,6 @@
 
 #include "spore/codegen/ast/parsers/ast_parser.hpp"
 #include "spore/codegen/ast/parsers/ast_parser_utils.hpp"
-#include "spore/codegen/codegen_options.hpp"
 #include "spore/codegen/misc/defer.hpp"
 #include "spore/codegen/utils/files.hpp"
 
@@ -653,7 +652,8 @@ namespace spore::codegen
         std::vector<std::string> args;
         std::vector<const char*> args_view;
 
-        explicit ast_parser_clang(const codegen_options& options)
+        template <typename args_t>
+        explicit ast_parser_clang(const args_t& additional_args)
         {
             clang_index = clang_createIndex(0, 0);
 
@@ -663,26 +663,9 @@ namespace spore::codegen
             args.emplace_back("-dM");
             args.emplace_back("-w");
             args.emplace_back("-Wno-everything");
-            args.emplace_back(fmt::format("-std={}", options.cpp_standard));
 
-            for (const std::string& include : options.includes)
-            {
-                args.emplace_back(fmt::format("-I{}", include));
-            }
-
-            for (const auto& [key, value] : options.definitions)
-            {
-                if (value.empty())
-                {
-                    args.emplace_back(fmt::format("-D{}", key));
-                }
-                else
-                {
-                    args.emplace_back(fmt::format("-D{}={}", key, value));
-                }
-            }
-
-            std::copy(options.additional_args.begin(), options.additional_args.end(), std::back_inserter(args));
+            const auto transformer = [](const auto& arg) { return std::string {arg}; };
+            std::transform(std::begin(additional_args), std::end(additional_args), std::back_inserter(args), transformer);
             std::sort(args.begin(), args.end());
             args.erase(std::unique(args.begin(), args.end()), args.end());
 
