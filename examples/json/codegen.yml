@@ -1,0 +1,10 @@
+version: 1
+stages:
+- name: headers
+  directory: include
+  files: "**/*.hpp"
+  steps:
+  - name: json
+    directory: include
+    templates:
+      - templates/json.hpp.inja
