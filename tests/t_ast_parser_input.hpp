@@ -93,3 +93,8 @@ template <typename value_t, int size_v, template <typename arg_t, typename, int>
 struct _template
 {
 };
+
+template <typename, int, template <typename, typename, int> typename, concept_, typename...>
+struct _unnamed_template
+{
+};

@@ -16,6 +16,7 @@
 #include "spore/codegen/codegen_options.hpp"
 #include "spore/codegen/misc/defer.hpp"
 #include "spore/codegen/utils/files.hpp"
+#include "spore/codegen/utils/strings.hpp"
 
 namespace spore::codegen
 {
@@ -261,6 +262,7 @@ namespace spore::codegen
                 }
             }
 
+            strings::trim_end(template_param.type, ",");
             return template_param;
         }
 
