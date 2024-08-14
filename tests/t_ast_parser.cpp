@@ -333,6 +333,12 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
         REQUIRE(class_.template_params[4].name == "variadic_t");
         REQUIRE(class_.template_params[4].type == "typename...");
         REQUIRE(class_.template_params[4].is_variadic);
+
+        REQUIRE(class_.functions.size() == 1);
+        REQUIRE(class_.functions[0].arguments.size() == 1);
+        REQUIRE(class_.functions[0].arguments[0].name == "args");
+        REQUIRE(class_.functions[0].arguments[0].type.name == "args_t &&");
+        REQUIRE(class_.functions[0].arguments[0].is_variadic);
     }
 
     SECTION("parse unnamed template is feature complete")
