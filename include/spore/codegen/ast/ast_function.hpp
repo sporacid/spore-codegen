@@ -17,5 +17,11 @@ namespace spore::codegen
     {
         std::vector<ast_argument> arguments;
         ast_ref return_type;
+
+        bool is_variadic() const
+        {
+            const auto predicate = [](const ast_argument& arg) { return arg.is_variadic; };
+            return std::any_of(arguments.begin(), arguments.end(), predicate);
+        }
     };
 }

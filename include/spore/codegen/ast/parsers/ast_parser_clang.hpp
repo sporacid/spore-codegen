@@ -21,6 +21,8 @@ namespace spore::codegen
 {
     namespace detail
     {
+        constexpr std::string_view ellipsis = "...";
+
         template <typename func_t>
         void visit_children(CXCursor cursor, func_t&& func)
         {
@@ -242,11 +244,6 @@ namespace spore::codegen
             {
                 std::string spelling = get_spelling(tu, token);
 
-                if (spelling == "...")
-                {
-                    template_param.is_variadic = true;
-                }
-
                 if (spelling == template_param.name)
                 {
                     token_ptr = nullptr;
@@ -261,7 +258,14 @@ namespace spore::codegen
                 }
             }
 
+            // TODO @sporacid Figure out why unnamed template parameter may end with a comma
             strings::trim_end(template_param.type, ",");
+
+            if (template_param.type.ends_with(ellipsis))
+            {
+                template_param.is_variadic = true;
+            }
+
             return template_param;
         }
 
@@ -271,6 +275,12 @@ namespace spore::codegen
             argument.name = get_name(cursor);
             argument.default_value = get_default_value(cursor);
             argument.type.name = get_type_spelling(cursor);
+
+            if (argument.type.name.ends_with(ellipsis))
+            {
+                argument.is_variadic = true;
+                argument.type.name.resize(argument.type.name.size() - ellipsis.size());
+            }
 
             if (argument.name.empty())
             {

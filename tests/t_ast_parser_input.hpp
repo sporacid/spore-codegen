@@ -92,6 +92,10 @@ concept concept_ = true;
 template <typename value_t, int size_v, template <typename arg_t, typename, int> typename template_t, concept_ concept_t, typename... variadic_t>
 struct _template
 {
+    template <typename... args_t>
+    void variadic_func(args_t&&... args)
+    {
+    }
 };
 
 template <typename, int, template <typename, typename, int> typename, concept_, typename...>
