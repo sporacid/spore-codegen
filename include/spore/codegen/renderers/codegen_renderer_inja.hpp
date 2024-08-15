@@ -31,56 +31,23 @@ namespace spore::codegen
 
             return cpp_name;
         }
-
-        std::string include_template(inja::Environment& env, const inja::Arguments& args, const std::vector<std::string>& template_paths)
-        {
-            if (args.empty())
-            {
-                throw codegen_error(codegen_error_code::rendering, "cannot include template, missing file");
-            }
-
-            nlohmann::json json_data;
-            if (args.size() == 2)
-            {
-                json_data = *args.at(1);
-            }
-            else if (args.size() > 2)
-            {
-                std::vector<nlohmann::json> json_values;
-                for (std::size_t index = 1; index < args.size(); index += 2)
-                {
-                    json_values.emplace_back(*args.at(index));
-                }
-
-                json_data = std::move(json_values);
-            }
-
-            std::string template_file = args.at(0)->get<std::string>();
-            for (const std::string& template_path : template_paths)
-            {
-                std::filesystem::path template_file_abs = std::filesystem::path(template_path) / template_file;
-                if (std::filesystem::exists(template_file_abs))
-                {
-                    return env.render_file(template_file_abs.string(), json_data);
-                }
-            }
-
-            throw codegen_error(codegen_error_code::rendering, "cannot find include template, file={}", template_file);
-        }
     }
 
     struct codegen_renderer_inja : codegen_renderer
     {
         inja::Environment inja_env;
+        std::vector<std::string> templates;
 
-        explicit codegen_renderer_inja(const std::vector<std::string>& template_paths)
+        explicit codegen_renderer_inja(const std::vector<std::string>& templates)
+            : templates(templates)
         {
             inja_env.set_trim_blocks(true);
             inja_env.set_lstrip_blocks(true);
 
             inja_env.add_callback("this", 0,
-                [](inja::Arguments& args) -> nlohmann::json {
-                    return _json_this != nullptr ? *_json_this : nlohmann::json();
+                [](inja::Arguments& args) -> const nlohmann::json& {
+                    static const nlohmann::json default_;
+                    return _json_this != nullptr ? *_json_this : default_;
                 });
 
             inja_env.add_callback("truthy", 1,
@@ -228,18 +195,34 @@ namespace spore::codegen
                 });
 
             inja_env.add_callback("include",
-                [&, template_paths](inja::Arguments& args) {
-                    return detail::include_template(inja_env, args, template_paths);
+                [&](inja::Arguments& args) {
+                    const std::string& path = args.at(0)->get<std::string>();
+                    const std::span other_args =
+                        args.size() > 1
+                            ? std::span {args.begin() + 1, args.end()}
+                            : std::span<const nlohmann::json*> {};
+                    return include_file(path, other_args);
                 });
+        }
+
+        template <typename func_t>
+        auto with_this(const nlohmann::json& json, func_t&& func) const
+        {
+            const nlohmann::json* new_this = std::addressof(json);
+            const nlohmann::json* old_this = nullptr;
+
+            defer defer_current_json = [&] { std::swap(_json_this, old_this); };
+            std::swap(_json_this, old_this);
+            std::swap(_json_this, new_this);
+
+            return func();
         }
 
         bool render_file(const std::string& file, const nlohmann::json& data, std::string& result) override
         {
             try
             {
-                defer defer_current_json = [&] { _json_this = nullptr; };
-                _json_this = &data;
-                result = inja_env.render_file(file, data);
+                result = with_this(data, [&] { return inja_env.render_file(file, data); });
                 return true;
             }
             catch (const inja::InjaError& err)
@@ -256,5 +239,38 @@ namespace spore::codegen
 
       private:
         static inline thread_local const nlohmann::json* _json_this = nullptr;
+
+        inline std::string include_file(const std::string& file, std::span<const nlohmann::json*> args)
+        {
+            nlohmann::json json;
+
+            if (args.size() == 1)
+            {
+                json = *args[0];
+            }
+            else if (args.size() > 2)
+            {
+                for (std::size_t index = 1; index < args.size(); index += 2)
+                {
+                    json.emplace_back(*args[index]);
+                }
+            }
+            else
+            {
+                json = nlohmann::json::value_t::null;
+            }
+
+            for (const std::string& template_ : templates)
+            {
+                std::filesystem::path template_abs = std::filesystem::path(template_) / file;
+
+                if (std::filesystem::exists(template_abs))
+                {
+                    return with_this(json, [&] { return inja_env.render_file(template_abs.string(), json); });
+                }
+            }
+
+            throw codegen_error(codegen_error_code::rendering, "cannot find include template, file={}", file);
+        }
     };
 }
