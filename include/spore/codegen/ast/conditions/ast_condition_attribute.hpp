@@ -74,6 +74,7 @@ namespace spore::codegen
 
             for (const ast_class& ast_class : file.classes)
             {
+                matches = matches || std::any_of(ast_class.constructors.begin(), ast_class.constructors.end(), matches_object);
                 matches = matches || std::any_of(ast_class.functions.begin(), ast_class.functions.end(), matches_object);
                 matches = matches || std::any_of(ast_class.fields.begin(), ast_class.fields.end(), matches_object);
             }
