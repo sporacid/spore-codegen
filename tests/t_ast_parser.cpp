@@ -39,7 +39,7 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
 
     ast_file& ast_file = ast_files.at(0);
 
-    REQUIRE(ast_file.classes.size() == 8);
+    REQUIRE(ast_file.classes.size() == 10);
     REQUIRE(ast_file.functions.size() == 3);
     REQUIRE(ast_file.enums.size() == 2);
 
@@ -360,5 +360,21 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
         // REQUIRE(class_.template_params[4].name == "_t4");
         // REQUIRE(class_.template_params[4].type == "typename...");
         // REQUIRE(class_.template_params[4].is_variadic);
+    }
+
+    SECTION("parse template specialization is feature complete")
+    {
+        ast_class& class_ = ast_file.classes[9];
+
+        REQUIRE(class_.name == "_template_specialization");
+        REQUIRE(class_.full_name() == "_template_specialization<int, float, value_t, _template_specialization<int, float>>");
+        REQUIRE(class_.template_params.size() == 1);
+        REQUIRE(class_.template_params[0].name == "value_t");
+        REQUIRE(class_.template_params[0].type == "typename");
+        REQUIRE(class_.template_specialization_params.size() == 4);
+        REQUIRE(class_.template_specialization_params[0] == "int");
+        REQUIRE(class_.template_specialization_params[1] == "float");
+        REQUIRE(class_.template_specialization_params[2] == "value_t");
+        REQUIRE(class_.template_specialization_params[3] == "_template_specialization<int, float>");
     }
 }

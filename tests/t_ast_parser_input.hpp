@@ -102,3 +102,13 @@ template <typename, int, template <typename, typename, int> typename, concept_, 
 struct _unnamed_template
 {
 };
+
+template <typename...>
+struct _template_specialization
+{
+};
+
+template <typename value_t>
+struct _template_specialization<int, float, value_t, _template_specialization<int, float>>
+{
+};
