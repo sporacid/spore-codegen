@@ -31,7 +31,14 @@ namespace spore::codegen
                 {
                     full_name += "<";
 
-                    if (has_template_params.is_template())
+                    if (has_template_params.is_template_specialization())
+                    {
+                        for (const std::string& template_specialization_param : has_template_params.template_specialization_params)
+                        {
+                            full_name += template_specialization_param + ", ";
+                        }
+                    }
+                    else if (has_template_params.is_template())
                     {
                         for (const ast_template_param& template_param : has_template_params.template_params)
                         {
@@ -43,13 +50,6 @@ namespace spore::codegen
                             }
 
                             full_name += ", ";
-                        }
-                    }
-                    else if (has_template_params.is_template_specialization())
-                    {
-                        for (const std::string& template_specialization_param : has_template_params.template_specialization_params)
-                        {
-                            full_name += template_specialization_param + ", ";
                         }
                     }
 
