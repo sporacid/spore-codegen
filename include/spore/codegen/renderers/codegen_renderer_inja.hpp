@@ -9,6 +9,7 @@
 #include "inja/inja.hpp"
 #pragma warning(pop)
 
+#include "base64/base64.hpp"
 #include "nlohmann/json.hpp"
 #include "spdlog/spdlog.h"
 
@@ -20,20 +21,55 @@ namespace spore::codegen
 {
     namespace detail
     {
-        std::string to_cpp_name(const std::string& value)
+        inline std::string to_cpp_name(const std::string& value)
         {
             std::string cpp_name = value;
 
-            for (char character : "<>{}()-+=,.;:/\\ ")
+            for (const char character : "<>{}()-+=,.;:/\\ ")
             {
-                std::replace(cpp_name.begin(), cpp_name.end(), character, '_');
+                std::ranges::replace(cpp_name, character, '_');
             }
 
             return cpp_name;
         }
+
+        inline std::string to_cpp_hex(const std::vector<std::uint8_t>& bytes, const std::size_t width)
+        {
+            [[maybe_unused]] constexpr char hex_dummy[] = "0xff, ";
+            constexpr std::size_t hex_width = sizeof(hex_dummy) - 1;
+
+            std::string hex;
+            std::size_t current_width = 0;
+
+            for (const std::uint8_t byte : bytes)
+            {
+                fmt::format_to(std::back_inserter(hex), "{:#04x}, ", byte);
+                current_width += hex_width;
+
+                if (current_width >= width)
+                {
+                    current_width = 0;
+                    hex += "\n";
+                }
+            }
+
+            return hex;
+        }
+
+        inline std::string to_cpp_hex(const nlohmann::json& json, const std::size_t width)
+        {
+            if (json.is_binary())
+            {
+                return to_cpp_hex(json.get<std::vector<std::uint8_t>>(), width);
+            }
+
+            const std::string& base64 = json.get<std::string>();
+            const std::vector<std::uint8_t>& bytes = base64::decode_into<std::vector<std::uint8_t>>(base64.begin(), base64.end());
+            return to_cpp_hex(bytes, width);
+        }
     }
 
-    struct codegen_renderer_inja : codegen_renderer
+    struct codegen_renderer_inja final : codegen_renderer
     {
         inja::Environment inja_env;
         std::vector<std::string> templates;
@@ -176,6 +212,12 @@ namespace spore::codegen
                     return std::filesystem::path(value).extension().string();
                 });
 
+            inja_env.add_callback("fs.stem", 1,
+                [](inja::Arguments& args) {
+                    const std::string& value = args.at(0)->get<std::string>();
+                    return std::filesystem::path(value).stem().string();
+                });
+
             inja_env.add_callback("fs.filename", 1,
                 [](inja::Arguments& args) {
                     const std::string& value = args.at(0)->get<std::string>();
@@ -188,10 +230,23 @@ namespace spore::codegen
                     return std::filesystem::path(value).parent_path().string();
                 });
 
-            inja_env.add_callback("cpp_name", 1,
+            inja_env.add_callback("cpp.name", 1,
                 [](inja::Arguments& args) -> std::string {
                     const std::string& value = args.at(0)->get<std::string>();
                     return detail::to_cpp_name(value);
+                });
+
+            inja_env.add_callback("cpp.embed", 1,
+                [](inja::Arguments& args) -> std::string {
+                    const nlohmann::json* arg0 = args.at(0);
+                    return detail::to_cpp_hex(*arg0, 80);
+                });
+
+            inja_env.add_callback("cpp.embed", 2,
+                [](inja::Arguments& args) -> std::string {
+                    const nlohmann::json* arg0 = args.at(0);
+                    const std::size_t arg1 = args.at(1)->get<std::size_t>();
+                    return detail::to_cpp_hex(*arg0, arg1);
                 });
 
             inja_env.add_callback("include",
@@ -205,8 +260,31 @@ namespace spore::codegen
                 });
         }
 
+        [[nodiscard]] bool render_file(const std::string& file, const nlohmann::json& data, std::string& result) override
+        {
+            try
+            {
+                const auto action = [&] { return inja_env.render_file(file, data); };
+                result = with_this(data, action);
+                return true;
+            }
+            catch (const inja::InjaError& err)
+            {
+                SPDLOG_ERROR("failed to render inja template, file={} error={}", file, err.what());
+                return false;
+            }
+        }
+
+        [[nodiscard]] bool can_render_file(const std::string& file) const override
+        {
+            return ".inja" == std::filesystem::path(file).extension();
+        }
+
+      private:
+        static inline thread_local const nlohmann::json* _json_this = nullptr;
+
         template <typename func_t>
-        auto with_this(const nlohmann::json& json, func_t&& func) const
+        static auto with_this(const nlohmann::json& json, func_t&& func) -> std::invoke_result_t<std::decay_t<func_t>>
         {
             const nlohmann::json* new_this = std::addressof(json);
             const nlohmann::json* old_this = nullptr;
@@ -218,29 +296,7 @@ namespace spore::codegen
             return func();
         }
 
-        bool render_file(const std::string& file, const nlohmann::json& data, std::string& result) override
-        {
-            try
-            {
-                result = with_this(data, [&] { return inja_env.render_file(file, data); });
-                return true;
-            }
-            catch (const inja::InjaError& err)
-            {
-                SPDLOG_ERROR("failed to render inja template, file={} error={}", file, err.what());
-                return false;
-            }
-        }
-
-        bool can_render_file(const std::string& file) const override
-        {
-            return ".inja" == std::filesystem::path(file).extension();
-        }
-
-      private:
-        static inline thread_local const nlohmann::json* _json_this = nullptr;
-
-        inline std::string include_file(const std::string& file, std::span<const nlohmann::json*> args)
+        std::string include_file(const std::string& file, std::span<const nlohmann::json*> args)
         {
             nlohmann::json json;
 
@@ -266,7 +322,8 @@ namespace spore::codegen
 
                 if (std::filesystem::exists(template_abs))
                 {
-                    return with_this(json, [&] { return inja_env.render_file(template_abs.string(), json); });
+                    const auto action = [&] { return inja_env.render_file(template_abs.string(), json); };
+                    return with_this(json, action);
                 }
             }
 

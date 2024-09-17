@@ -7,6 +7,8 @@
 #include "nlohmann/json.hpp"
 
 #include "spore/codegen/codegen_error.hpp"
+#include "spore/codegen/codegen_impl.hpp"
+#include "spore/codegen/utils/json.hpp"
 
 namespace spore::codegen
 {
@@ -15,6 +17,7 @@ namespace spore::codegen
         std::string name;
         std::string directory;
         std::vector<std::string> templates;
+        std::vector<std::string> data;
         std::optional<nlohmann::json> condition;
     };
 
@@ -22,7 +25,8 @@ namespace spore::codegen
     {
         std::string name;
         std::string directory;
-        std::string files;
+        std::string parser;
+        std::vector<std::string> files;
         std::vector<codegen_config_step> steps;
     };
 
@@ -31,35 +35,50 @@ namespace spore::codegen
         std::vector<codegen_config_stage> stages;
     };
 
-    void from_json(const nlohmann::json& json, codegen_config_step& value)
+    namespace detail
     {
-        json["name"].get_to(value.name);
-        json["directory"].get_to(value.directory);
-        json["templates"].get_to(value.templates);
+        constexpr std::string_view config_context = "config";
+    }
 
-        if (json.contains("condition"))
+    inline void from_json(const nlohmann::json& json, codegen_config_step& value)
+    {
+        json::get_checked(json, "name", value.name, detail::config_context);
+        json::get_checked(json, "directory", value.directory, detail::config_context);
+        json::get_checked(json, "templates", value.templates, detail::config_context);
+
+        nlohmann::json condition;
+        if (json::get(json, "condition", condition))
         {
-            json["condition"].get_to(value.condition.emplace());
+            value.condition = std::move(condition);
         }
     }
 
-    void from_json(const nlohmann::json& json, codegen_config_stage& value)
+    inline void from_json(const nlohmann::json& json, codegen_config_stage& value)
     {
-        json["name"].get_to(value.name);
-        json["files"].get_to(value.files);
-        json["directory"].get_to(value.directory);
-        json["steps"].get_to(value.steps);
+        json::get_checked(json, "name", value.name, detail::config_context);
+        json::get_checked(json, "directory", value.directory, detail::config_context);
+        json::get_checked(json, "steps", value.steps, detail::config_context);
+        json::get_checked(json, "parser", value.parser, detail::config_context);
+
+        nlohmann::json files;
+        json::get_opt(json, "files", files);
+
+        if (files.is_string())
+        {
+            files.get_to(value.files.emplace_back());
+        }
+        else if (files.is_array())
+        {
+            files.get_to(value.files);
+        }
     }
 
-    void from_json(const nlohmann::json& json, codegen_config& value)
+    inline void from_json(const nlohmann::json& json, codegen_config& value)
     {
-        std::int32_t version = 1;
-        if (json.contains("version"))
-        {
-            json["version"].get_to(version);
-        }
+        std::int32_t version;
+        json::get_opt(json, "version", version, 1);
 
-        switch (version)
+        switch (version) // NOLINT(*-multiway-paths-covered)
         {
             case 1: {
                 json["stages"].get_to(value.stages);

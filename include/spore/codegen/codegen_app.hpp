@@ -2,51 +2,30 @@
 
 #include <chrono>
 #include <filesystem>
-#include <map>
 #include <string>
-#include <string_view>
 #include <vector>
 
 #include "glob/glob.h"
 #include "nlohmann/json.hpp"
 #include "process.hpp"
 
-#include "spore/codegen/ast/conditions/ast_condition_all.hpp"
-#include "spore/codegen/ast/conditions/ast_condition_any.hpp"
-#include "spore/codegen/ast/conditions/ast_condition_attribute.hpp"
-#include "spore/codegen/ast/conditions/ast_condition_factory.hpp"
-#include "spore/codegen/ast/conditions/ast_condition_none.hpp"
-#include "spore/codegen/ast/converters/ast_converter.hpp"
-#include "spore/codegen/ast/converters/ast_converter_default.hpp"
-#include "spore/codegen/ast/parsers/ast_parser.hpp"
-#include "spore/codegen/ast/parsers/ast_parser_clang.hpp"
 #include "spore/codegen/codegen_cache.hpp"
 #include "spore/codegen/codegen_config.hpp"
 #include "spore/codegen/codegen_data.hpp"
 #include "spore/codegen/codegen_error.hpp"
+#include "spore/codegen/codegen_impl.hpp"
 #include "spore/codegen/codegen_options.hpp"
 #include "spore/codegen/codegen_version.hpp"
 #include "spore/codegen/misc/current_path_scope.hpp"
 #include "spore/codegen/misc/defer.hpp"
-#include "spore/codegen/renderers/codegen_renderer.hpp"
-#include "spore/codegen/renderers/codegen_renderer_composite.hpp"
-#include "spore/codegen/renderers/codegen_renderer_inja.hpp"
+#include "spore/codegen/utils/aggregates.hpp"
 #include "spore/codegen/utils/files.hpp"
+#include "spore/codegen/utils/strings.hpp"
 
 namespace spore::codegen
 {
     namespace detail
     {
-        std::once_flag setup_once_flag;
-
-        void setup_once()
-        {
-            ast_condition_factory::instance().register_condition<ast_condition_any>();
-            ast_condition_factory::instance().register_condition<ast_condition_all>();
-            ast_condition_factory::instance().register_condition<ast_condition_none>();
-            ast_condition_factory::instance().register_condition<ast_condition_attribute>();
-        }
-
         template <typename func_t, typename end_func_t>
         void run_timed(func_t&& func, end_func_t&& end_func)
         {
@@ -62,24 +41,24 @@ namespace spore::codegen
         }
     }
 
+    template <typename renderer_t, typename... impls_t>
     struct codegen_app
     {
         using process_ptr = std::unique_ptr<TinyProcessLib::Process>;
 
+        codegen_options options;
         codegen_config config;
         codegen_cache cache;
-        codegen_options options;
         nlohmann::json user_data;
-        std::shared_ptr<ast_parser> parser;
-        std::shared_ptr<ast_converter> converter;
-        std::shared_ptr<codegen_renderer> renderer;
+        renderer_t renderer;
+        std::tuple<impls_t...> impls;
         std::vector<process_ptr> processes;
 
-        explicit codegen_app(codegen_options in_options)
-            : options(std::move(in_options))
+        codegen_app(codegen_options in_options, renderer_t in_renderer, impls_t... in_impls)
+            : options(std::move(in_options)),
+              renderer(std::move(in_renderer)),
+              impls(std::move(in_impls)...)
         {
-            std::call_once(detail::setup_once_flag, &detail::setup_once);
-
             const auto normalize_path = [](std::string& value, const std::string* base = nullptr) {
                 std::filesystem::path path(value);
 
@@ -98,8 +77,7 @@ namespace spore::codegen
             };
 
             normalize_path(options.config);
-            normalize_path(options.output);
-            normalize_path(options.cache, &options.output);
+            normalize_path(options.cache);
 
             nlohmann::json config_json;
             nlohmann::json cache_json;
@@ -126,7 +104,7 @@ namespace spore::codegen
             {
                 SPDLOG_INFO("ignoring old cache because of new config, file={} config={}", options.cache, options.config);
                 cache.reset();
-                cache.check_and_update(options.config);
+                std::ignore = cache.check_and_update(options.config);
             }
 
             for (const auto& [key, value] : options.user_data)
@@ -135,14 +113,9 @@ namespace spore::codegen
             }
 
             options.templates.emplace_back(std::filesystem::current_path().string());
-
-            parser = std::make_shared<ast_parser_clang>(options.additional_args);
-            converter = std::make_shared<ast_converter_default>();
-            renderer = std::make_shared<codegen_renderer_composite>(
-                std::make_shared<codegen_renderer_inja>(options.templates));
         }
 
-        inline void run()
+        void run()
         {
             const auto action = [&] {
                 defer defer_wait_processes = [&] { wait_pending_processes(); };
@@ -151,7 +124,37 @@ namespace spore::codegen
                 for (std::size_t index = 0; index < config.stages.size(); ++index)
                 {
                     const codegen_config_stage& stage = config.stages.at(index);
-                    run_stage(data, data.stages.at(index), stage);
+                    const std::filesystem::path stage_directory {stage.directory};
+
+                    if (!std::filesystem::exists(stage_directory))
+                    {
+                        SPDLOG_DEBUG("skipping stage because directory does not exist, stage={} directory={}", stage.name, stage.directory);
+                        continue;
+                    }
+
+                    codegen_stage_data& stage_data = data.stages[index].get();
+
+                    bool has_stage_run = false;
+                    const auto action_impl = [&]<typename impl_t>(const impl_t& impl) {
+                        if (stage.parser == impl_t::name())
+                        {
+                            if (has_stage_run)
+                            {
+                                SPDLOG_WARN("duplicate parser implementation, parser={}", stage.parser);
+                                return;
+                            }
+
+                            run_stage(impl, stage, data, stage_data);
+                            has_stage_run = true;
+                        }
+                    };
+
+                    aggregates::for_each(impls, action_impl);
+
+                    if (!has_stage_run)
+                    {
+                        SPDLOG_WARN("unknown parser implementation, parser={}", stage.parser);
+                    }
                 }
 
                 if (!files::write_file(options.cache, cache))
@@ -167,19 +170,35 @@ namespace spore::codegen
             detail::run_timed(action, finally);
         }
 
-        inline void run_stage(const codegen_data& data, codegen_stage_data& stage_data, const codegen_config_stage& stage)
+        void wait_pending_processes()
         {
-            std::filesystem::path directory = std::filesystem::current_path() / stage.directory;
-            if (!std::filesystem::exists(directory))
-            {
-                SPDLOG_DEBUG("skipping stage because directory does not exist, stage={} directory={}", stage.name, directory.string());
+            if (processes.empty())
                 return;
-            }
 
-            current_path_scope directory_scope(directory);
+            const auto action = [&] {
+                SPDLOG_DEBUG("waiting on pending processes, count={}", processes.size());
 
-            std::vector<std::size_t> dirty_file_indices;
-            dirty_file_indices.reserve(stage_data.files.size());
+                for (const std::unique_ptr<TinyProcessLib::Process>& process : processes)
+                {
+                    process->get_exit_status();
+                }
+            };
+
+            const auto finally = [&](std::float_t duration) {
+                SPDLOG_DEBUG("wait on pending processes completed, duration={:.3f}s", duration);
+                processes.clear();
+            };
+
+            detail::run_timed(action, finally);
+        }
+
+        template <typename ast_t>
+        void run_stage(const codegen_impl<ast_t>& impl, const codegen_config_stage& stage, const codegen_data& data, codegen_stage_data& stage_data)
+        {
+            current_path_scope directory_scope {stage.directory};
+
+            std::vector<std::size_t> dirty_indices;
+            dirty_indices.reserve(stage_data.files.size());
 
             std::vector<std::string> dirty_files;
             dirty_files.reserve(stage_data.files.size());
@@ -188,7 +207,7 @@ namespace spore::codegen
                 return template_data.status != codegen_cache_status::up_to_date;
             };
 
-            const bool has_dirty_templates = std::any_of(data.templates.begin(), data.templates.end(), template_predicate);
+            const bool has_dirty_templates = std::ranges::any_of(data.templates, template_predicate);
 
             for (std::size_t file_index = 0; file_index < stage_data.files.size(); ++file_index)
             {
@@ -196,31 +215,31 @@ namespace spore::codegen
 
                 if (has_dirty_templates || file_data.status != codegen_cache_status::up_to_date)
                 {
-                    dirty_file_indices.emplace_back(file_index);
+                    dirty_indices.emplace_back(file_index);
                     dirty_files.emplace_back(file_data.path);
                 }
             }
 
-            if (dirty_file_indices.empty())
+            if (dirty_indices.empty())
             {
                 SPDLOG_INFO("skipping stage, all files are up-to-date, stage={}", stage.name);
                 return;
             }
 
-            std::vector<ast_file> ast_files;
-            parse_files(stage, dirty_files, ast_files);
-            erase_unmatched_outputs(stage_data, ast_files, dirty_file_indices);
+            std::vector<ast_t> asts;
+            parse_asts(impl, stage, dirty_files, asts);
+            erase_unmatched_outputs(impl, asts, dirty_indices, stage_data);
 
             const auto action = [&] {
                 SPDLOG_DEBUG("rendering stage files, stage={} files={}", stage.name, stage.files);
                 for (std::size_t file_index = 0; file_index < dirty_files.size(); ++file_index)
                 {
-                    const ast_file& ast_file = ast_files.at(file_index);
-                    const codegen_file_data& file_data = stage_data.files.at(dirty_file_indices.at(file_index));
+                    const ast_t& ast = asts.at(file_index);
+                    const codegen_file_data& file_data = stage_data.files.at(dirty_indices.at(file_index));
 
                     if (!file_data.outputs.empty())
                     {
-                        render_file(data, stage_data, file_data, ast_file);
+                        render_ast(impl, data, stage_data, file_data, ast);
                     }
                 }
             };
@@ -232,10 +251,30 @@ namespace spore::codegen
             detail::run_timed(action, finally);
         }
 
-        inline void render_file(const codegen_data& data, const codegen_stage_data& stage_data, const codegen_file_data& file_data, const ast_file& ast)
+        template <typename ast_t>
+        void parse_asts(const codegen_impl<ast_t>& impl, const codegen_config_stage& stage, const std::vector<std::string>& files, std::vector<ast_t>& asts) const
+        {
+            const auto action = [&] {
+                SPDLOG_INFO("parsing stage files, stage={} parser={} files={} count={}", stage.name, stage.parser, stage.files, files.size());
+
+                if (!impl.parser().parse_asts(files, asts))
+                {
+                    throw codegen_error(codegen_error_code::parsing, "failed to parse stage input files, stage={} parser={} files={}", stage.name, stage.parser, stage.files);
+                }
+            };
+
+            const auto finally = [&](std::float_t duration) {
+                SPDLOG_INFO("parsing completed, stage={} duration={:.3f}s", stage.name, duration);
+            };
+
+            detail::run_timed(action, finally);
+        }
+
+        template <typename ast_t>
+        void render_ast(const codegen_impl<ast_t>& impl, const codegen_data& data, const codegen_stage_data& stage_data, const codegen_file_data& file_data, const ast_t& ast)
         {
             nlohmann::json json_data;
-            if (!converter->convert_file(ast, json_data))
+            if (!impl.converter().convert_ast(ast, json_data))
             {
                 throw codegen_error(codegen_error_code::rendering, "failed to convert input data to json, file={}", file_data.path);
             }
@@ -258,7 +297,7 @@ namespace spore::codegen
                         return output_data.template_index == template_index;
                     };
 
-                    const auto it_output = std::find_if(file_data.outputs.begin(), file_data.outputs.end(), output_predicate);
+                    const auto it_output = std::ranges::find_if(file_data.outputs, output_predicate);
                     if (it_output == file_data.outputs.end())
                     {
                         SPDLOG_DEBUG("template skipped, no output, file={} template={}", file_data.path, template_data.path);
@@ -273,7 +312,7 @@ namespace spore::codegen
                     SPDLOG_DEBUG("rendering output, file={}", output_data.path);
 
                     std::string result;
-                    if (!renderer->render_file(template_data.path, json_data, result))
+                    if (!renderer.render_file(template_data.path, json_data, result))
                     {
                         throw codegen_error(codegen_error_code::rendering, "failed to render input, file={} template={}", file_data.path, template_data.path);
                     }
@@ -294,18 +333,25 @@ namespace spore::codegen
             }
         }
 
-        static inline void erase_unmatched_outputs(codegen_stage_data& stage_data, const std::vector<ast_file>& ast_files, const std::vector<std::size_t>& file_indices)
+        template <typename ast_t>
+        static void erase_unmatched_outputs(const codegen_impl<ast_t>& impl, const std::vector<ast_t>& asts, const std::vector<std::size_t>& file_indices, codegen_stage_data& stage_data)
         {
             for (std::size_t step_index = 0; step_index < stage_data.steps.size(); ++step_index)
             {
                 const codegen_step_data& step_data = stage_data.steps.at(step_index);
 
+                std::shared_ptr<codegen_condition<ast_t>> step_condition;
+                if (step_data.condition.has_value())
+                {
+                    step_condition = impl.condition(step_data.condition.value());
+                }
+
                 for (std::size_t file_index = 0; file_index < file_indices.size(); ++file_index)
                 {
-                    const ast_file& ast_file = ast_files.at(file_index);
-                    const bool ast_file_matches = step_data.condition == nullptr || step_data.condition->matches_condition(ast_file);
+                    const ast_t& ast = asts.at(file_index);
+                    const bool ast_matches = step_condition == nullptr || step_condition->match_ast(ast);
 
-                    if (!ast_file_matches)
+                    if (!ast_matches)
                     {
                         codegen_file_data& file_data = stage_data.files.at(file_indices.at(file_index));
                         const auto output_predicate = [&](const codegen_output_data& output_data) {
@@ -318,26 +364,10 @@ namespace spore::codegen
             }
         }
 
-        inline void parse_files(const codegen_config_stage& stage, const std::vector<std::string>& files, std::vector<ast_file>& ast_files) const
-        {
-            SPDLOG_INFO("parsing stage files, stage={} files={} count={}", stage.name, stage.files, files.size());
-
-            const auto then = std::chrono::steady_clock::now();
-
-            if (!parser->parse_files(files, ast_files))
-            {
-                throw codegen_error(codegen_error_code::parsing, "failed to parse stage input files, stage={} files={}", stage.name, stage.files);
-            }
-
-            const auto now = std::chrono::steady_clock::now();
-            const std::chrono::duration<std::float_t> duration = now - then;
-
-            SPDLOG_INFO("parsing completed, stage={} duration={:.3f}s", stage.name, duration.count());
-        }
-
-        inline codegen_data make_data()
+        codegen_data make_data()
         {
             codegen_data data;
+            data.stages.reserve(config.stages.size());
 
             for (std::string& template_ : options.templates)
             {
@@ -347,9 +377,9 @@ namespace spore::codegen
                 for (const std::filesystem::path& template_file : template_files)
                 {
                     std::string template_string = template_file.string();
-                    if (renderer->can_render_file(template_string))
+                    if (renderer.can_render_file(template_string))
                     {
-                        codegen_cache_status status = cache.check_and_update(template_string);
+                        const codegen_cache_status status = cache.check_and_update(template_string);
 
                         codegen_template_data template_data {
                             .path = std::move(template_string),
@@ -363,53 +393,54 @@ namespace spore::codegen
 
             for (const codegen_config_stage& stage : config.stages)
             {
-                codegen_stage_data stage_data = make_stage_data(stage, data);
-                data.stages.emplace_back(std::move(stage_data));
+                auto stage_func = [&] { return make_stage_data(stage, data); };
+                data.stages.emplace_back(std::move(stage_func));
             }
 
             return data;
         }
 
-        inline codegen_stage_data make_stage_data(const codegen_config_stage& stage, const codegen_data& data)
+        codegen_stage_data make_stage_data(const codegen_config_stage& stage, const codegen_data& data)
         {
             codegen_stage_data stage_data;
 
-            // TODO @sporacid Figure out if we should change working directory or find everything in-place
-            current_path_scope directory_scope {std::filesystem::current_path() / stage.directory};
-
-            std::vector<std::filesystem::path> stage_files = glob::rglob(stage.files);
-            for (const std::filesystem::path& stage_file : stage_files)
             {
-                std::string file_string = stage_file.string();
-                codegen_cache_status status = cache.check_and_update(file_string);
+                current_path_scope directory_scope {stage.directory};
 
-                codegen_file_data file_data {
-                    .path = std::move(file_string),
-                    .status = status,
-                };
+                std::vector<std::filesystem::path> stage_files = glob::rglob(stage.files);
+                stage_data.files.reserve(stage_files.size());
 
-                stage_data.files.emplace_back(std::move(file_data));
+                for (const std::filesystem::path& stage_file : stage_files)
+                {
+                    std::string file_string = stage_file.string();
+                    const codegen_cache_status status = cache.check_and_update(file_string);
+
+                    codegen_file_data file_data {
+                        .path = std::move(file_string),
+                        .status = status,
+                    };
+
+                    stage_data.files.emplace_back(std::move(file_data));
+                }
             }
 
             for (std::size_t step_index = 0; step_index < stage.steps.size(); ++step_index)
             {
                 const codegen_config_step& step = stage.steps.at(step_index);
 
-                codegen_step_data step_data;
-
-                if (step.condition.has_value())
-                {
-                    step_data.condition = ast_condition_factory::instance().make_condition(step.condition.value());
-                }
+                codegen_step_data step_data {
+                    .condition = step.condition,
+                };
 
                 for (const std::string& template_ : step.templates)
                 {
+                    const std::string template_deterministic = std::filesystem::path(template_).make_preferred().string();
                     const auto template_predicate = [&](const codegen_template_data& template_data) {
                         // TODO @sporacid Find a better way to achieve the same thing without suffix matching
-                        return template_data.path.ends_with(std::filesystem::path(template_).make_preferred().string());
+                        return template_data.path.ends_with(template_deterministic);
                     };
 
-                    const auto it_template = std::find_if(data.templates.begin(), data.templates.end(), template_predicate);
+                    const auto it_template = std::ranges::find_if(data.templates, template_predicate);
                     if (it_template != data.templates.end())
                     {
                         std::size_t template_index = static_cast<std::size_t>(it_template - data.templates.begin());
@@ -417,10 +448,10 @@ namespace spore::codegen
 
                         for (codegen_file_data& file_data : stage_data.files)
                         {
-                            std::filesystem::path output_stem = std::filesystem::path(file_data.path).stem();
-                            std::filesystem::path output_directory = std::filesystem::path(options.output) / step.directory / std::filesystem::path(file_data.path).parent_path();
-                            std::filesystem::path output_prefix = std::filesystem::absolute(output_directory / output_stem);
-                            std::filesystem::path output_suffix = std::filesystem::path(it_template->path).stem();
+                            const auto output_stem = std::filesystem::path(file_data.path).stem();
+                            const auto output_directory = std::filesystem::path(step.directory) / std::filesystem::path(file_data.path).parent_path();
+                            const auto output_prefix = std::filesystem::absolute(output_directory / output_stem);
+                            const auto output_suffix = std::filesystem::path(it_template->path).stem();
 
                             codegen_output_data output_data {
                                 .step_index = step_index,
@@ -437,23 +468,6 @@ namespace spore::codegen
             }
 
             return stage_data;
-        }
-
-        inline void wait_pending_processes()
-        {
-            if (processes.empty())
-                return;
-
-            SPDLOG_DEBUG("waiting on pending processes, count={}", processes.size());
-
-            for (const std::unique_ptr<TinyProcessLib::Process>& process : processes)
-            {
-                process->get_exit_status();
-            }
-
-            processes.clear();
-
-            SPDLOG_DEBUG("all pending processes completed");
         }
     };
 }

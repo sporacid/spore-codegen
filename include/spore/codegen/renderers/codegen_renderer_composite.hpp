@@ -1,6 +1,5 @@
 #pragma once
 
-#include <algorithm>
 #include <memory>
 #include <vector>
 
@@ -8,7 +7,7 @@
 
 namespace spore::codegen
 {
-    struct codegen_renderer_composite : codegen_renderer
+    struct codegen_renderer_composite final : codegen_renderer
     {
         std::vector<std::shared_ptr<codegen_renderer>> renderers;
 
@@ -18,29 +17,29 @@ namespace spore::codegen
         {
         }
 
-        bool render_file(const std::string& file, const nlohmann::json& data, std::string& result) override
+        [[nodiscard]] bool render_file(const std::string& file, const nlohmann::json& data, std::string& result) override
         {
             const auto predicate = [&](const std::shared_ptr<codegen_renderer>& renderer) {
                 return renderer->can_render_file(file);
             };
 
-            const auto it = std::find_if(renderers.begin(), renderers.end(), predicate);
-            if (it != renderers.end())
+            const auto it_renderer = std::ranges::find_if(renderers, predicate);
+            if (it_renderer != renderers.end())
             {
-                const std::shared_ptr<codegen_renderer>& renderer = *it;
+                const std::shared_ptr<codegen_renderer>& renderer = *it_renderer;
                 return renderer->render_file(file, data, result);
             }
 
             return false;
         }
 
-        bool can_render_file(const std::string& file) const override
+        [[nodiscard]] bool can_render_file(const std::string& file) const override
         {
             const auto predicate = [&](const std::shared_ptr<codegen_renderer>& renderer) {
                 return renderer->can_render_file(file);
             };
 
-            return std::any_of(renderers.begin(), renderers.end(), predicate);
+            return std::ranges::any_of(renderers, predicate);
         }
     };
 }

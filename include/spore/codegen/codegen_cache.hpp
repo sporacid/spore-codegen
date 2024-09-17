@@ -11,6 +11,7 @@
 
 #include "spore/codegen/codegen_version.hpp"
 #include "spore/codegen/utils/files.hpp"
+#include "spore/codegen/utils/json.hpp"
 
 namespace spore::codegen
 {
@@ -53,7 +54,12 @@ namespace spore::codegen
         std::string version;
         std::vector<codegen_cache_entry> entries;
 
-        codegen_cache_status check_and_update(const std::string& file)
+        [[nodiscard]] bool empty() const
+        {
+            return entries.empty();
+        }
+
+        [[nodiscard]] codegen_cache_status check_and_update(const std::string& file)
         {
             std::string hash;
             if (!files::hash_file(file, hash))
@@ -61,22 +67,22 @@ namespace spore::codegen
                 return codegen_cache_status::dirty;
             }
 
-            std::int64_t mtime = std::filesystem::last_write_time(file).time_since_epoch().count();
+            const std::int64_t mtime = std::filesystem::last_write_time(file).time_since_epoch().count();
 
-            const auto it = std::lower_bound(entries.begin(), entries.end(), file);
-            if (it == entries.end() || it->file != file)
+            const auto it_entry = std::lower_bound(entries.begin(), entries.end(), file);
+            if (it_entry == entries.end() || it_entry->file != file)
             {
                 codegen_cache_entry entry;
                 entry.file = file;
                 entry.hash = std::move(hash);
                 entry.mtime = mtime;
-                entries.insert(it, std::move(entry));
+                entries.insert(it_entry, std::move(entry));
                 return codegen_cache_status::new_;
             }
 
-            if (mtime != it->mtime || hash != it->hash)
+            if (mtime != it_entry->mtime || hash != it_entry->hash)
             {
-                codegen_cache_entry& entry = *it;
+                codegen_cache_entry& entry = *it_entry;
                 entry.hash = std::move(hash);
                 entry.mtime = mtime;
                 return codegen_cache_status::dirty;
@@ -90,12 +96,12 @@ namespace spore::codegen
             version = SPORE_CODEGEN_VERSION;
             entries.clear();
         }
-
-        bool empty() const
-        {
-            return entries.empty();
-        }
     };
+
+    namespace detail
+    {
+        constexpr std::string_view cache_context = "cache";
+    }
 
     inline void to_json(nlohmann::json& json, const codegen_cache_entry& value)
     {
@@ -106,13 +112,9 @@ namespace spore::codegen
 
     inline void from_json(const nlohmann::json& json, codegen_cache_entry& value)
     {
-        json["file"].get_to(value.file);
-        json["hash"].get_to(value.hash);
-
-        if (json.contains("mtime"))
-        {
-            json["mtime"].get_to(value.mtime);
-        }
+        json::get_checked(json, "file", value.file, detail::cache_context);
+        json::get_checked(json, "hash", value.hash, detail::cache_context);
+        json::get_checked(json, "mtime", value.mtime, detail::cache_context);
     }
 
     inline void to_json(nlohmann::json& json, const codegen_cache& value)
@@ -123,15 +125,8 @@ namespace spore::codegen
 
     inline void from_json(const nlohmann::json& json, codegen_cache& value)
     {
-        if (json.type() == nlohmann::json::value_t::array)
-        {
-            json.get_to(value.entries);
-        }
-        else
-        {
-            json["version"].get_to(value.version);
-            json["entries"].get_to(value.entries);
-        }
+        json::get_checked(json, "version", value.version, detail::cache_context);
+        json::get_checked(json, "entries", value.entries, detail::cache_context);
     }
 
     inline void to_json(nlohmann::json& json, const codegen_cache_status& value)

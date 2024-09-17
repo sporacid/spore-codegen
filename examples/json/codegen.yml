@@ -3,6 +3,7 @@ stages:
 - name: headers
   directory: include
   files: "**/*.hpp"
+  parser: cpp
   steps:
   - name: json
     directory: include

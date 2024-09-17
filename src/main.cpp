@@ -6,28 +6,92 @@
 #include "spdlog/spdlog.h"
 
 #include "spore/codegen/codegen_app.hpp"
+#include "spore/codegen/codegen_impl.hpp"
 #include "spore/codegen/codegen_options.hpp"
 #include "spore/codegen/codegen_version.hpp"
+#include "spore/codegen/conditions/codegen_condition_factory.hpp"
+#include "spore/codegen/conditions/codegen_condition_logical.hpp"
+#include "spore/codegen/renderers/codegen_renderer_composite.hpp"
+#include "spore/codegen/renderers/codegen_renderer_inja.hpp"
 
-namespace spore::codegen::detail
+#ifdef SPORE_WITH_CPP
+#include "spore/codegen/conditions/codegen_condition_attribute.hpp"
+#include "spore/codegen/parsers/cpp/ast/cpp_file.hpp"
+#include "spore/codegen/parsers/cpp/codegen_converter_cpp.hpp"
+#include "spore/codegen/parsers/cpp/codegen_parser_cpp.hpp"
+#endif
+
+#ifdef SPORE_WITH_SPIRV
+#include "spore/codegen/parsers/spirv/ast/spirv_module.hpp"
+#include "spore/codegen/parsers/spirv/codegen_converter_spirv.hpp"
+#include "spore/codegen/parsers/spirv/codegen_parser_spirv.hpp"
+#endif
+
+namespace spore::codegen
 {
-    std::pair<std::string, std::string> parse_pair(const std::string& pair)
+    namespace detail
     {
-        const auto equal_sign = pair.find_first_of("=:");
-        std::string name = equal_sign != std::string::npos ? pair.substr(0, equal_sign) : pair;
-        std::string value = equal_sign != std::string::npos ? pair.substr(equal_sign + 1) : "";
-        return {std::move(name), std::move(value)};
+        namespace metavars
+        {
+            constexpr auto file = "FILE";
+            constexpr auto directory = "DIR";
+            constexpr auto pair = "PAIR";
+            constexpr auto command = "COMMAND";
+            constexpr auto argument = "ARG";
+        }
+
+        std::pair<std::string, std::string> parse_pair(std::string_view pair)
+        {
+            const auto equal_sign = pair.find_first_of("=:");
+            const std::string_view name = equal_sign != std::string_view::npos ? pair.substr(0, equal_sign) : pair;
+            const std::string_view value = equal_sign != std::string_view::npos ? pair.substr(equal_sign + 1) : "";
+            return {std::string(name), std::string(value)};
+        }
+
+        template <typename ast_t>
+        void register_default_conditions(codegen_condition_factory<ast_t>& factory)
+        {
+            factory.template register_condition<codegen_condition_any<ast_t>>();
+            factory.template register_condition<codegen_condition_all<ast_t>>();
+            factory.template register_condition<codegen_condition_none<ast_t>>();
+        }
     }
 
-    std::size_t get_rest_index(std::size_t argc, const char* argv[])
+#ifdef SPORE_WITH_CPP
+    template <>
+    struct codegen_impl_traits<cpp_file>
     {
-        const auto predicate = [](const char* arg) { return std::strcmp(arg, "--") == 0; };
-        const char** end = std::find_if(argv, argv + argc, predicate);
-        return end != nullptr ? end - argv : argc;
-    }
+        static constexpr std::string_view name()
+        {
+            return "cpp";
+        }
+
+        static void register_conditions(codegen_condition_factory<cpp_file>& factory)
+        {
+            detail::register_default_conditions(factory);
+            factory.register_condition<codegen_condition_attribute>();
+        }
+    };
+#endif
+
+#ifdef SPORE_WITH_SPIRV
+    template <>
+    struct codegen_impl_traits<spirv_module>
+    {
+        static constexpr std::string_view name()
+        {
+            return "spirv";
+        }
+
+        static void register_conditions(codegen_condition_factory<spirv_module>& factory)
+        {
+            detail::register_default_conditions(factory);
+        }
+    };
+#endif
 }
 
-int main(int argc, const char* argv[])
+int main(const int argc, const char* argv[])
 {
     using namespace spore::codegen;
 
@@ -38,58 +102,72 @@ int main(int argc, const char* argv[])
         SPORE_CODEGEN_VERSION,
     };
 
-    arg_parser
-        .add_argument("-o", "--output")
-        .help("output directory to generate to")
-        .default_value(std::string {".codegen"});
+    constexpr auto description =
+        "Tool to generate files from source code and byte code";
+
+    constexpr auto epilog =
+        "Additional implementation specific arguments can be supplied via the syntax --<impl>:<arg>, e.g.\n"
+#ifdef SPORE_WITH_CPP
+        "  --cpp:-std=c++11\n"
+        "  --cpp:-Iinclude/dir"
+#endif
+        ;
+
+    arg_parser.add_description(description);
+    arg_parser.add_epilog(epilog);
 
     arg_parser
         .add_argument("-c", "--config")
-        .help("codegen configuration file to use")
+        .help("Codegen configuration file to use")
+        .metavar(detail::metavars::file)
         .default_value(std::string {"codegen.yml"});
 
     arg_parser
         .add_argument("-C", "--cache")
-        .help("codegen cache file to use")
-        .default_value(std::string {"cache.yml"});
+        .help("Codegen cache file to use")
+        .metavar(detail::metavars::file)
+        .default_value(std::string {".codegen.yml"});
 
     arg_parser
         .add_argument("-t", "--templates")
-        .help("paths to search for templates")
+        .help("Directories to search for templates")
         .default_value(std::vector<std::string> {})
+        .metavar(detail::metavars::directory)
         .append();
 
     arg_parser
         .add_argument("-D", "--user-data")
-        .help("additional user data to be passed to the rendering stage, can be accessed through the `user_data` JSON property")
+        .help("Additional data to be passed to the rendering stage, can be accessed through the \"$.user_data\" JSON property")
         .default_value(std::vector<std::pair<std::string, std::string>> {})
+        .metavar(detail::metavars::pair)
         .append()
         .action(&detail::parse_pair);
 
     arg_parser
         .add_argument("-r", "--reformat")
-        .help("command to reformat output files, or false to disable reformatting")
-        .default_value(std::string {"clang-format -i"})
+        .help("Command to reformat output files, or false to disable reformatting")
+        .default_value(std::string {})
+        .metavar(detail::metavars::command)
         .action([](const std::string& reformat) {
             return reformat != "false" ? reformat : "";
         });
 
     arg_parser
         .add_argument("-f", "--force")
-        .help("force generation for all input files even if files haven't changed")
+        .help("Bypass cache checks and force generation for all input files")
         .default_value(false)
         .implicit_value(true);
 
     arg_parser
         .add_argument("-d", "--debug")
-        .help("enable debug output")
+        .help("Enable debug output")
         .default_value(false)
         .implicit_value(true);
 
-    std::size_t rest_index = detail::get_rest_index(argc, argv);
+    std::vector<std::string> additional_args;
     try
     {
-        arg_parser.parse_args(static_cast<int>(rest_index), argv);
+        additional_args = arg_parser.parse_known_args(argc, argv);
     }
     catch (const std::exception& e)
     {
@@ -99,7 +177,6 @@ int main(int argc, const char* argv[])
     }
 
     codegen_options options {
-        .output = arg_parser.get<std::string>("--output"),
         .config = arg_parser.get<std::string>("--config"),
         .cache = arg_parser.get<std::string>("--cache"),
         .reformat = arg_parser.get<std::string>("--reformat"),
@@ -109,24 +186,61 @@ int main(int argc, const char* argv[])
         .debug = arg_parser.get<bool>("--debug"),
     };
 
-    for (std::size_t index = rest_index + 1; index < argc; ++index)
-    {
-        options.additional_args.emplace_back(argv[index]);
-    }
-
-    if (options.reformat == "false")
-    {
-        options.reformat = std::string();
-    }
-
     if (options.debug)
     {
         spdlog::set_level(spdlog::level::debug);
     }
 
+    const auto parse_impl_args = [&]<typename impl_t> {
+        const std::string prefix = fmt::format("--{}:", impl_t::name());
+
+        std::vector<std::string> impl_args;
+        for (const std::string& additional_arg : additional_args)
+        {
+            if (additional_arg.starts_with(prefix))
+            {
+                std::string impl_arg = additional_arg.substr(prefix.size());
+                impl_args.emplace_back(std::move(impl_arg));
+            }
+        }
+
+        return impl_args;
+    };
+
+#ifdef SPORE_WITH_CPP
+    const auto cpp_args = parse_impl_args.operator()<codegen_impl<cpp_file>>();
+    codegen_impl<cpp_file> impl_cpp {
+        codegen_parser_cpp {cpp_args},
+        codegen_converter_cpp {},
+    };
+#endif
+
+#ifdef SPORE_WITH_SPIRV
+    const auto spirv_args = parse_impl_args.operator()<codegen_impl<spirv_module>>();
+    codegen_impl<spirv_module> impl_spirv {
+        codegen_parser_spirv {spirv_args},
+        codegen_converter_spirv {},
+    };
+#endif
+
+    codegen_renderer_composite renderer {
+        std::make_shared<codegen_renderer_inja>(options.templates),
+    };
+
     try
     {
-        codegen_app(options).run();
+        codegen_app app {
+            std::move(options),
+            std::move(renderer),
+#ifdef SPORE_WITH_CPP
+            std::move(impl_cpp),
+#endif
+#ifdef SPORE_WITH_SPIRV
+            std::move(impl_spirv),
+#endif
+        };
+
+        app.run();
     }
     catch (const codegen_error& e)
     {
