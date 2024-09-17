@@ -6,7 +6,7 @@
 
 namespace spore::codegen
 {
-    struct ast_template_param
+    struct cpp_template_param
     {
         std::string type;
         std::string name;
@@ -14,10 +14,10 @@ namespace spore::codegen
         bool is_variadic = false;
     };
 
-    template <typename ast_value_t>
-    struct ast_has_template_params
+    template <typename cpp_value_t>
+    struct cpp_has_template_params
     {
-        std::vector<ast_template_param> template_params;
+        std::vector<cpp_template_param> template_params;
         std::vector<std::string> template_specialization_params;
 
         [[nodiscard]] bool is_template() const

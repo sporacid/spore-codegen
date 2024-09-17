@@ -1,5 +1,4 @@
 #pragma once
-
 #include <algorithm>
 #include <map>
 #include <string>
@@ -11,8 +10,9 @@
 #include "clang-c/CXSourceLocation.h"
 #include "clang-c/Index.h"
 
-#include "spore/codegen/ast/parsers/ast_parser.hpp"
-#include "spore/codegen/ast/parsers/ast_parser_utils.hpp"
+#include "spore/codegen/parsers/cpp/ast/cpp_file.hpp"
+#include "spore/codegen/parsers/cpp/codegen_utils_cpp.hpp"
+#include "spore/codegen/parsers/codegen_parser.hpp"
 #include "spore/codegen/misc/defer.hpp"
 #include "spore/codegen/utils/files.hpp"
 #include "spore/codegen/utils/strings.hpp"
@@ -141,21 +141,21 @@ namespace spore::codegen
                 }
             }
         }
-        inline void add_access_flags(CXCursor cursor, ast_flags& flags)
+        inline void add_access_flags(CXCursor cursor, cpp_flags& flags)
         {
             CX_CXXAccessSpecifier access_spec = clang_getCXXAccessSpecifier(cursor);
             switch (access_spec)
             {
                 case CX_CXXPublic:
-                    flags = flags | ast_flags::public_;
+                    flags = flags | cpp_flags::public_;
                     break;
 
                 case CX_CXXPrivate:
-                    flags = flags | ast_flags::private_;
+                    flags = flags | cpp_flags::private_;
                     break;
 
                 case CX_CXXProtected:
-                    flags = flags | ast_flags::protected_;
+                    flags = flags | cpp_flags::protected_;
                     break;
 
                 default:
@@ -294,7 +294,7 @@ namespace spore::codegen
             std::string attributes = get_spelling(cursor);
 
             nlohmann::json json;
-            if (ast::parse_pairs(attributes, json))
+            if (cpp::parse_pairs(attributes, json))
             {
                 return json;
             }
@@ -303,9 +303,9 @@ namespace spore::codegen
             return nlohmann::json {};
         }
 
-        inline ast_template_param make_template_param(CXCursor cursor, std::size_t index)
+        inline cpp_template_param make_template_param(CXCursor cursor, std::size_t index)
         {
-            ast_template_param template_param;
+            cpp_template_param template_param;
             template_param.name = get_name(cursor);
 
             if (template_param.name.empty())
@@ -346,9 +346,9 @@ namespace spore::codegen
             return template_param;
         }
 
-        inline ast_argument make_argument(CXCursor cursor, std::size_t index)
+        inline cpp_argument make_argument(CXCursor cursor, std::size_t index)
         {
-            ast_argument argument;
+            cpp_argument argument;
             argument.name = get_name(cursor);
             argument.default_value = get_default_value(cursor);
             argument.type.name = get_type_spelling(cursor);
@@ -384,9 +384,9 @@ namespace spore::codegen
             return argument;
         }
 
-        inline ast_function make_function(CXCursor cursor)
+        inline cpp_function make_function(CXCursor cursor)
         {
-            ast_function function;
+            cpp_function function;
             function.name = get_spelling(cursor);
             function.scope = get_scope(cursor);
 
@@ -398,27 +398,27 @@ namespace spore::codegen
 
             if (clang_CXXMethod_isConst(cursor))
             {
-                function.flags = function.flags | ast_flags::const_;
+                function.flags = function.flags | cpp_flags::const_;
             }
 
             if (clang_CXXMethod_isStatic(cursor))
             {
-                function.flags = function.flags | ast_flags::static_;
+                function.flags = function.flags | cpp_flags::static_;
             }
 
             if (clang_CXXMethod_isVirtual(cursor))
             {
-                function.flags = function.flags | ast_flags::virtual_;
+                function.flags = function.flags | cpp_flags::virtual_;
             }
 
             if (clang_CXXMethod_isDefaulted(cursor))
             {
-                function.flags = function.flags | ast_flags::default_;
+                function.flags = function.flags | cpp_flags::default_;
             }
 
             if (clang_CXXMethod_isDeleted(cursor))
             {
-                function.flags = function.flags | ast_flags::delete_;
+                function.flags = function.flags | cpp_flags::delete_;
             }
 
             const auto visitor = [&](CXCursor cursor, CXCursor parent) {
@@ -453,11 +453,11 @@ namespace spore::codegen
             return function;
         }
 
-        inline ast_constructor make_constructor(CXCursor cursor)
+        inline cpp_constructor make_constructor(CXCursor cursor)
         {
-            ast_function function = make_function(cursor);
+            cpp_function function = make_function(cursor);
 
-            ast_constructor constructor;
+            cpp_constructor constructor;
             constructor.flags = function.flags;
             constructor.arguments = std::move(function.arguments);
             constructor.attributes = std::move(function.attributes);
@@ -467,9 +467,9 @@ namespace spore::codegen
             return constructor;
         }
 
-        inline ast_enum_value make_enum_value(CXCursor cursor)
+        inline cpp_enum_value make_enum_value(CXCursor cursor)
         {
-            ast_enum_value enum_value;
+            cpp_enum_value enum_value;
             enum_value.name = get_name(cursor);
             enum_value.value = clang_getEnumConstantDeclValue(cursor);
 
@@ -493,12 +493,12 @@ namespace spore::codegen
             return enum_value;
         }
 
-        inline ast_enum make_enum(CXCursor cursor)
+        inline cpp_enum make_enum(CXCursor cursor)
         {
-            ast_enum enum_;
+            cpp_enum enum_;
             enum_.name = get_name(cursor);
             enum_.scope = get_scope(cursor);
-            enum_.type = clang_EnumDecl_isScoped(cursor) ? ast_enum_type::enum_class : ast_enum_type::enum_;
+            enum_.type = clang_EnumDecl_isScoped(cursor) ? cpp_enum_type::enum_class : cpp_enum_type::enum_;
 
             CXCursor parent = clang_getCursorSemanticParent(cursor);
             enum_.nested = parent.kind != CXCursor_Namespace;
@@ -531,9 +531,9 @@ namespace spore::codegen
             return enum_;
         }
 
-        inline ast_field make_field(CXCursor cursor)
+        inline cpp_field make_field(CXCursor cursor)
         {
-            ast_field field;
+            cpp_field field;
             field.name = get_name(cursor);
             field.default_value = get_default_value(cursor);
             field.type.name = get_type_spelling(cursor);
@@ -560,9 +560,9 @@ namespace spore::codegen
             return field;
         }
 
-        inline ast_class make_class(CXCursor cursor, ast_file& file)
+        inline cpp_class make_class(CXCursor cursor, cpp_file& file)
         {
-            ast_class class_;
+            cpp_class class_;
             class_.name = get_name(cursor);
             class_.scope = get_scope(cursor);
 
@@ -581,12 +581,12 @@ namespace spore::codegen
             switch (cursor_kind)
             {
                 case CXCursor_StructDecl: {
-                    class_.type = ast_class_type::struct_;
+                    class_.type = cpp_class_type::struct_;
                     break;
                 }
 
                 case CXCursor_ClassDecl: {
-                    class_.type = ast_class_type::class_;
+                    class_.type = cpp_class_type::class_;
                     break;
                 }
 
@@ -611,7 +611,7 @@ namespace spore::codegen
                     }
 
                     case CXCursor_CXXBaseSpecifier: {
-                        ast_ref& base = class_.bases.emplace_back();
+                        cpp_ref& base = class_.bases.emplace_back();
                         base.name = get_name(cursor);
                         break;
                     }
@@ -666,27 +666,27 @@ namespace spore::codegen
             return class_;
         }
 
-        inline void make_file(CXCursor cursor, CXCursor parent, ast_file& file)
+        inline void make_file(CXCursor cursor, CXCursor parent, cpp_file& file)
         {
-            const auto visitor = [&](CXCursor cursor, CXCursor parent) {
-                switch (cursor.kind)
+            const auto visitor = [&](CXCursor cursor_, CXCursor) {
+                switch (cursor_.kind)
                 {
                     case CXCursor_ClassTemplate:
                     case CXCursor_ClassDecl:
                     case CXCursor_StructDecl:
                     case CXCursor_ClassTemplatePartialSpecialization: {
-                        if (clang_isCursorDefinition(cursor))
+                        if (clang_isCursorDefinition(cursor_))
                         {
-                            insert_end(file.classes, [&] { return make_class(cursor, file); });
+                            insert_end(file.classes, [&] { return make_class(cursor_, file); });
                         }
 
                         break;
                     }
 
                     case CXCursor_EnumDecl: {
-                        if (clang_isCursorDefinition(cursor))
+                        if (clang_isCursorDefinition(cursor_))
                         {
-                            insert_end(file.enums, [&] { return make_enum(cursor); });
+                            insert_end(file.enums, [&] { return make_enum(cursor_); });
                         }
 
                         break;
@@ -695,7 +695,7 @@ namespace spore::codegen
                     case CXCursor_FunctionTemplate:
                     case CXCursor_FunctionDecl:
                     case CXCursor_CXXMethod: {
-                        insert_end(file.functions, [&] { return make_function(cursor); });
+                        insert_end(file.functions, [&] { return make_function(cursor_); });
                         break;
                     }
 
@@ -714,14 +714,14 @@ namespace spore::codegen
         }
     }
 
-    struct ast_parser_clang : ast_parser
+    struct codegen_parser_cpp : codegen_parser<cpp_file>
     {
         CXIndex clang_index;
         std::vector<std::string> args;
         std::vector<const char*> args_view;
 
         template <typename args_t>
-        explicit ast_parser_clang(const args_t& additional_args)
+        explicit codegen_parser_cpp(const args_t& additional_args)
         {
             clang_index = clang_createIndex(0, 0);
 
@@ -743,12 +743,12 @@ namespace spore::codegen
                 [](const std::string& value) { return value.data(); });
         }
 
-        ~ast_parser_clang() noexcept override
+        ~codegen_parser_cpp() noexcept override
         {
             clang_disposeIndex(clang_index);
         }
 
-        bool parse_files(const std::vector<std::string>& paths, std::vector<ast_file>& ast_files) override
+        bool parse_asts(const std::vector<std::string>& paths, std::vector<cpp_file>& cpp_files) override
         {
             constexpr auto flags = static_cast<CXTranslationUnit_Flags>(
                 CXTranslationUnit_Incomplete |
@@ -758,21 +758,21 @@ namespace spore::codegen
             std::size_t file_index = 0;
             std::map<std::string_view, std::size_t> file_map;
 
-            ast_files.clear();
-            ast_files.reserve(paths.size());
+            cpp_files.clear();
+            cpp_files.reserve(paths.size());
 
             for (const std::string& path : paths)
             {
-                ast_file ast_file = {.path = path};
+                cpp_file cpp_file = {.path = path};
 
-                if (!files::read_file(path, ast_file.source))
+                if (!files::read_file(path, cpp_file.source))
                 {
                     SPDLOG_ERROR("cannot read source file, path={}", path);
                     return false;
                 }
 
                 file_map.emplace(path, file_index++);
-                ast_files.emplace_back(std::move(ast_file));
+                cpp_files.emplace_back(std::move(cpp_file));
             }
 
             std::string main_source;
@@ -784,11 +784,11 @@ namespace spore::codegen
             }
 
             std::vector<CXUnsavedFile> unsaved_files;
-            unsaved_files.reserve(ast_files.size() + 1);
+            unsaved_files.reserve(cpp_files.size() + 1);
 
             for (std::size_t index = 0; index < paths.size(); ++index)
             {
-                const std::string& source = ast_files[index].source;
+                const std::string& source = cpp_files[index].source;
                 unsaved_files.emplace_back() = CXUnsavedFile {paths[index].data(), source.data(), static_cast<unsigned long>(source.size())};
             }
 
@@ -831,7 +831,7 @@ namespace spore::codegen
                 if (it_file != file_map.end())
                 {
                     std::size_t index = it_file->second;
-                    detail::make_file(cursor, parent, ast_files[index]);
+                    detail::make_file(cursor, parent, cpp_files[index]);
                 }
 
                 return CXChildVisit_Continue;

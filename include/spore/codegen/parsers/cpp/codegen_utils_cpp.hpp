@@ -7,7 +7,7 @@
 
 #include "spore/codegen/utils/strings.hpp"
 
-namespace spore::codegen::ast
+namespace spore::codegen::cpp
 {
     inline bool parse_pairs(std::string_view string, nlohmann::json& json)
     {
@@ -27,10 +27,10 @@ namespace spore::codegen::ast
             strings::trim(token);
         };
 
-        const auto find_end_quote = [&](char quote, std::size_t index) {
+        const auto find_end_quote = [&](const char c, std::size_t index) {
             while (index != std::string_view::npos)
             {
-                index = string.find(quote, index + 1);
+                index = string.find(c, index + 1);
 
                 const bool is_escaped = index > 0 && string.at(index - 1) == escape;
                 const bool is_double_escaped = index > 1 && string.at(index - 2) == escape;

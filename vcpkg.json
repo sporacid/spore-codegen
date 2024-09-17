@@ -10,6 +10,7 @@
     "nlohmann-json",
     "picosha2",
     "spdlog",
+    "spirv-reflect",
     "tiny-process-library",
     "yaml-cpp"
   ]

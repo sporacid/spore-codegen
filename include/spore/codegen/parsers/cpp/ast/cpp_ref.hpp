@@ -2,11 +2,11 @@
 
 #include <string>
 
-#include "spore/codegen/ast/ast_flags.hpp"
+#include "spore/codegen/parsers/cpp/ast/cpp_flags.hpp"
 
 namespace spore::codegen
 {
-    struct ast_ref : ast_has_flags<ast_ref>
+    struct cpp_ref : cpp_has_flags<cpp_ref>
     {
         std::string name;
     };

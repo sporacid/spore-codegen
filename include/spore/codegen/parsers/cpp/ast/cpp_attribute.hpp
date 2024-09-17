@@ -4,8 +4,8 @@
 
 namespace spore::codegen
 {
-    template <typename ast_value_t>
-    struct ast_has_attributes
+    template <typename cpp_value_t>
+    struct cpp_has_attributes
     {
         nlohmann::json attributes;
     };
