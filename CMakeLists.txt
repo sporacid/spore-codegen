@@ -7,6 +7,9 @@ cmake_policy(SET CMP0079 NEW)
 option(SPORE_BUILD_EXAMPLES "Whether to build examples" ON)
 option(SPORE_BUILD_TESTS "Whether to build tests" ON)
 
+option(SPORE_WITH_CPP "Whether to build and enable C++ parser" ON)
+option(SPORE_WITH_SPIRV "Whether to build and enable SPIR-V parser" ON)
+
 set(CMAKE_CXX_STANDARD 20)
 
 if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/VERSION)

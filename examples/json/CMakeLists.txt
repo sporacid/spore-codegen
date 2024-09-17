@@ -39,5 +39,6 @@ include(SporeCodegen)
 
 spore_codegen(
   ${SPORE_CODEGEN_EXAMPLES_JSON_TARGET}
+  CACHE .codegen/cache.yml
   DEBUG
 )

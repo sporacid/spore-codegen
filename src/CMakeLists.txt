@@ -23,7 +23,6 @@ find_path(
   picosha2.h
 )
 
-find_package(Clang REQUIRED)
 find_package(argparse CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(inja CONFIG REQUIRED)
@@ -40,8 +39,7 @@ target_link_libraries(
     pantor::inja
     spdlog::spdlog
     tiny-process-library::tiny-process-library
-    yaml-cpp
-    ${CLANG_LIBRARIES}
+    yaml-cpp::yaml-cpp
 )
 
 target_include_directories(
@@ -52,6 +50,44 @@ target_include_directories(
     ${SPORE_PICOSHA2_INCLUDE_DIRS}
     ${CLANG_INCLUDE_DIRS}
 )
+
+if (SPORE_WITH_CPP)
+  find_package(Clang REQUIRED)
+
+  target_include_directories(
+    ${SPORE_CODEGEN_LIBRARY_TARGET}
+    INTERFACE
+      ${CLANG_INCLUDE_DIRS}
+  )
+
+  target_link_libraries(
+    ${SPORE_CODEGEN_LIBRARY_TARGET}
+    INTERFACE
+      ${CLANG_LIBRARIES}
+  )
+
+  target_compile_definitions(
+    ${SPORE_CODEGEN_LIBRARY_TARGET}
+    INTERFACE
+      SPORE_WITH_CPP
+  )
+endif ()
+
+if (SPORE_WITH_SPIRV)
+  find_package(unofficial-spirv-reflect CONFIG REQUIRED)
+
+  target_link_libraries(
+    ${SPORE_CODEGEN_LIBRARY_TARGET}
+    INTERFACE
+      unofficial::spirv-reflect
+  )
+
+  target_compile_definitions(
+    ${SPORE_CODEGEN_LIBRARY_TARGET}
+    INTERFACE
+      SPORE_WITH_SPIRV
+  )
+endif ()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   find_package(TBB REQUIRED)

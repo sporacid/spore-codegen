@@ -1,7 +1,7 @@
 {
   "name": "spore-codegen",
   "version": "1.0",
-  "builtin-baseline": "8eb57355a4ffb410a2e94c07b4dca2dffbee8e50",
+  "builtin-baseline": "3508985146f1b1d248c67ead13f8f54be5b4f5da",
   "dependencies": [
     "argparse",
     "catch2",
@@ -12,5 +12,20 @@
     "spdlog",
     "tiny-process-library",
     "yaml-cpp"
-  ]
+  ],
+  "default-features": [
+    "cpp",
+    "spirv"
+  ],
+  "features": {
+    "cpp": {
+      "description": "support for clang-based C++ parser"
+    },
+    "spirv": {
+      "description": "support for SPIR-V parser",
+      "dependencies": [
+        "spirv-reflect"
+      ]
+    }
+  }
 }
