@@ -13,16 +13,11 @@
 #include "spore/codegen/codegen_config.hpp"
 #include "spore/codegen/codegen_data.hpp"
 #include "spore/codegen/codegen_error.hpp"
+#include "spore/codegen/codegen_impl.hpp"
 #include "spore/codegen/codegen_options.hpp"
 #include "spore/codegen/codegen_version.hpp"
 #include "spore/codegen/misc/current_path_scope.hpp"
 #include "spore/codegen/misc/defer.hpp"
-#include "spore/codegen/parsers/codegen_condition.hpp"
-#include "spore/codegen/parsers/cpp/codegen_condition_cpp_attribute.hpp"
-#include "spore/codegen/parsers/cpp/codegen_converter_cpp.hpp"
-#include "spore/codegen/parsers/cpp/codegen_parser_cpp.hpp"
-#include "spore/codegen/parsers/spirv/codegen_converter_spirv.hpp"
-#include "spore/codegen/parsers/spirv/codegen_parser_spirv.hpp"
 #include "spore/codegen/renderers/codegen_renderer.hpp"
 #include "spore/codegen/renderers/codegen_renderer_composite.hpp"
 #include "spore/codegen/renderers/codegen_renderer_inja.hpp"
@@ -32,14 +27,6 @@ namespace spore::codegen
 {
     namespace detail
     {
-        template <typename ast_t>
-        void register_default_conditions(codegen_condition_factory<ast_t>& factory)
-        {
-            factory.template register_condition<codegen_condition_any<ast_t>>();
-            factory.template register_condition<codegen_condition_all<ast_t>>();
-            factory.template register_condition<codegen_condition_none<ast_t>>();
-        }
-
         template <typename func_t, typename end_func_t>
         void run_timed(func_t&& func, end_func_t&& end_func)
         {
@@ -55,49 +42,6 @@ namespace spore::codegen
         }
     }
 
-    using codegen_condition_cpp = codegen_condition<cpp_file>;
-    using codegen_condition_spirv = codegen_condition<spirv_module>;
-
-    using codegen_condition_factory_cpp = codegen_condition_factory<cpp_file>;
-    using codegen_condition_factory_spirv = codegen_condition_factory<spirv_module>;
-
-    struct codegen_cpp
-    {
-        codegen_parser_cpp parser;
-        codegen_converter_cpp converter;
-
-        static std::shared_ptr<codegen_condition_cpp> make_condition(const nlohmann::json& data)
-        {
-            return codegen_condition_factory_cpp::make_condition(data);
-        }
-
-      private:
-        static inline auto _setup = [] {
-            auto& factory = codegen_condition_factory_cpp::get();
-            factory.register_condition<codegen_condition_cpp_attribute>();
-            detail::register_default_conditions(factory);
-            return std::ignore;
-        }();
-    };
-
-    struct codegen_spirv
-    {
-        codegen_parser_spirv parser;
-        codegen_converter_spirv converter;
-
-        static std::shared_ptr<codegen_condition_spirv> make_condition(const nlohmann::json& data)
-        {
-            return codegen_condition_factory_spirv::make_condition(data);
-        }
-
-      private:
-        static inline auto _setup = [] {
-            auto& factory = codegen_condition_factory_spirv::get();
-            detail::register_default_conditions(factory);
-            return std::ignore;
-        }();
-    };
-
     struct codegen_app
     {
         using process_ptr = std::unique_ptr<TinyProcessLib::Process>;
@@ -109,11 +53,12 @@ namespace spore::codegen
         std::vector<process_ptr> processes;
         std::unique_ptr<codegen_renderer> renderer;
 
+        codegen_impl_cpp impl_cpp;
+        codegen_impl_spirv impl_spirv;
+
         explicit codegen_app(codegen_options in_options)
             : options(std::move(in_options))
         {
-            std::call_once(detail::setup_once_flag, &detail::setup_once);
-
             const auto normalize_path = [](std::string& value, const std::string* base = nullptr) {
                 std::filesystem::path path(value);
 
@@ -160,7 +105,7 @@ namespace spore::codegen
             {
                 SPDLOG_INFO("ignoring old cache because of new config, file={} config={}", options.cache, options.config);
                 cache.reset();
-                cache.check_and_update(options.config);
+                std::ignore = cache.check_and_update(options.config);
             }
 
             for (const auto& [key, value] : options.user_data)
@@ -170,13 +115,23 @@ namespace spore::codegen
 
             options.templates.emplace_back(std::filesystem::current_path().string());
 
-            parser = std::make_shared<ast_parser_clang>(options.additional_args);
-            converter = std::make_shared<ast_converter_default>();
-            renderer = std::make_shared<codegen_renderer_composite>(
+            renderer = std::make_unique<codegen_renderer_composite>(
                 std::make_shared<codegen_renderer_inja>(options.templates));
+
+            const auto& cpp_args = options.additional_args[codegen_impl_cpp::name()];
+            impl_cpp = codegen_impl_cpp {
+                codegen_parser_cpp {cpp_args},
+                codegen_converter_cpp {},
+            };
+
+            const auto& spirv_args = options.additional_args[codegen_impl_spirv::name()];
+            impl_spirv = codegen_impl_spirv {
+                codegen_parser_spirv {spirv_args},
+                codegen_converter_spirv {},
+            };
         }
 
-        inline void run()
+        void run()
         {
             const auto action = [&] {
                 defer defer_wait_processes = [&] { wait_pending_processes(); };
@@ -185,7 +140,19 @@ namespace spore::codegen
                 for (std::size_t index = 0; index < config.stages.size(); ++index)
                 {
                     const codegen_config_stage& stage = config.stages.at(index);
-                    run_stage(data, data.stages.at(index), stage);
+
+                    if (stage.parser == codegen_impl_cpp::name())
+                    {
+                        run_stage(impl_cpp, data, data.stages.at(index), stage);
+                    }
+                    else if (stage.parser == codegen_impl_spirv::name())
+                    {
+                        run_stage(impl_spirv, data, data.stages.at(index), stage);
+                    }
+                    else
+                    {
+                        SPDLOG_WARN("unknown parser implementation, parser={}", stage.parser);
+                    }
                 }
 
                 if (!files::write_file(options.cache, cache))
@@ -201,7 +168,8 @@ namespace spore::codegen
             detail::run_timed(action, finally);
         }
 
-        inline void run_stage(const codegen_data& data, codegen_stage_data& stage_data, const codegen_config_stage& stage)
+        template <typename ast_t>
+        void run_stage(codegen_impl<ast_t>& impl, const codegen_data& data, codegen_stage_data& stage_data, const codegen_config_stage& stage)
         {
             std::filesystem::path directory = std::filesystem::current_path() / stage.directory;
             if (!std::filesystem::exists(directory))
@@ -241,20 +209,20 @@ namespace spore::codegen
                 return;
             }
 
-            std::vector<ast_file> ast_files;
-            parse_files(stage, dirty_files, ast_files);
-            erase_unmatched_outputs(stage_data, ast_files, dirty_file_indices);
+            std::vector<ast_t> asts;
+            parse_asts(impl, stage, dirty_files, asts);
+            erase_unmatched_outputs(impl, stage_data, asts, dirty_file_indices);
 
             const auto action = [&] {
                 SPDLOG_DEBUG("rendering stage files, stage={} files={}", stage.name, stage.files);
                 for (std::size_t file_index = 0; file_index < dirty_files.size(); ++file_index)
                 {
-                    const ast_file& ast_file = ast_files.at(file_index);
+                    const ast_t& ast = asts.at(file_index);
                     const codegen_file_data& file_data = stage_data.files.at(dirty_file_indices.at(file_index));
 
                     if (!file_data.outputs.empty())
                     {
-                        render_file(data, stage_data, file_data, ast_file);
+                        render_ast(impl, data, stage_data, file_data, ast);
                     }
                 }
             };
@@ -266,10 +234,11 @@ namespace spore::codegen
             detail::run_timed(action, finally);
         }
 
-        inline void render_file(const codegen_data& data, const codegen_stage_data& stage_data, const codegen_file_data& file_data, const ast_file& ast)
+        template <typename ast_t>
+        void render_ast(codegen_impl<ast_t>& impl, const codegen_data& data, const codegen_stage_data& stage_data, const codegen_file_data& file_data, const ast_t& ast)
         {
             nlohmann::json json_data;
-            if (!converter->convert_file(ast, json_data))
+            if (!impl.converter().convert_ast(ast, json_data))
             {
                 throw codegen_error(codegen_error_code::rendering, "failed to convert input data to json, file={}", file_data.path);
             }
@@ -328,18 +297,20 @@ namespace spore::codegen
             }
         }
 
-        static inline void erase_unmatched_outputs(codegen_stage_data& stage_data, const std::vector<ast_file>& ast_files, const std::vector<std::size_t>& file_indices)
+        template <typename ast_t>
+        static void erase_unmatched_outputs(codegen_impl<ast_t>& impl, codegen_stage_data& stage_data, const std::vector<ast_t>& asts, const std::vector<std::size_t>& file_indices)
         {
             for (std::size_t step_index = 0; step_index < stage_data.steps.size(); ++step_index)
             {
                 const codegen_step_data& step_data = stage_data.steps.at(step_index);
+                const auto& step_condition = step_data.condition.has_value() ? impl.condition(step_data.condition.value()) : nullptr;
 
                 for (std::size_t file_index = 0; file_index < file_indices.size(); ++file_index)
                 {
-                    const ast_file& ast_file = ast_files.at(file_index);
-                    const bool ast_file_matches = step_data.condition == nullptr || step_data.condition->matches_condition(ast_file);
+                    const ast_t& ast = asts.at(file_index);
+                    const bool ast_matches = step_condition == nullptr || step_condition->match_ast(ast);
 
-                    if (!ast_file_matches)
+                    if (!ast_matches)
                     {
                         codegen_file_data& file_data = stage_data.files.at(file_indices.at(file_index));
                         const auto output_predicate = [&](const codegen_output_data& output_data) {
@@ -352,24 +323,26 @@ namespace spore::codegen
             }
         }
 
-        inline void parse_files(const codegen_config_stage& stage, const std::vector<std::string>& files, std::vector<ast_file>& ast_files) const
+        template <typename ast_t>
+        void parse_asts(codegen_impl<ast_t>& impl, const codegen_config_stage& stage, const std::vector<std::string>& files, std::vector<ast_t>& asts) const
         {
-            SPDLOG_INFO("parsing stage files, stage={} files={} count={}", stage.name, stage.files, files.size());
+            const auto action = [&] {
+                SPDLOG_INFO("parsing stage files, stage={} files={} count={}", stage.name, stage.files, files.size());
 
-            const auto then = std::chrono::steady_clock::now();
+                if (!impl.parser().parse_asts(files, asts))
+                {
+                    throw codegen_error(codegen_error_code::parsing, "failed to parse stage input files, stage={} parser={} files={}", stage.name, stage.parser, stage.files);
+                }
+            };
 
-            if (!parser->parse_files(files, ast_files))
-            {
-                throw codegen_error(codegen_error_code::parsing, "failed to parse stage input files, stage={} files={}", stage.name, stage.files);
-            }
+            const auto finally = [&](std::float_t duration) {
+                SPDLOG_INFO("parsing completed, stage={} duration={:.3f}s", stage.name, duration);
+            };
 
-            const auto now = std::chrono::steady_clock::now();
-            const std::chrono::duration<std::float_t> duration = now - then;
-
-            SPDLOG_INFO("parsing completed, stage={} duration={:.3f}s", stage.name, duration.count());
+            detail::run_timed(action, finally);
         }
 
-        inline codegen_data make_data()
+        codegen_data make_data()
         {
             codegen_data data;
 
@@ -404,7 +377,7 @@ namespace spore::codegen
             return data;
         }
 
-        inline codegen_stage_data make_stage_data(const codegen_config_stage& stage, const codegen_data& data)
+        codegen_stage_data make_stage_data(const codegen_config_stage& stage, const codegen_data& data)
         {
             codegen_stage_data stage_data;
 
@@ -430,11 +403,6 @@ namespace spore::codegen
                 const codegen_config_step& step = stage.steps.at(step_index);
 
                 codegen_step_data step_data;
-
-                if (step.condition.has_value())
-                {
-                    step_data.condition = ast_condition_factory::instance().make_condition(step.condition.value());
-                }
 
                 for (const std::string& template_ : step.templates)
                 {
@@ -473,21 +441,26 @@ namespace spore::codegen
             return stage_data;
         }
 
-        inline void wait_pending_processes()
+        void wait_pending_processes()
         {
             if (processes.empty())
                 return;
 
-            SPDLOG_DEBUG("waiting on pending processes, count={}", processes.size());
+            const auto action = [&] {
+                SPDLOG_DEBUG("waiting on pending processes, count={}", processes.size());
 
-            for (const std::unique_ptr<TinyProcessLib::Process>& process : processes)
-            {
-                process->get_exit_status();
-            }
+                for (const std::unique_ptr<TinyProcessLib::Process>& process : processes)
+                {
+                    process->get_exit_status();
+                }
+            };
 
-            processes.clear();
+            const auto finally = [&](std::float_t duration) {
+                SPDLOG_DEBUG("wait on pending processes completed, duration={:.3f}s", duration);
+                processes.clear();
+            };
 
-            SPDLOG_DEBUG("all pending processes completed");
+            detail::run_timed(action, finally);
         }
     };
 }

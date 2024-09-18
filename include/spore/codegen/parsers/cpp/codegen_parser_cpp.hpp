@@ -716,14 +716,25 @@ namespace spore::codegen
 
     struct codegen_parser_cpp : codegen_parser<cpp_file>
     {
-        CXIndex clang_index;
+        struct clang_index_deleter
+        {
+            using pointer = CXIndex;
+
+            void operator()(CXIndex index) const
+            {
+                clang_disposeIndex(index);
+            }
+        };
+
+        std::unique_ptr<CXIndex, clang_index_deleter> index;
         std::vector<std::string> args;
         std::vector<const char*> args_view;
 
         template <typename args_t>
         explicit codegen_parser_cpp(const args_t& additional_args)
         {
-            clang_index = clang_createIndex(0, 0);
+            index = std::unique_ptr<CXIndex, clang_index_deleter>(
+                clang_createIndex(0, 0));
 
             args.emplace_back("-xc++");
             args.emplace_back("-E");
@@ -734,18 +745,13 @@ namespace spore::codegen
 
             const auto transformer = [](const auto& arg) { return std::string {arg}; };
             std::transform(std::begin(additional_args), std::end(additional_args), std::back_inserter(args), transformer);
-            std::sort(args.begin(), args.end());
-            args.erase(std::unique(args.begin(), args.end()), args.end());
+            std::ranges::sort(args);
+            args.erase(std::ranges::unique(args).begin(), args.end());
 
             args_view.resize(args.size());
 
-            std::transform(args.begin(), args.end(), args_view.begin(),
+            std::ranges::transform(args, args_view.begin(),
                 [](const std::string& value) { return value.data(); });
-        }
-
-        ~codegen_parser_cpp() noexcept override
-        {
-            clang_disposeIndex(clang_index);
         }
 
         bool parse_asts(const std::vector<std::string>& paths, std::vector<cpp_file>& cpp_files) override
@@ -797,7 +803,7 @@ namespace spore::codegen
 
             CXTranslationUnit translation_unit = nullptr;
             CXErrorCode error = clang_parseTranslationUnit2(
-                clang_index, source_file.data(),
+                index.get(), source_file.data(),
                 args_view.data(), static_cast<int>(args_view.size()),
                 unsaved_files.data(), static_cast<unsigned long>(unsaved_files.size()),
                 flags, &translation_unit);

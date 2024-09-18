@@ -53,7 +53,12 @@ namespace spore::codegen
         std::string version;
         std::vector<codegen_cache_entry> entries;
 
-        codegen_cache_status check_and_update(const std::string& file)
+        [[nodiscard]] bool empty() const
+        {
+            return entries.empty();
+        }
+
+        [[nodiscard]] codegen_cache_status check_and_update(const std::string& file)
         {
             std::string hash;
             if (!files::hash_file(file, hash))
@@ -89,11 +94,6 @@ namespace spore::codegen
         {
             version = SPORE_CODEGEN_VERSION;
             entries.clear();
-        }
-
-        bool empty() const
-        {
-            return entries.empty();
         }
     };
 

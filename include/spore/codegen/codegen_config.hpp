@@ -5,8 +5,8 @@
 #include <vector>
 
 #include "nlohmann/json.hpp"
-
 #include "spore/codegen/codegen_error.hpp"
+#include "spore/codegen/codegen_impl.hpp"
 
 namespace spore::codegen
 {
@@ -33,7 +33,7 @@ namespace spore::codegen
         std::vector<codegen_config_stage> stages;
     };
 
-    void from_json(const nlohmann::json& json, codegen_config_step& value)
+    inline void from_json(const nlohmann::json& json, codegen_config_step& value)
     {
         json["name"].get_to(value.name);
         json["directory"].get_to(value.directory);
@@ -45,15 +45,24 @@ namespace spore::codegen
         }
     }
 
-    void from_json(const nlohmann::json& json, codegen_config_stage& value)
+    inline void from_json(const nlohmann::json& json, codegen_config_stage& value)
     {
         json["name"].get_to(value.name);
         json["files"].get_to(value.files);
         json["directory"].get_to(value.directory);
         json["steps"].get_to(value.steps);
+
+        if (json.contains("parser"))
+        {
+            json["parser"].get_to(value.parser);
+        }
+        else
+        {
+            value.parser = codegen_impl_cpp::name();
+        }
     }
 
-    void from_json(const nlohmann::json& json, codegen_config& value)
+    inline void from_json(const nlohmann::json& json, codegen_config& value)
     {
         std::int32_t version = 1;
         if (json.contains("version"))

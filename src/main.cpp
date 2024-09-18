@@ -11,13 +11,22 @@
 
 namespace spore::codegen::detail
 {
-    std::pair<std::string, std::string> parse_pair(const std::string& pair)
+    std::pair<std::string, std::string> parse_pair(std::string_view pair)
     {
         const auto equal_sign = pair.find_first_of("=:");
-        std::string name = equal_sign != std::string::npos ? pair.substr(0, equal_sign) : pair;
-        std::string value = equal_sign != std::string::npos ? pair.substr(equal_sign + 1) : "";
-        return {std::move(name), std::move(value)};
+        const std::string_view name = equal_sign != std::string_view::npos ? pair.substr(0, equal_sign) : pair;
+        const std::string_view value = equal_sign != std::string_view::npos ? pair.substr(equal_sign + 1) : "";
+        return {std::string(name), std::string(value)};
     }
+
+    // std::pair<std::string, std::string> parse_additional_arg(std::string_view arg)
+    // {
+    //     // @sporacid e.g. -cpp:I lib/include -cpp:std=c++20
+    //     const auto colon_index = arg.find_first_of(':');
+    //     std::string name = equal_sign != std::string::npos ? pair.substr(0, equal_sign) : pair;
+    //     std::string value = equal_sign != std::string::npos ? pair.substr(equal_sign + 1) : "";
+    //     return {std::move(name), std::move(value)};
+    // }
 
     std::size_t get_rest_index(std::size_t argc, const char* argv[])
     {
@@ -25,9 +34,46 @@ namespace spore::codegen::detail
         const char** end = std::find_if(argv, argv + argc, predicate);
         return end != nullptr ? end - argv : argc;
     }
+
+    void parse_additional_args(std::span<const char*> argv, std::map<std::string_view, std::vector<std::string>>& arg_map)
+    {
+        std::string_view prev_type;
+        for (std::string_view arg : argv)
+        {
+            if (arg.starts_with('-'))
+            {
+                std::size_t colon_index = arg.find_first_of(':');
+                if (colon_index == std::string_view::npos)
+                {
+                    SPDLOG_WARN("invalid additional argument will be ignored, arg={}", arg);
+                    continue;
+                }
+
+                std::string_view type = arg.substr(0, colon_index);
+
+                std::size_t dash_index = type.find_last_of('-');
+                assert(dash_index != std::string_view::npos);
+
+                std::string_view value_begin = type.substr(0, dash_index + 1);
+                std::string_view value_end = arg.substr(colon_index + 1);
+
+                type = type.substr(dash_index + 1);
+
+                std::vector<std::string>& additional_args = arg_map[type];
+                additional_args.emplace_back(fmt::format("{}{}", value_begin, value_end));
+
+                prev_type = type;
+            }
+            else
+            {
+                std::vector<std::string>& additional_args = arg_map[prev_type];
+                additional_args.emplace_back(arg);
+            }
+        }
+    }
 }
 
-int main(int argc, const char* argv[])
+int main(const int argc, const char* argv[])
 {
     using namespace spore::codegen;
 
@@ -87,6 +133,7 @@ int main(int argc, const char* argv[])
         .implicit_value(true);
 
     std::size_t rest_index = detail::get_rest_index(argc, argv);
+
     try
     {
         arg_parser.parse_args(static_cast<int>(rest_index), argv);
@@ -109,10 +156,8 @@ int main(int argc, const char* argv[])
         .debug = arg_parser.get<bool>("--debug"),
     };
 
-    for (std::size_t index = rest_index + 1; index < argc; ++index)
-    {
-        options.additional_args.emplace_back(argv[index]);
-    }
+    std::span additional_args {argv + rest_index + 1, argv + argc};
+    detail::parse_additional_args(additional_args, options.additional_args);
 
     if (options.reformat == "false")
     {

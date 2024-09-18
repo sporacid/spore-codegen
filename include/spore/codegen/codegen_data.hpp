@@ -1,13 +1,11 @@
 #pragma once
 
-#include <cstdint>
-#include <memory>
 #include <string>
 #include <vector>
 
 #include "nlohmann/json.hpp"
 
-#include "spore/codegen/ast/conditions/ast_condition.hpp"
+// #include "spore/codegen/ast/conditions/ast_condition.hpp"
 #include "spore/codegen/codegen_cache.hpp"
 
 namespace spore::codegen
@@ -36,7 +34,7 @@ namespace spore::codegen
     struct codegen_step_data
     {
         std::vector<std::size_t> template_indices;
-        std::shared_ptr<ast_condition> condition;
+        std::optional<nlohmann::json> condition;
     };
 
     struct codegen_stage_data
@@ -74,6 +72,11 @@ namespace spore::codegen
     inline void to_json(nlohmann::json& json, const codegen_step_data& value)
     {
         json["template_indices"] = value.template_indices;
+
+        if (value.condition.has_value())
+        {
+            json["condition"] = value.condition.value();
+        }
     }
 
     inline void to_json(nlohmann::json& json, const codegen_stage_data& value)
