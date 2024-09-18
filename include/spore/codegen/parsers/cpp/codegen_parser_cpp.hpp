@@ -848,10 +848,5 @@ namespace spore::codegen
 
             return true;
         }
-
-        static constexpr std::string_view type()
-        {
-            return "cpp";
-        }
     };
 }

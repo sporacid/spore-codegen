@@ -1,17 +1,14 @@
 #pragma once
 
-#include <memory>
-
-#include "fmt/format.h"
 #include "nlohmann/json.hpp"
 
-#include "spore/codegen/parsers/spirv/ast/spirv_module.hpp"
-#include "spore/codegen/parsers/codegen_converter.hpp"
 #include "spore/codegen/misc/make_unique_id.hpp"
+#include "spore/codegen/parsers/codegen_converter.hpp"
+#include "spore/codegen/parsers/spirv/ast/spirv_module.hpp"
 
 namespace spore::codegen
 {
-    void to_json(nlohmann::json& json, const spirv_module& value)
+    inline void to_json(nlohmann::json& json, const spirv_module& value)
     {
         json["id"] = make_unique_id<spirv_module>();
     }

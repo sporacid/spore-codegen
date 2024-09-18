@@ -11,65 +11,21 @@
 
 namespace spore::codegen::detail
 {
+    namespace metavars
+    {
+        constexpr auto file = "FILE";
+        constexpr auto directory = "DIR";
+        constexpr auto pair = "PAIR";
+        constexpr auto command = "COMMAND";
+        constexpr auto argument = "ARG";
+    }
+
     std::pair<std::string, std::string> parse_pair(std::string_view pair)
     {
         const auto equal_sign = pair.find_first_of("=:");
         const std::string_view name = equal_sign != std::string_view::npos ? pair.substr(0, equal_sign) : pair;
         const std::string_view value = equal_sign != std::string_view::npos ? pair.substr(equal_sign + 1) : "";
         return {std::string(name), std::string(value)};
-    }
-
-    // std::pair<std::string, std::string> parse_additional_arg(std::string_view arg)
-    // {
-    //     // @sporacid e.g. -cpp:I lib/include -cpp:std=c++20
-    //     const auto colon_index = arg.find_first_of(':');
-    //     std::string name = equal_sign != std::string::npos ? pair.substr(0, equal_sign) : pair;
-    //     std::string value = equal_sign != std::string::npos ? pair.substr(equal_sign + 1) : "";
-    //     return {std::move(name), std::move(value)};
-    // }
-
-    std::size_t get_rest_index(std::size_t argc, const char* argv[])
-    {
-        const auto predicate = [](const char* arg) { return std::strcmp(arg, "--") == 0; };
-        const char** end = std::find_if(argv, argv + argc, predicate);
-        return end != nullptr ? end - argv : argc;
-    }
-
-    void parse_additional_args(std::span<const char*> argv, std::map<std::string_view, std::vector<std::string>>& arg_map)
-    {
-        std::string_view prev_type;
-        for (std::string_view arg : argv)
-        {
-            if (arg.starts_with('-'))
-            {
-                std::size_t colon_index = arg.find_first_of(':');
-                if (colon_index == std::string_view::npos)
-                {
-                    SPDLOG_WARN("invalid additional argument will be ignored, arg={}", arg);
-                    continue;
-                }
-
-                std::string_view type = arg.substr(0, colon_index);
-
-                std::size_t dash_index = type.find_last_of('-');
-                assert(dash_index != std::string_view::npos);
-
-                std::string_view value_begin = type.substr(0, dash_index + 1);
-                std::string_view value_end = arg.substr(colon_index + 1);
-
-                type = type.substr(dash_index + 1);
-
-                std::vector<std::string>& additional_args = arg_map[type];
-                additional_args.emplace_back(fmt::format("{}{}", value_begin, value_end));
-
-                prev_type = type;
-            }
-            else
-            {
-                std::vector<std::string>& additional_args = arg_map[prev_type];
-                additional_args.emplace_back(arg);
-            }
-        }
     }
 }
 
@@ -84,59 +40,75 @@ int main(const int argc, const char* argv[])
         SPORE_CODEGEN_VERSION,
     };
 
+    constexpr auto description =
+        "Tool to generate files from source code and byte code";
+
+    constexpr auto epilog =
+        "Additional implementation specific arguments can be supplied via the syntax --<impl>:<arg>, e.g.\n"
+        "  --cpp:-std=c++11\n"
+        "  --cpp:-Idir/include";
+
+    arg_parser.add_description(description);
+    arg_parser.add_epilog(epilog);
+
     arg_parser
         .add_argument("-o", "--output")
-        .help("output directory to generate to")
+        .help("Output directory for generated files")
+        .metavar(detail::metavars::file)
         .default_value(std::string {".codegen"});
 
     arg_parser
         .add_argument("-c", "--config")
-        .help("codegen configuration file to use")
+        .help("Codegen configuration file to use")
+        .metavar(detail::metavars::file)
         .default_value(std::string {"codegen.yml"});
 
     arg_parser
         .add_argument("-C", "--cache")
-        .help("codegen cache file to use")
+        .help("Codegen cache file to use")
+        .metavar(detail::metavars::file)
         .default_value(std::string {"cache.yml"});
 
     arg_parser
         .add_argument("-t", "--templates")
-        .help("paths to search for templates")
+        .help("Directories to search for templates")
         .default_value(std::vector<std::string> {})
+        .metavar(detail::metavars::directory)
         .append();
 
     arg_parser
         .add_argument("-D", "--user-data")
-        .help("additional user data to be passed to the rendering stage, can be accessed through the `user_data` JSON property")
+        .help("Additional data to be passed to the rendering stage, can be accessed through the \"$.user_data\" JSON property")
         .default_value(std::vector<std::pair<std::string, std::string>> {})
+        .metavar(detail::metavars::pair)
         .append()
         .action(&detail::parse_pair);
 
     arg_parser
         .add_argument("-r", "--reformat")
-        .help("command to reformat output files, or false to disable reformatting")
+        .help("Command to reformat output files, or false to disable reformatting")
         .default_value(std::string {"clang-format -i"})
+        .metavar(detail::metavars::command)
         .action([](const std::string& reformat) {
             return reformat != "false" ? reformat : "";
         });
 
     arg_parser
         .add_argument("-f", "--force")
-        .help("force generation for all input files even if files haven't changed")
+        .help("Bypass cache checks and force generation for all input files")
         .default_value(false)
         .implicit_value(true);
 
     arg_parser
         .add_argument("-d", "--debug")
-        .help("enable debug output")
+        .help("Enable debug output")
         .default_value(false)
         .implicit_value(true);
 
-    std::size_t rest_index = detail::get_rest_index(argc, argv);
-
+    std::vector<std::string> additional_args;
     try
     {
-        arg_parser.parse_args(static_cast<int>(rest_index), argv);
+        additional_args = arg_parser.parse_known_args(argc, argv);
     }
     catch (const std::exception& e)
     {
@@ -156,8 +128,21 @@ int main(const int argc, const char* argv[])
         .debug = arg_parser.get<bool>("--debug"),
     };
 
-    std::span additional_args {argv + rest_index + 1, argv + argc};
-    detail::parse_additional_args(additional_args, options.additional_args);
+    const auto parse_impl_args = [&]<typename impl_t> {
+        std::string prefix = fmt::format("--{}:", impl_t::name());
+        std::vector<std::string>& impl_args = options.additional_args[impl_t::name()];
+        for (const std::string& additional_arg : additional_args)
+        {
+            if (additional_arg.starts_with(prefix))
+            {
+                std::string impl_arg = additional_arg.substr(prefix.size());
+                impl_args.emplace_back(std::move(impl_arg));
+            }
+        }
+    };
+
+    parse_impl_args.operator()<codegen_impl_cpp>();
+    parse_impl_args.operator()<codegen_impl_spirv>();
 
     if (options.reformat == "false")
     {

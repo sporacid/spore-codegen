@@ -1,7 +1,7 @@
 #pragma once
 
-#include "spore/codegen/parsers/spirv/ast/spirv_module.hpp"
 #include "spore/codegen/parsers/codegen_parser.hpp"
+#include "spore/codegen/parsers/spirv/ast/spirv_module.hpp"
 
 namespace spore::codegen
 {
@@ -15,13 +15,8 @@ namespace spore::codegen
         bool parse_asts(const std::vector<std::string>& paths, std::vector<spirv_module>& spirv_modules) override
         {
             spirv_modules.clear();
-            spirv_modules.reserve(paths.size());
+            spirv_modules.resize(paths.size());
             return true;
-        }
-
-        static constexpr std::string_view type()
-        {
-            return "spirv";
         }
     };
 }
