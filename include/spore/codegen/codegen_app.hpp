@@ -2,24 +2,13 @@
 
 #include <chrono>
 #include <filesystem>
-#include <map>
 #include <string>
-#include <string_view>
 #include <vector>
 
 #include "glob/glob.h"
 #include "nlohmann/json.hpp"
 #include "process.hpp"
 
-#include "spore/codegen/ast/conditions/ast_condition_all.hpp"
-#include "spore/codegen/ast/conditions/ast_condition_any.hpp"
-#include "spore/codegen/ast/conditions/ast_condition_attribute.hpp"
-#include "spore/codegen/ast/conditions/ast_condition_factory.hpp"
-#include "spore/codegen/ast/conditions/ast_condition_none.hpp"
-#include "spore/codegen/ast/converters/ast_converter.hpp"
-#include "spore/codegen/ast/converters/ast_converter_default.hpp"
-#include "spore/codegen/ast/parsers/ast_parser.hpp"
-#include "spore/codegen/ast/parsers/ast_parser_clang.hpp"
 #include "spore/codegen/codegen_cache.hpp"
 #include "spore/codegen/codegen_config.hpp"
 #include "spore/codegen/codegen_data.hpp"
@@ -28,6 +17,12 @@
 #include "spore/codegen/codegen_version.hpp"
 #include "spore/codegen/misc/current_path_scope.hpp"
 #include "spore/codegen/misc/defer.hpp"
+#include "spore/codegen/parsers/codegen_condition.hpp"
+#include "spore/codegen/parsers/cpp/codegen_condition_cpp_attribute.hpp"
+#include "spore/codegen/parsers/cpp/codegen_converter_cpp.hpp"
+#include "spore/codegen/parsers/cpp/codegen_parser_cpp.hpp"
+#include "spore/codegen/parsers/spirv/codegen_converter_spirv.hpp"
+#include "spore/codegen/parsers/spirv/codegen_parser_spirv.hpp"
 #include "spore/codegen/renderers/codegen_renderer.hpp"
 #include "spore/codegen/renderers/codegen_renderer_composite.hpp"
 #include "spore/codegen/renderers/codegen_renderer_inja.hpp"
@@ -37,14 +32,12 @@ namespace spore::codegen
 {
     namespace detail
     {
-        std::once_flag setup_once_flag;
-
-        void setup_once()
+        template <typename ast_t>
+        void register_default_conditions(codegen_condition_factory<ast_t>& factory)
         {
-            ast_condition_factory::instance().register_condition<ast_condition_any>();
-            ast_condition_factory::instance().register_condition<ast_condition_all>();
-            ast_condition_factory::instance().register_condition<ast_condition_none>();
-            ast_condition_factory::instance().register_condition<ast_condition_attribute>();
+            factory.template register_condition<codegen_condition_any<ast_t>>();
+            factory.template register_condition<codegen_condition_all<ast_t>>();
+            factory.template register_condition<codegen_condition_none<ast_t>>();
         }
 
         template <typename func_t, typename end_func_t>
@@ -62,6 +55,49 @@ namespace spore::codegen
         }
     }
 
+    using codegen_condition_cpp = codegen_condition<cpp_file>;
+    using codegen_condition_spirv = codegen_condition<spirv_module>;
+
+    using codegen_condition_factory_cpp = codegen_condition_factory<cpp_file>;
+    using codegen_condition_factory_spirv = codegen_condition_factory<spirv_module>;
+
+    struct codegen_cpp
+    {
+        codegen_parser_cpp parser;
+        codegen_converter_cpp converter;
+
+        static std::shared_ptr<codegen_condition_cpp> make_condition(const nlohmann::json& data)
+        {
+            return codegen_condition_factory_cpp::make_condition(data);
+        }
+
+      private:
+        static inline auto _setup = [] {
+            auto& factory = codegen_condition_factory_cpp::get();
+            factory.register_condition<codegen_condition_cpp_attribute>();
+            detail::register_default_conditions(factory);
+            return std::ignore;
+        }();
+    };
+
+    struct codegen_spirv
+    {
+        codegen_parser_spirv parser;
+        codegen_converter_spirv converter;
+
+        static std::shared_ptr<codegen_condition_spirv> make_condition(const nlohmann::json& data)
+        {
+            return codegen_condition_factory_spirv::make_condition(data);
+        }
+
+      private:
+        static inline auto _setup = [] {
+            auto& factory = codegen_condition_factory_spirv::get();
+            detail::register_default_conditions(factory);
+            return std::ignore;
+        }();
+    };
+
     struct codegen_app
     {
         using process_ptr = std::unique_ptr<TinyProcessLib::Process>;
@@ -70,10 +106,8 @@ namespace spore::codegen
         codegen_cache cache;
         codegen_options options;
         nlohmann::json user_data;
-        std::shared_ptr<ast_parser> parser;
-        std::shared_ptr<ast_converter> converter;
-        std::shared_ptr<codegen_renderer> renderer;
         std::vector<process_ptr> processes;
+        std::unique_ptr<codegen_renderer> renderer;
 
         explicit codegen_app(codegen_options in_options)
             : options(std::move(in_options))

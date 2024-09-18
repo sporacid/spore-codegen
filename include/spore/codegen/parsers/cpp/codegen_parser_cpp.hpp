@@ -10,10 +10,10 @@
 #include "clang-c/CXSourceLocation.h"
 #include "clang-c/Index.h"
 
+#include "spore/codegen/misc/defer.hpp"
+#include "spore/codegen/parsers/codegen_parser.hpp"
 #include "spore/codegen/parsers/cpp/ast/cpp_file.hpp"
 #include "spore/codegen/parsers/cpp/codegen_utils_cpp.hpp"
-#include "spore/codegen/parsers/codegen_parser.hpp"
-#include "spore/codegen/misc/defer.hpp"
 #include "spore/codegen/utils/files.hpp"
 #include "spore/codegen/utils/strings.hpp"
 
@@ -841,6 +841,11 @@ namespace spore::codegen
             detail::visit_children(cursor, visitor);
 
             return true;
+        }
+
+        static constexpr std::string_view type()
+        {
+            return "cpp";
         }
     };
 }

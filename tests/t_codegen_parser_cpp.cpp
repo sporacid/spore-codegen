@@ -1,55 +1,48 @@
 #include <filesystem>
+#include <source_location>
 
 #include "catch2/catch_all.hpp"
 
-#include "spore/codegen/ast/ast_file.hpp"
-#include "spore/codegen/ast/parsers/ast_parser_clang.hpp"
-#include "spore/codegen/codegen_options.hpp"
+#include "spore/codegen/parsers/cpp/codegen_parser_cpp.hpp"
 
 namespace spore::codegen::detail
 {
-    template <typename ast_parser_t>
-    std::shared_ptr<ast_parser_t> make_parser()
+    std::string get_data_file()
     {
-        constexpr std::string_view args[] {
-            "-std=c++20",
-        };
-        return std::make_shared<ast_parser_t>(args);
-    }
-
-    std::string get_input_file()
-    {
-        std::filesystem::path current_file = __FILE__;
+        std::source_location source_location = std::source_location::current();
+        std::filesystem::path current_file = source_location.file_name();
         std::filesystem::path current_dir = current_file.parent_path();
-        std::filesystem::path input_file = current_dir / "t_ast_parser_input.hpp";
+        std::filesystem::path input_file = current_dir / "t_codegen_parser_cpp_data.hpp";
         return input_file.string();
     }
 }
 
-TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codegen::ast_parser]", spore::codegen::ast_parser_clang)
+TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen::codegen_parser_cpp]")
 {
     using namespace spore::codegen;
 
-    std::shared_ptr<TestType> parser = detail::make_parser<TestType>();
-    std::vector<std::string> input_files {detail::get_input_file()};
-    std::vector<ast_file> ast_files;
+    constexpr std::string_view parser_args[] {"-std=c++20"};
 
-    REQUIRE(parser->parse_files(input_files, ast_files));
-    REQUIRE(ast_files.size() == input_files.size());
+    codegen_parser_cpp parser {parser_args};
+    std::vector input_files {detail::get_data_file()};
+    std::vector<cpp_file> cpp_files;
 
-    ast_file& ast_file = ast_files.at(0);
+    REQUIRE(parser.parse_asts(input_files, cpp_files));
+    REQUIRE(cpp_files.size() == input_files.size());
 
-    REQUIRE(ast_file.classes.size() == 10);
-    REQUIRE(ast_file.functions.size() == 3);
-    REQUIRE(ast_file.enums.size() == 2);
+    cpp_file& cpp_file = cpp_files.at(0);
+
+    REQUIRE(cpp_file.classes.size() == 10);
+    REQUIRE(cpp_file.functions.size() == 3);
+    REQUIRE(cpp_file.enums.size() == 2);
 
     SECTION("parse enum is feature complete")
     {
-        const auto& enum_ = ast_file.enums[0];
+        const auto& enum_ = cpp_file.enums[0];
 
         REQUIRE(enum_.name == "_enum");
         REQUIRE(enum_.scope == "_namespace1::_namespace2");
-        REQUIRE(enum_.type == ast_enum_type::enum_class);
+        REQUIRE(enum_.type == cpp_enum_type::enum_class);
         REQUIRE(enum_.full_name() == "_namespace1::_namespace2::_enum");
         REQUIRE(enum_.attributes.size() == 1);
         REQUIRE(enum_.attributes.contains("_enum"));
@@ -74,12 +67,12 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
 
     SECTION("parse class is feature complete")
     {
-        const auto& class_ = ast_file.classes[1];
+        const auto& class_ = cpp_file.classes[1];
 
         REQUIRE(class_.name == "_struct");
         REQUIRE(class_.scope == "_namespace1::_namespace2");
         REQUIRE(class_.full_name() == "_namespace1::_namespace2::_struct");
-        REQUIRE(class_.type == ast_class_type::struct_);
+        REQUIRE(class_.type == cpp_class_type::struct_);
         REQUIRE(class_.attributes.size() == 1);
         REQUIRE(class_.attributes.contains("_struct"));
         REQUIRE(class_.attributes["_struct"] == true);
@@ -113,7 +106,7 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
             REQUIRE(class_.constructors[0].attributes.size() == 1);
             REQUIRE(class_.constructors[0].attributes.contains("_constructor"));
             REQUIRE(class_.constructors[0].attributes["_constructor"] == true);
-            REQUIRE((class_.constructors[0].flags & ast_flags::default_) == ast_flags::default_);
+            REQUIRE((class_.constructors[0].flags & cpp_flags::default_) == cpp_flags::default_);
 
             REQUIRE(class_.constructors[1].attributes.size() == 1);
             REQUIRE(class_.constructors[1].attributes.contains("_constructor"));
@@ -169,34 +162,34 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
 
     SECTION("parse nested class is feature complete")
     {
-        const auto& class_ = ast_file.classes[2];
+        const auto& class_ = cpp_file.classes[2];
 
         REQUIRE(class_.name == "_nested");
         REQUIRE(class_.scope == "_namespace1::_namespace2::_struct");
         REQUIRE(class_.full_name() == "_namespace1::_namespace2::_struct::_nested");
-        REQUIRE(class_.type == ast_class_type::struct_);
+        REQUIRE(class_.type == cpp_class_type::struct_);
         REQUIRE(class_.nested);
     }
 
     SECTION("parse nested enum is feature complete")
     {
-        const auto& enum_ = ast_file.enums[1];
+        const auto& enum_ = cpp_file.enums[1];
 
         REQUIRE(enum_.name == "_nested_enum");
         REQUIRE(enum_.scope == "_namespace1::_namespace2::_struct");
         REQUIRE(enum_.full_name() == "_namespace1::_namespace2::_struct::_nested_enum");
-        REQUIRE(enum_.type == ast_enum_type::enum_);
+        REQUIRE(enum_.type == cpp_enum_type::enum_);
         REQUIRE(enum_.nested);
     }
 
     SECTION("parse class template is feature complete")
     {
-        const auto& class_ = ast_file.classes[3];
+        const auto& class_ = cpp_file.classes[3];
 
         REQUIRE(class_.name == "_struct_template");
         REQUIRE(class_.scope == "_namespace1::_namespace2");
         REQUIRE(class_.full_name() == "_namespace1::_namespace2::_struct_template<_value_t, _n>");
-        REQUIRE(class_.type == ast_class_type::struct_);
+        REQUIRE(class_.type == cpp_class_type::struct_);
         REQUIRE(class_.attributes.size() == 1);
         REQUIRE(class_.attributes.contains("_struct"));
         REQUIRE(class_.attributes["_struct"] == true);
@@ -223,12 +216,12 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
 
     SECTION("parse nested class template is feature complete")
     {
-        const auto& class_ = ast_file.classes[4];
+        const auto& class_ = cpp_file.classes[4];
 
         REQUIRE(class_.name == "_nested_template");
         REQUIRE(class_.scope == "_namespace1::_namespace2::_struct_template<_value_t, _n>");
         REQUIRE(class_.full_name() == "_namespace1::_namespace2::_struct_template<_value_t, _n>::_nested_template<_nested_value_t>");
-        REQUIRE(class_.type == ast_class_type::struct_);
+        REQUIRE(class_.type == cpp_class_type::struct_);
         REQUIRE(class_.template_params[0].type == "typename");
         REQUIRE(class_.template_params[0].name == "_nested_value_t");
         REQUIRE(class_.template_params[0].default_value.has_value());
@@ -238,56 +231,56 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
 
     SECTION("parse free function is feature complete")
     {
-        REQUIRE(ast_file.functions.size() == 3);
+        REQUIRE(cpp_file.functions.size() == 3);
 
-        REQUIRE(ast_file.functions[0].name == "_free_func");
-        REQUIRE(ast_file.functions[0].scope == "_namespace1::_namespace2");
-        REQUIRE(ast_file.functions[0].full_name() == "_namespace1::_namespace2::_free_func");
-        REQUIRE(ast_file.functions[0].return_type.name == "int");
-        REQUIRE(ast_file.functions[0].attributes.size() == 1);
-        REQUIRE(ast_file.functions[0].attributes.contains("_function"));
-        REQUIRE(ast_file.functions[0].attributes["_function"] == true);
-        REQUIRE(ast_file.functions[0].arguments.size() == 1);
-        REQUIRE(ast_file.functions[0].arguments[0].name == "_arg");
-        REQUIRE(ast_file.functions[0].arguments[0].type.name == "int");
-        REQUIRE(ast_file.functions[0].arguments[0].default_value.has_value());
-        REQUIRE(ast_file.functions[0].arguments[0].default_value.value() == "42");
-        REQUIRE(ast_file.functions[0].arguments[0].attributes.size() == 1);
-        REQUIRE(ast_file.functions[0].arguments[0].attributes.contains("_argument"));
-        REQUIRE(ast_file.functions[0].arguments[0].attributes["_argument"] == true);
+        REQUIRE(cpp_file.functions[0].name == "_free_func");
+        REQUIRE(cpp_file.functions[0].scope == "_namespace1::_namespace2");
+        REQUIRE(cpp_file.functions[0].full_name() == "_namespace1::_namespace2::_free_func");
+        REQUIRE(cpp_file.functions[0].return_type.name == "int");
+        REQUIRE(cpp_file.functions[0].attributes.size() == 1);
+        REQUIRE(cpp_file.functions[0].attributes.contains("_function"));
+        REQUIRE(cpp_file.functions[0].attributes["_function"] == true);
+        REQUIRE(cpp_file.functions[0].arguments.size() == 1);
+        REQUIRE(cpp_file.functions[0].arguments[0].name == "_arg");
+        REQUIRE(cpp_file.functions[0].arguments[0].type.name == "int");
+        REQUIRE(cpp_file.functions[0].arguments[0].default_value.has_value());
+        REQUIRE(cpp_file.functions[0].arguments[0].default_value.value() == "42");
+        REQUIRE(cpp_file.functions[0].arguments[0].attributes.size() == 1);
+        REQUIRE(cpp_file.functions[0].arguments[0].attributes.contains("_argument"));
+        REQUIRE(cpp_file.functions[0].arguments[0].attributes["_argument"] == true);
 
-        REQUIRE(ast_file.functions[1].name == "_template_free_func");
-        REQUIRE(ast_file.functions[1].return_type.name == "_value_t");
-        REQUIRE(ast_file.functions[1].attributes.size() == 1);
-        REQUIRE(ast_file.functions[1].attributes.contains("_function"));
-        REQUIRE(ast_file.functions[1].attributes["_function"] == true);
-        REQUIRE(ast_file.functions[1].template_params.size() == 2);
-        REQUIRE(ast_file.functions[1].template_params[0].type == "typename");
-        REQUIRE(ast_file.functions[1].template_params[0].name == "_value_t");
-        REQUIRE(ast_file.functions[1].template_params[0].default_value.has_value() == false);
-        REQUIRE(ast_file.functions[1].template_params[1].type == "int");
-        REQUIRE(ast_file.functions[1].template_params[1].name == "_n");
-        REQUIRE(ast_file.functions[1].template_params[1].default_value.has_value());
-        REQUIRE(ast_file.functions[1].template_params[1].default_value == "42");
-        REQUIRE(ast_file.functions[1].arguments.size() == 1);
-        REQUIRE(ast_file.functions[1].arguments[0].name == "_arg");
-        REQUIRE(ast_file.functions[1].arguments[0].type.name == "_value_t");
-        REQUIRE(ast_file.functions[1].arguments[0].attributes.size() == 1);
-        REQUIRE(ast_file.functions[1].arguments[0].attributes.contains("_argument"));
-        REQUIRE(ast_file.functions[1].arguments[0].attributes["_argument"] == true);
-        REQUIRE(ast_file.functions[1].arguments[0].default_value.has_value() == false);
+        REQUIRE(cpp_file.functions[1].name == "_template_free_func");
+        REQUIRE(cpp_file.functions[1].return_type.name == "_value_t");
+        REQUIRE(cpp_file.functions[1].attributes.size() == 1);
+        REQUIRE(cpp_file.functions[1].attributes.contains("_function"));
+        REQUIRE(cpp_file.functions[1].attributes["_function"] == true);
+        REQUIRE(cpp_file.functions[1].template_params.size() == 2);
+        REQUIRE(cpp_file.functions[1].template_params[0].type == "typename");
+        REQUIRE(cpp_file.functions[1].template_params[0].name == "_value_t");
+        REQUIRE(cpp_file.functions[1].template_params[0].default_value.has_value() == false);
+        REQUIRE(cpp_file.functions[1].template_params[1].type == "int");
+        REQUIRE(cpp_file.functions[1].template_params[1].name == "_n");
+        REQUIRE(cpp_file.functions[1].template_params[1].default_value.has_value());
+        REQUIRE(cpp_file.functions[1].template_params[1].default_value == "42");
+        REQUIRE(cpp_file.functions[1].arguments.size() == 1);
+        REQUIRE(cpp_file.functions[1].arguments[0].name == "_arg");
+        REQUIRE(cpp_file.functions[1].arguments[0].type.name == "_value_t");
+        REQUIRE(cpp_file.functions[1].arguments[0].attributes.size() == 1);
+        REQUIRE(cpp_file.functions[1].arguments[0].attributes.contains("_argument"));
+        REQUIRE(cpp_file.functions[1].arguments[0].attributes["_argument"] == true);
+        REQUIRE(cpp_file.functions[1].arguments[0].default_value.has_value() == false);
 
-        REQUIRE(ast_file.functions[2].name == "_global_func");
-        REQUIRE(ast_file.functions[2].scope.empty());
-        REQUIRE(ast_file.functions[2].full_name() == "_global_func");
-        REQUIRE(ast_file.functions[2].return_type.name == "void");
-        REQUIRE(ast_file.functions[2].attributes.empty());
-        REQUIRE(ast_file.functions[2].arguments.empty());
+        REQUIRE(cpp_file.functions[2].name == "_global_func");
+        REQUIRE(cpp_file.functions[2].scope.empty());
+        REQUIRE(cpp_file.functions[2].full_name() == "_global_func");
+        REQUIRE(cpp_file.functions[2].return_type.name == "void");
+        REQUIRE(cpp_file.functions[2].attributes.empty());
+        REQUIRE(cpp_file.functions[2].arguments.empty());
     }
 
     SECTION("parse attributes is feature complete")
     {
-        ast_class& class_ = ast_file.classes[5];
+        cpp_class& class_ = cpp_file.classes[5];
 
         REQUIRE(class_.name == "_attributes");
         REQUIRE(class_.attributes.size() == 5);
@@ -318,7 +311,7 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
 
     SECTION("parse template is feature complete")
     {
-        ast_class& class_ = ast_file.classes[6];
+        cpp_class& class_ = cpp_file.classes[6];
 
         REQUIRE(class_.name == "_template");
         REQUIRE(class_.template_params.size() == 5);
@@ -343,7 +336,7 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
 
     SECTION("parse unnamed template is feature complete")
     {
-        ast_class& class_ = ast_file.classes[7];
+        cpp_class& class_ = cpp_file.classes[7];
 
         REQUIRE(class_.name == "_unnamed_template");
         REQUIRE(class_.template_params.size() == 5);
@@ -364,7 +357,7 @@ TEMPLATE_TEST_CASE("spore::codegen::ast_parser", "[spore::codegen][spore::codege
 
     SECTION("parse template specialization is feature complete")
     {
-        ast_class& class_ = ast_file.classes[9];
+        cpp_class& class_ = cpp_file.classes[9];
 
         REQUIRE(class_.name == "_template_specialization");
         REQUIRE(class_.full_name() == "_template_specialization<int, float, value_t, _template_specialization<int, float>>");

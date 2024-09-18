@@ -18,5 +18,10 @@ namespace spore::codegen
             spirv_modules.reserve(paths.size());
             return true;
         }
+
+        static constexpr std::string_view type()
+        {
+            return "spirv";
+        }
     };
 }

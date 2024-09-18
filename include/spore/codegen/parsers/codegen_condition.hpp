@@ -11,7 +11,7 @@ namespace spore::codegen
     struct codegen_condition
     {
         virtual ~codegen_condition() = default;
-        virtual bool match_ast(const ast_t& ast) const = 0;
+        [[nodiscard]] virtual bool match_ast(const ast_t& ast) const = 0;
     };
 
     struct codegen_condition_params
@@ -20,7 +20,7 @@ namespace spore::codegen
         nlohmann::json value;
     };
 
-    void from_json(const nlohmann::json& json, codegen_condition_params& value)
+    inline void from_json(const nlohmann::json& json, codegen_condition_params& value)
     {
         json["type"].get_to(value.type);
         json["value"].get_to(value.value);

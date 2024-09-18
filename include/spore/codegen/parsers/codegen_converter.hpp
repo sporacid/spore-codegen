@@ -8,6 +8,6 @@ namespace spore::codegen
     struct codegen_converter
     {
         virtual ~codegen_converter() = default;
-        virtual bool convert_ast(const ast_t& ast, nlohmann::json& json) const = 0;
+        [[nodiscard]] virtual bool convert_ast(const ast_t& ast, nlohmann::json& json) const = 0;
     };
 }

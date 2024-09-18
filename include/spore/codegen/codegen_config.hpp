@@ -15,6 +15,7 @@ namespace spore::codegen
         std::string name;
         std::string directory;
         std::vector<std::string> templates;
+        std::vector<std::string> data;
         std::optional<nlohmann::json> condition;
     };
 
@@ -23,6 +24,7 @@ namespace spore::codegen
         std::string name;
         std::string directory;
         std::string files;
+        std::string parser;
         std::vector<codegen_config_step> steps;
     };
 

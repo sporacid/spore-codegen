@@ -1,8 +1,6 @@
 #pragma once
 
-#include <atomic>
 #include <cstdint>
-#include <memory>
 
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
@@ -13,7 +11,7 @@
 
 namespace spore::codegen
 {
-    void to_json(nlohmann::json& json, cpp_flags value)
+    inline void to_json(nlohmann::json& json, cpp_flags value)
     {
         const auto predicate = [&](cpp_flags flags) { return (value & flags) == flags; };
         json["const"] = predicate(cpp_flags::const_);
@@ -64,14 +62,14 @@ namespace spore::codegen
         json["flags"] = value.flags;
     }
 
-    void to_json(nlohmann::json& json, const cpp_ref& value)
+    inline void to_json(nlohmann::json& json, const cpp_ref& value)
     {
         to_json(json, static_cast<const cpp_has_flags<cpp_ref>&>(value));
 
         json["name"] = value.name;
     }
 
-    void to_json(nlohmann::json& json, const cpp_template_param& value)
+    inline void to_json(nlohmann::json& json, const cpp_template_param& value)
     {
         std::size_t unique_id = make_unique_id<cpp_template_param>();
 
@@ -83,7 +81,7 @@ namespace spore::codegen
         json["is_variadic"] = value.is_variadic;
     }
 
-    void to_json(nlohmann::json& json, const cpp_argument& value)
+    inline void to_json(nlohmann::json& json, const cpp_argument& value)
     {
         to_json(json, static_cast<const cpp_has_attributes<cpp_argument>&>(value));
 
@@ -95,7 +93,7 @@ namespace spore::codegen
         json["is_variadic"] = value.is_variadic;
     }
 
-    void to_json(nlohmann::json& json, const cpp_function& value)
+    inline void to_json(nlohmann::json& json, const cpp_function& value)
     {
         to_json(json, static_cast<const cpp_has_name<cpp_function>&>(value));
         to_json(json, static_cast<const cpp_has_attributes<cpp_function>&>(value));
@@ -108,7 +106,7 @@ namespace spore::codegen
         json["is_variadic"] = value.is_variadic();
     }
 
-    void to_json(nlohmann::json& json, const cpp_constructor& value)
+    inline void to_json(nlohmann::json& json, const cpp_constructor& value)
     {
         to_json(json, static_cast<const cpp_has_attributes<cpp_constructor>&>(value));
         to_json(json, static_cast<const cpp_has_template_params<cpp_constructor>&>(value));
@@ -118,7 +116,7 @@ namespace spore::codegen
         json["arguments"] = value.arguments;
     }
 
-    void to_json(nlohmann::json& json, const cpp_field& value)
+    inline void to_json(nlohmann::json& json, const cpp_field& value)
     {
         to_json(json, static_cast<const cpp_has_attributes<cpp_field>&>(value));
         to_json(json, static_cast<const cpp_has_flags<cpp_field>&>(value));
@@ -128,7 +126,7 @@ namespace spore::codegen
         json["type"] = value.type;
     }
 
-    void to_json(nlohmann::json& json, cpp_class_type value)
+    inline void to_json(nlohmann::json& json, cpp_class_type value)
     {
         static const std::map<cpp_class_type, std::string> value_map {
             {cpp_class_type::unknown, "unknown"},
@@ -143,7 +141,7 @@ namespace spore::codegen
         }
     }
 
-    void to_json(nlohmann::json& json, const cpp_class& value)
+    inline void to_json(nlohmann::json& json, const cpp_class& value)
     {
         to_json(json, static_cast<const cpp_has_name<cpp_class>&>(value));
         to_json(json, static_cast<const cpp_has_attributes<cpp_class>&>(value));
@@ -158,7 +156,7 @@ namespace spore::codegen
         json["nested"] = value.nested;
     }
 
-    void to_json(nlohmann::json& json, const cpp_enum_value& value)
+    inline void to_json(nlohmann::json& json, const cpp_enum_value& value)
     {
         to_json(json, static_cast<const cpp_has_attributes<cpp_enum_value>&>(value));
 
@@ -167,7 +165,7 @@ namespace spore::codegen
         json["value"] = value.value;
     }
 
-    void to_json(nlohmann::json& json, cpp_enum_type value)
+    inline void to_json(nlohmann::json& json, cpp_enum_type value)
     {
         static const std::map<cpp_enum_type, std::string> value_map {
             {cpp_enum_type::none, "none"},
@@ -182,7 +180,7 @@ namespace spore::codegen
         }
     }
 
-    void to_json(nlohmann::json& json, const cpp_enum& value)
+    inline void to_json(nlohmann::json& json, const cpp_enum& value)
     {
         to_json(json, static_cast<const cpp_has_name<cpp_enum>&>(value));
         to_json(json, static_cast<const cpp_has_attributes<cpp_enum>&>(value));
@@ -194,7 +192,7 @@ namespace spore::codegen
         json["nested"] = value.nested;
     }
 
-    void to_json(nlohmann::json& json, const cpp_file& value)
+    inline void to_json(nlohmann::json& json, const cpp_file& value)
     {
         json["id"] = make_unique_id<cpp_file>();
         json["path"] = value.path;
