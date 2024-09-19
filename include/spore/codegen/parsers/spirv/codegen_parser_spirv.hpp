@@ -8,7 +8,7 @@ namespace spore::codegen
     struct codegen_parser_spirv : codegen_parser<spirv_module>
     {
         template <typename args_t>
-        explicit codegen_parser_spirv(const args_t& additional_args)
+        explicit codegen_parser_spirv(const args_t&)
         {
         }
 

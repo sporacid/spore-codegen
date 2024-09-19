@@ -1,6 +1,5 @@
 #pragma once
 
-#include <algorithm>
 #include <memory>
 #include <vector>
 
@@ -24,10 +23,10 @@ namespace spore::codegen
                 return renderer->can_render_file(file);
             };
 
-            const auto it = std::find_if(renderers.begin(), renderers.end(), predicate);
-            if (it != renderers.end())
+            const auto it_renderer = std::ranges::find_if(renderers, predicate);
+            if (it_renderer != renderers.end())
             {
-                const std::shared_ptr<codegen_renderer>& renderer = *it;
+                const std::shared_ptr<codegen_renderer>& renderer = *it_renderer;
                 return renderer->render_file(file, data, result);
             }
 
@@ -40,7 +39,7 @@ namespace spore::codegen
                 return renderer->can_render_file(file);
             };
 
-            return std::any_of(renderers.begin(), renderers.end(), predicate);
+            return std::ranges::any_of(renderers, predicate);
         }
     };
 }

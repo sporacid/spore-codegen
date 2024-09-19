@@ -176,6 +176,12 @@ namespace spore::codegen
                     return std::filesystem::path(value).extension().string();
                 });
 
+            inja_env.add_callback("fs.stem", 1,
+                [](inja::Arguments& args) {
+                    const std::string& value = args.at(0)->get<std::string>();
+                    return std::filesystem::path(value).stem().string();
+                });
+
             inja_env.add_callback("fs.filename", 1,
                 [](inja::Arguments& args) {
                     const std::string& value = args.at(0)->get<std::string>();
