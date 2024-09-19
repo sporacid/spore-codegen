@@ -30,6 +30,7 @@ find_package(inja CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(tiny-process-library CONFIG REQUIRED)
+find_package(unofficial-spirv-reflect CONFIG REQUIRED)
 find_package(yaml-cpp CONFIG REQUIRED)
 
 target_link_libraries(
@@ -40,7 +41,8 @@ target_link_libraries(
     pantor::inja
     spdlog::spdlog
     tiny-process-library::tiny-process-library
-    yaml-cpp
+    unofficial::spirv-reflect
+    yaml-cpp::yaml-cpp
     ${CLANG_LIBRARIES}
 )
 
