@@ -7,7 +7,7 @@
 
 namespace spore::codegen
 {
-    struct codegen_renderer_composite : codegen_renderer
+    struct codegen_renderer_composite final : codegen_renderer
     {
         std::vector<std::shared_ptr<codegen_renderer>> renderers;
 
@@ -17,7 +17,7 @@ namespace spore::codegen
         {
         }
 
-        bool render_file(const std::string& file, const nlohmann::json& data, std::string& result) override
+        [[nodiscard]] bool render_file(const std::string& file, const nlohmann::json& data, std::string& result) override
         {
             const auto predicate = [&](const std::shared_ptr<codegen_renderer>& renderer) {
                 return renderer->can_render_file(file);
@@ -33,7 +33,7 @@ namespace spore::codegen
             return false;
         }
 
-        bool can_render_file(const std::string& file) const override
+        [[nodiscard]] bool can_render_file(const std::string& file) const override
         {
             const auto predicate = [&](const std::shared_ptr<codegen_renderer>& renderer) {
                 return renderer->can_render_file(file);

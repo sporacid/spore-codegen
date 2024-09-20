@@ -24,9 +24,9 @@ namespace spore::codegen
         {
             std::string cpp_name = value;
 
-            for (char character : "<>{}()-+=,.;:/\\ ")
+            for (const char character : "<>{}()-+=,.;:/\\ ")
             {
-                std::replace(cpp_name.begin(), cpp_name.end(), character, '_');
+                std::ranges::replace(cpp_name, character, '_');
             }
 
             return cpp_name;
@@ -34,18 +34,18 @@ namespace spore::codegen
 
         inline std::string to_cpp_hex(const std::vector<std::uint8_t>& bytes)
         {
-            std::stringstream hex;
+            std::string hex;
 
             for (const std::uint8_t byte : bytes)
             {
-                hex << std::hex << byte << ", ";
+                fmt::format_to(std::back_inserter(hex), "{:#04x}, ", byte);
             }
 
-            return hex.str();
+            return hex;
         }
     }
 
-    struct codegen_renderer_inja : codegen_renderer
+    struct codegen_renderer_inja final : codegen_renderer
     {
         inja::Environment inja_env;
         std::vector<std::string> templates;
@@ -237,20 +237,7 @@ namespace spore::codegen
                 });
         }
 
-        template <typename func_t>
-        auto with_this(const nlohmann::json& json, func_t&& func) const
-        {
-            const nlohmann::json* new_this = std::addressof(json);
-            const nlohmann::json* old_this = nullptr;
-
-            defer defer_current_json = [&] { std::swap(_json_this, old_this); };
-            std::swap(_json_this, old_this);
-            std::swap(_json_this, new_this);
-
-            return func();
-        }
-
-        bool render_file(const std::string& file, const nlohmann::json& data, std::string& result) override
+        [[nodiscard]] bool render_file(const std::string& file, const nlohmann::json& data, std::string& result) override
         {
             try
             {
@@ -264,7 +251,7 @@ namespace spore::codegen
             }
         }
 
-        bool can_render_file(const std::string& file) const override
+        [[nodiscard]] bool can_render_file(const std::string& file) const override
         {
             return ".inja" == std::filesystem::path(file).extension();
         }
@@ -272,7 +259,20 @@ namespace spore::codegen
       private:
         static inline thread_local const nlohmann::json* _json_this = nullptr;
 
-        inline std::string include_file(const std::string& file, std::span<const nlohmann::json*> args)
+        template <typename func_t>
+        static auto with_this(const nlohmann::json& json, func_t&& func)
+        {
+            const nlohmann::json* new_this = std::addressof(json);
+            const nlohmann::json* old_this = nullptr;
+
+            defer defer_current_json = [&] { std::swap(_json_this, old_this); };
+            std::swap(_json_this, old_this);
+            std::swap(_json_this, new_this);
+
+            return func();
+        }
+
+        std::string include_file(const std::string& file, std::span<const nlohmann::json*> args)
         {
             nlohmann::json json;
 
