@@ -402,7 +402,9 @@ namespace spore::codegen
             {
                 const codegen_config_step& step = stage.steps.at(step_index);
 
-                codegen_step_data step_data;
+                codegen_step_data step_data {
+                    .condition = step.condition,
+                };
 
                 for (const std::string& template_ : step.templates)
                 {

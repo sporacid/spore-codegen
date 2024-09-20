@@ -714,7 +714,7 @@ namespace spore::codegen
         }
     }
 
-    struct codegen_parser_cpp : codegen_parser<cpp_file>
+    struct codegen_parser_cpp final : codegen_parser<cpp_file>
     {
         struct clang_index_deleter
         {

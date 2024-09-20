@@ -20,7 +20,7 @@ namespace spore::codegen
 {
     namespace detail
     {
-        std::string to_cpp_name(const std::string& value)
+        inline std::string to_cpp_name(const std::string& value)
         {
             std::string cpp_name = value;
 
@@ -30,6 +30,18 @@ namespace spore::codegen
             }
 
             return cpp_name;
+        }
+
+        inline std::string to_cpp_hex(const std::vector<std::uint8_t>& bytes)
+        {
+            std::stringstream hex;
+
+            for (const std::uint8_t byte : bytes)
+            {
+                hex << std::hex << byte << ", ";
+            }
+
+            return hex.str();
         }
     }
 
@@ -194,10 +206,24 @@ namespace spore::codegen
                     return std::filesystem::path(value).parent_path().string();
                 });
 
-            inja_env.add_callback("cpp_name", 1,
+            inja_env.add_callback("cpp.name", 1,
                 [](inja::Arguments& args) -> std::string {
                     const std::string& value = args.at(0)->get<std::string>();
                     return detail::to_cpp_name(value);
+                });
+
+            inja_env.add_callback("cpp.embed", 1,
+                [](inja::Arguments& args) -> std::string {
+                    const nlohmann::json* arg0 = args.at(0);
+
+                    if (arg0->is_binary())
+                    {
+                        return detail::to_cpp_hex(arg0->get<std::vector<std::uint8_t>>());
+                    }
+
+                    const std::string& base64 = arg0->get<std::string>();
+                    const std::vector<std::uint8_t>& bytes = base64::decode_into<std::vector<std::uint8_t>>(base64.begin(), base64.end());
+                    return detail::to_cpp_hex(bytes);
                 });
 
             inja_env.add_callback("include",

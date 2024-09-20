@@ -37,6 +37,7 @@ namespace spore::codegen
         inline void register_conditions<cpp_file>(codegen_condition_factory<cpp_file>& factory)
         {
             register_default_conditions<cpp_file>(factory);
+            factory.register_condition<codegen_condition_cpp_attribute>();
         }
 
         template <>

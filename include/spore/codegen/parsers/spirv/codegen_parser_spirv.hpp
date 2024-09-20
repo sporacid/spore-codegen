@@ -112,6 +112,7 @@ namespace spore::codegen
         inline void to_module(std::string_view path, const SpvReflectShaderModule& spv_module, spirv_module& module)
         {
             module.path = path;
+            module.entry_point = spv_module.entry_point_name;
 
             std::vector<SpvReflectDescriptorSet*> spv_descriptor_sets;
             SpvReflectResult spv_result = spv_enumerate(spv_module, &spvReflectEnumerateDescriptorSets, spv_descriptor_sets);
@@ -173,7 +174,7 @@ namespace spore::codegen
 
     }
 
-    struct codegen_parser_spirv : codegen_parser<spirv_module>
+    struct codegen_parser_spirv final : codegen_parser<spirv_module>
     {
         template <typename args_t>
         explicit codegen_parser_spirv(const args_t& args)

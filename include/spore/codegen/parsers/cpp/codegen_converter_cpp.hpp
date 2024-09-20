@@ -201,7 +201,7 @@ namespace spore::codegen
         json["functions"] = value.functions;
     }
 
-    struct codegen_converter_cpp : codegen_converter<cpp_file>
+    struct codegen_converter_cpp final : codegen_converter<cpp_file>
     {
         bool convert_ast(const cpp_file& file, nlohmann::json& json) const override
         {
