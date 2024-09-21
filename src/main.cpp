@@ -51,11 +51,11 @@ int main(const int argc, const char* argv[])
     arg_parser.add_description(description);
     arg_parser.add_epilog(epilog);
 
-    arg_parser
-        .add_argument("-o", "--output")
-        .help("Output directory for generated files")
-        .metavar(detail::metavars::file)
-        .default_value(std::string {".codegen"});
+    // arg_parser
+    //     .add_argument("-o", "--output")
+    //     .help("Output directory for generated files")
+    //     .metavar(detail::metavars::file)
+    //     .default_value(std::string {".codegen"});
 
     arg_parser
         .add_argument("-c", "--config")
@@ -67,7 +67,7 @@ int main(const int argc, const char* argv[])
         .add_argument("-C", "--cache")
         .help("Codegen cache file to use")
         .metavar(detail::metavars::file)
-        .default_value(std::string {"cache.yml"});
+        .default_value(std::string {".codegen.yml"});
 
     arg_parser
         .add_argument("-t", "--templates")
@@ -118,7 +118,7 @@ int main(const int argc, const char* argv[])
     }
 
     codegen_options options {
-        .output = arg_parser.get<std::string>("--output"),
+        // .output = arg_parser.get<std::string>("--output"),
         .config = arg_parser.get<std::string>("--config"),
         .cache = arg_parser.get<std::string>("--cache"),
         .reformat = arg_parser.get<std::string>("--reformat"),

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <optional>
+#include <map>
 #include <string>
 #include <utility>
 #include <vector>
@@ -9,7 +9,7 @@ namespace spore::codegen
 {
     struct codegen_options
     {
-        std::string output;
+        // std::string output;
         std::string config;
         std::string cache;
         std::string reformat;

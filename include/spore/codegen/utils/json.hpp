@@ -8,6 +8,8 @@
 
 #include "nlohmann/json.hpp"
 
+#include "spore/codegen/codegen_error.hpp"
+
 namespace spore::codegen::json
 {
     inline bool truthy(const nlohmann::json& json)
@@ -44,7 +46,7 @@ namespace spore::codegen::json
 
     inline bool truthy(const nlohmann::json& json, std::string property)
     {
-        std::replace(property.begin(), property.end(), '.', '/');
+        std::ranges::replace(property, '.', '/');
 
         if (!property.starts_with('/'))
         {
@@ -53,5 +55,35 @@ namespace spore::codegen::json
 
         nlohmann::json::json_pointer json_ptr {property};
         return json.contains(json_ptr) && truthy(json[json_ptr]);
+    }
+
+    template <typename value_t>
+    bool get(const nlohmann::json& json, std::string_view key, value_t& value)
+    {
+        if (json.contains(key))
+        {
+            json[key].get_to(value);
+            return true;
+        }
+
+        return false;
+    }
+
+    template <typename value_t, typename default_value_t = value_t>
+    void get_opt(const nlohmann::json& json, std::string_view key, value_t& value, const default_value_t& default_value = {})
+    {
+        if (!get(json, key, value))
+        {
+            value = default_value;
+        }
+    }
+
+    template <typename value_t>
+    void get_checked(const nlohmann::json& json, std::string_view key, value_t& value, std::string_view context)
+    {
+        if (!get(json, key, value)) [[unlikely]]
+        {
+            throw codegen_error(codegen_error_code::invalid, "JSON property \"{}\" not found in {}", key, context);
+        }
     }
 }
