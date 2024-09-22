@@ -44,8 +44,15 @@ namespace spore::codegen
 
     struct codegen_data
     {
-        std::vector<codegen_stage_data> stages;
+        using stage_func_t = std::function<codegen_stage_data()>;
+        std::vector<stage_func_t> stage_funcs;
         std::vector<codegen_template_data> templates;
+
+        [[nodiscard]] codegen_stage_data make_stage(const std::size_t index) const
+        {
+            stage_func_t stage_func = stage_funcs.at(index);
+            return stage_func();
+        }
     };
 
     inline void to_json(nlohmann::json& json, const codegen_output_data& value)
@@ -82,11 +89,5 @@ namespace spore::codegen
     {
         json["files"] = value.files;
         json["steps"] = value.steps;
-    }
-
-    inline void to_json(nlohmann::json& json, const codegen_data& value)
-    {
-        json["stages"] = value.stages;
-        json["templates"] = value.templates;
     }
 }
