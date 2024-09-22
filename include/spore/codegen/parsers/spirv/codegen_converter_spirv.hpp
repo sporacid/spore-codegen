@@ -116,6 +116,8 @@ namespace spore::codegen
     inline void to_json(nlohmann::json& json, const spirv_image& value)
     {
         json["dims"] = value.dims;
+        json["depth"] = value.depth;
+        json["sampled"] = value.sampled;
         json["is_image"] = true;
     }
 
@@ -154,7 +156,6 @@ namespace spore::codegen
         json["name"] = value.name;
         json["type"] = value.type;
         json["index"] = value.index;
-        json["count"] = value.count;
         json["variables"] = value.variables;
     }
 

@@ -43,6 +43,8 @@ namespace spore::codegen
     struct spirv_image
     {
         std::size_t dims = 0;
+        std::size_t depth = 0;
+        bool sampled = false;
     };
 
     struct spirv_builtin
@@ -62,7 +64,7 @@ namespace spore::codegen
     struct spirv_array
     {
         spirv_single_type type;
-        std::array<std::size_t, 8> dims {};
+        std::vector<std::size_t> dims;
     };
 
     using spirv_type =

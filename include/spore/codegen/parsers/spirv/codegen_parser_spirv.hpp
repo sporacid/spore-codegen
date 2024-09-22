@@ -36,7 +36,7 @@ namespace spore::codegen
             return result;
         }
 
-        template <typename seed_t = decltype([] {})>
+        template <typename seed_t>
         std::string get_or_make_name(const char* name, const char* prefix)
         {
             if (name == nullptr || std::strlen(name) == 0)
@@ -120,11 +120,44 @@ namespace spore::codegen
                         .name = spv_type.type_name,
                     };
                 }
+                else if (has_any_flag(spv_type.type_flags, SPV_REFLECT_TYPE_FLAG_EXTERNAL_IMAGE | SPV_REFLECT_TYPE_FLAG_EXTERNAL_SAMPLER | SPV_REFLECT_TYPE_FLAG_EXTERNAL_SAMPLED_IMAGE))
+                {
+                    std::size_t dim;
+                    switch (spv_type.traits.image.dim)
+                    {
+                        case SpvDim1D:
+                            dim = 1;
+                            break;
+                        case SpvDim2D:
+                            dim = 2;
+                            break;
+                        case SpvDim3D:
+                            dim = 3;
+                            break;
+                        default:
+                            dim = 0;
+                            SPDLOG_DEBUG("unknown image dimension type, value={}", static_cast<std::uint32_t>(spv_type.traits.image.dim));
+                            break;
+                    }
+
+                    type = spirv_image {
+                        .dims = dim,
+                        .depth = static_cast<std::size_t>(spv_type.traits.image.depth),
+                        .sampled = static_cast<bool>(spv_type.traits.image.sampled),
+                    };
+                }
             }
 
             if (has_any_flag(spv_type.type_flags, SPV_REFLECT_TYPE_FLAG_ARRAY))
             {
                 spirv_array array;
+                array.dims.resize(spv_type.traits.array.dims_count);
+
+                for (std::size_t index = 0; index < spv_type.traits.array.dims_count && index < array.dims.size(); ++index)
+                {
+                    array.dims[index] = static_cast<std::size_t>(spv_type.traits.array.dims[index]);
+                }
+
                 const auto visitor = [&]<typename value_t>(value_t&& value) {
                     if constexpr (variant_supports<spirv_single_type, std::decay_t<value_t>>::value)
                     {
@@ -134,13 +167,17 @@ namespace spore::codegen
 
                 std::visit(visitor, type);
 
-                for (std::size_t index = 0; index < spv_type.traits.array.dims_count && index < array.dims.size(); ++index)
-                {
-                    array.dims[index] = static_cast<std::size_t>(spv_type.traits.array.dims[index]);
-                }
-
                 type = std::move(array);
             }
+        }
+
+        template <typename spv_parent_t>
+        void to_variable(const spv_parent_t& spv_parent, const SpvReflectTypeDescription& spv_member, const std::size_t index, spirv_variable& variable)
+        {
+            variable.name = get_or_make_name<spirv_variable>(spv_member.struct_member_name, "var");
+            variable.index = index;
+
+            to_type(spv_parent, spv_member, variable.type);
         }
 
         inline void to_variable(const SpvReflectInterfaceVariable& spv_variable, spirv_variable& variable)
@@ -165,41 +202,28 @@ namespace spore::codegen
             }
         }
 
-        template <typename spv_parent_t>
-        void to_variable(const std::size_t index, const spv_parent_t& spv_parent, const SpvReflectTypeDescription& spv_member, spirv_variable& variable)
-        {
-            variable.name = get_or_make_name<spirv_variable>(spv_member.struct_member_name, "var");
-            variable.index = index;
-
-            to_type(spv_parent, spv_member, variable.type);
-        }
-
         inline void to_descriptor_binding(const SpvReflectDescriptorBinding& spv_descriptor_binding, spirv_descriptor_binding& descriptor_binding)
         {
             descriptor_binding.name = get_or_make_name<spirv_descriptor_binding>(spv_descriptor_binding.name, "descriptor");
             descriptor_binding.index = static_cast<std::size_t>(spv_descriptor_binding.binding);
-            descriptor_binding.count = 1;
 
             if (const SpvReflectTypeDescription* spv_type = spv_descriptor_binding.type_description)
             {
-                descriptor_binding.type = spv_type->type_name;
+                to_type(spv_descriptor_binding, *spv_type, descriptor_binding.type);
+
                 descriptor_binding.variables.reserve(spv_type->member_count);
 
                 for (const SpvReflectTypeDescription& spv_member : std::span {spv_type->members, spv_type->member_count})
                 {
                     const std::size_t spv_member_index = descriptor_binding.variables.size();
-                    to_variable(spv_member_index, spv_descriptor_binding, spv_member, descriptor_binding.variables.emplace_back());
+                    to_variable(spv_descriptor_binding, spv_member, spv_member_index, descriptor_binding.variables.emplace_back());
                 }
-            }
-
-            for (const std::uint32_t dimension : std::span {spv_descriptor_binding.array.dims, spv_descriptor_binding.array.dims_count})
-            {
-                descriptor_binding.count *= dimension;
             }
 
             switch (spv_descriptor_binding.descriptor_type)
             {
                 case SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLER:
+                case SPV_REFLECT_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
                     descriptor_binding.kind = spirv_descriptor_kind::sampler;
                     break;
 
@@ -232,7 +256,7 @@ namespace spore::codegen
 
         inline void to_constant(const SpvReflectBlockVariable& spv_variable, spirv_constant& constant)
         {
-            constant.name = get_or_make_name(spv_variable.name, "constant");
+            constant.name = get_or_make_name<spirv_constant>(spv_variable.name, "constant");
             constant.offset = spv_variable.offset;
 
             if (const SpvReflectTypeDescription* spv_type = spv_variable.type_description)
