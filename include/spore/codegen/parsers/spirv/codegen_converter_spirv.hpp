@@ -85,45 +85,51 @@ namespace spore::codegen
 
     inline void to_json(nlohmann::json& json, const spirv_scalar& value)
     {
-        json["type"] = "scalar";
         json["kind"] = value.kind;
         json["width"] = value.width;
         json["signed"] = value.signed_;
+        json["is_scalar"] = true;
     }
 
     inline void to_json(nlohmann::json& json, const spirv_vec& value)
     {
-        json["type"] = "vec";
         json["scalar"] = value.scalar;
         json["components"] = value.components;
+        json["is_vec"] = true;
     }
 
     inline void to_json(nlohmann::json& json, const spirv_mat& value)
     {
-        json["type"] = "mat";
         json["scalar"] = value.scalar;
         json["rows"] = value.rows;
         json["cols"] = value.cols;
         json["row_major"] = value.row_major;
+        json["is_mat"] = true;
     }
 
     inline void to_json(nlohmann::json& json, const spirv_struct& value)
     {
-        json["type"] = "struct";
         json["name"] = value.name;
+        json["is_struct"] = true;
     }
 
     inline void to_json(nlohmann::json& json, const spirv_image& value)
     {
-        json["type"] = "image";
         json["dims"] = value.dims;
+        json["is_image"] = true;
+    }
+
+    inline void to_json(nlohmann::json& json, const spirv_builtin& value)
+    {
+        json["name"] = value.name;
+        json["is_builtin"] = true;
     }
 
     inline void to_json(nlohmann::json& json, const spirv_array& value)
     {
-        json["type"] = "array";
-        json["type2"] = value.type;
+        json["type"] = value.type;
         json["dims"] = value.dims;
+        json["is_array"] = true;
     }
 
     inline void to_json(nlohmann::json& json, const spirv_variable& value)
@@ -137,6 +143,7 @@ namespace spore::codegen
     inline void to_json(nlohmann::json& json, const spirv_constant& value)
     {
         json["name"] = value.name;
+        json["type"] = value.type;
         json["offset"] = value.offset;
         json["variables"] = value.variables;
     }
@@ -165,6 +172,7 @@ namespace spore::codegen
         json["outputs"] = value.outputs;
         json["constants"] = value.constants;
         json["descriptor_sets"] = value.descriptor_sets;
+        json["byte_code_size"] = value.byte_code.size();
         json["byte_code"] = base64::encode_into<std::string>(value.byte_code.begin(), value.byte_code.end());
     }
 

@@ -32,16 +32,39 @@ namespace spore::codegen
             return cpp_name;
         }
 
-        inline std::string to_cpp_hex(const std::vector<std::uint8_t>& bytes)
+        inline std::string to_cpp_hex(const std::vector<std::uint8_t>& bytes, const std::size_t width)
         {
+            [[maybe_unused]] constexpr char hex_dummy[] = "0xff, ";
+            constexpr std::size_t hex_width = sizeof(hex_dummy) - 1;
+
             std::string hex;
+            std::size_t current_width = 0;
 
             for (const std::uint8_t byte : bytes)
             {
                 fmt::format_to(std::back_inserter(hex), "{:#04x}, ", byte);
+                current_width += hex_width;
+
+                if (current_width >= width)
+                {
+                    current_width = 0;
+                    hex += "\n";
+                }
             }
 
             return hex;
+        }
+
+        inline std::string to_cpp_hex(const nlohmann::json& json, const std::size_t width)
+        {
+            if (json.is_binary())
+            {
+                return to_cpp_hex(json.get<std::vector<std::uint8_t>>(), width);
+            }
+
+            const std::string& base64 = json.get<std::string>();
+            const std::vector<std::uint8_t>& bytes = base64::decode_into<std::vector<std::uint8_t>>(base64.begin(), base64.end());
+            return to_cpp_hex(bytes, width);
         }
     }
 
@@ -215,15 +238,14 @@ namespace spore::codegen
             inja_env.add_callback("cpp.embed", 1,
                 [](inja::Arguments& args) -> std::string {
                     const nlohmann::json* arg0 = args.at(0);
+                    return detail::to_cpp_hex(*arg0, 80);
+                });
 
-                    if (arg0->is_binary())
-                    {
-                        return detail::to_cpp_hex(arg0->get<std::vector<std::uint8_t>>());
-                    }
-
-                    const std::string& base64 = arg0->get<std::string>();
-                    const std::vector<std::uint8_t>& bytes = base64::decode_into<std::vector<std::uint8_t>>(base64.begin(), base64.end());
-                    return detail::to_cpp_hex(bytes);
+            inja_env.add_callback("cpp.embed", 2,
+                [](inja::Arguments& args) -> std::string {
+                    const nlohmann::json* arg0 = args.at(0);
+                    const std::size_t arg1 = args.at(1)->get<std::size_t>();
+                    return detail::to_cpp_hex(*arg0, arg1);
                 });
 
             inja_env.add_callback("include",

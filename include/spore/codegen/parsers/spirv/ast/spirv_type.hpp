@@ -45,10 +45,23 @@ namespace spore::codegen
         std::size_t dims = 0;
     };
 
+    struct spirv_builtin
+    {
+        std::string name;
+    };
+
+    using spirv_single_type =
+        std::variant<
+            spirv_scalar,
+            spirv_vec,
+            spirv_mat,
+            spirv_struct,
+            spirv_image,
+            spirv_builtin>;
+
     struct spirv_array
     {
-        using variant_t = std::variant<spirv_scalar, spirv_vec, spirv_mat, spirv_struct, spirv_image>;
-        variant_t type;
+        spirv_single_type type;
         std::array<std::size_t, 8> dims {};
     };
 
@@ -59,5 +72,6 @@ namespace spore::codegen
             spirv_mat,
             spirv_struct,
             spirv_image,
+            spirv_builtin,
             spirv_array>;
 }

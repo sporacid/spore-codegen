@@ -37,74 +37,96 @@ namespace spore::codegen
         }
 
         template <typename seed_t = decltype([] {})>
-        std::string get_or_make_name(const char* name)
+        std::string get_or_make_name(const char* name, const char* prefix)
         {
             if (name == nullptr || std::strlen(name) == 0)
             {
-                return fmt::format("_var{}", make_unique_id<seed_t>());
+                return fmt::format("_{}{}", prefix, make_unique_id<seed_t>());
             }
 
             return name;
         }
 
-        inline void to_type(const SpvReflectTypeDescription& spv_type, spirv_type& type)
+        template <typename flags_t, typename other_flags_t>
+        bool has_all_flags(flags_t flag, other_flags_t other_flag)
         {
-            const auto has_any_flag = [&](const SpvReflectTypeFlags other_spv_flags) {
-                return (spv_type.type_flags & other_spv_flags) != 0;
-            };
+            return (flag & other_flag) == other_flag;
+        }
 
-            if (has_any_flag(SPV_REFLECT_TYPE_FLAG_BOOL | SPV_REFLECT_TYPE_FLAG_INT | SPV_REFLECT_TYPE_FLAG_FLOAT))
-            {
-                spirv_scalar scalar {
-                    .width = spv_type.traits.numeric.scalar.width,
-                    .signed_ = static_cast<bool>(spv_type.traits.numeric.scalar.signedness),
-                };
+        template <typename flags_t, typename other_flags_t>
+        bool has_any_flag(flags_t flag, other_flags_t other_flag)
+        {
+            return (flag & other_flag) != 0;
+        }
 
-                if (has_any_flag(SPV_REFLECT_TYPE_FLAG_BOOL))
-                {
-                    scalar.kind = spirv_scalar_kind::bool_;
-                }
-                else if (has_any_flag(SPV_REFLECT_TYPE_FLAG_INT))
-                {
-                    scalar.kind = spirv_scalar_kind::int_;
-                }
-                else if (has_any_flag(SPV_REFLECT_TYPE_FLAG_FLOAT))
-                {
-                    scalar.kind = spirv_scalar_kind::float_;
-                }
-
-                type = scalar;
-            }
-
-            if (has_any_flag(SPV_REFLECT_TYPE_FLAG_MATRIX))
+        template <typename spv_parent_t>
+        void to_type(const spv_parent_t& spv_parent, const SpvReflectTypeDescription& spv_type, spirv_type& type)
+        {
+            if (has_any_flag(spv_parent.decoration_flags, SPV_REFLECT_DECORATION_BUILT_IN))
             {
-                const bool row_major = (spv_type.decoration_flags & SPV_REFLECT_DECORATION_ROW_MAJOR) == SPV_REFLECT_DECORATION_ROW_MAJOR;
-                type = spirv_mat {
-                    .scalar = std::get<spirv_scalar>(type),
-                    .rows = spv_type.traits.numeric.matrix.row_count,
-                    .cols = spv_type.traits.numeric.matrix.column_count,
-                    .row_major = row_major,
-                };
-            }
-            else if (has_any_flag(SPV_REFLECT_TYPE_FLAG_VECTOR))
-            {
-                type = spirv_vec {
-                    .scalar = std::get<spirv_scalar>(type),
-                    .components = spv_type.traits.numeric.vector.component_count,
-                };
-            }
-            else if (has_any_flag(SPV_REFLECT_TYPE_FLAG_STRUCT))
-            {
-                type = spirv_struct {
+                type = spirv_builtin {
                     .name = spv_type.type_name,
                 };
             }
+            else
+            {
+                if (has_any_flag(spv_type.type_flags, SPV_REFLECT_TYPE_FLAG_BOOL | SPV_REFLECT_TYPE_FLAG_INT | SPV_REFLECT_TYPE_FLAG_FLOAT))
+                {
+                    spirv_scalar scalar {
+                        .width = spv_type.traits.numeric.scalar.width,
+                    };
 
-            if (has_any_flag(SPV_REFLECT_TYPE_FLAG_ARRAY))
+                    if (has_any_flag(spv_type.type_flags, SPV_REFLECT_TYPE_FLAG_BOOL))
+                    {
+                        scalar.kind = spirv_scalar_kind::bool_;
+                    }
+                    else if (has_any_flag(spv_type.type_flags, SPV_REFLECT_TYPE_FLAG_INT))
+                    {
+                        scalar.kind = spirv_scalar_kind::int_;
+                        scalar.signed_ = static_cast<bool>(spv_type.traits.numeric.scalar.signedness);
+                    }
+                    else if (has_any_flag(spv_type.type_flags, SPV_REFLECT_TYPE_FLAG_FLOAT))
+                    {
+                        scalar.kind = spirv_scalar_kind::float_;
+                        scalar.signed_ = true;
+                    }
+
+                    type = scalar;
+                }
+
+                if (has_any_flag(spv_type.type_flags, SPV_REFLECT_TYPE_FLAG_MATRIX))
+                {
+                    const bool row_major =
+                        has_any_flag(spv_type.decoration_flags, SPV_REFLECT_DECORATION_ROW_MAJOR) and
+                        not has_any_flag(spv_type.decoration_flags, SPV_REFLECT_DECORATION_COLUMN_MAJOR);
+
+                    type = spirv_mat {
+                        .scalar = std::get<spirv_scalar>(type),
+                        .rows = spv_type.traits.numeric.matrix.row_count,
+                        .cols = spv_type.traits.numeric.matrix.column_count,
+                        .row_major = row_major,
+                    };
+                }
+                else if (has_any_flag(spv_type.type_flags, SPV_REFLECT_TYPE_FLAG_VECTOR))
+                {
+                    type = spirv_vec {
+                        .scalar = std::get<spirv_scalar>(type),
+                        .components = spv_type.traits.numeric.vector.component_count,
+                    };
+                }
+                else if (has_any_flag(spv_type.type_flags, SPV_REFLECT_TYPE_FLAG_STRUCT))
+                {
+                    type = spirv_struct {
+                        .name = spv_type.type_name,
+                    };
+                }
+            }
+
+            if (has_any_flag(spv_type.type_flags, SPV_REFLECT_TYPE_FLAG_ARRAY))
             {
                 spirv_array array;
                 const auto visitor = [&]<typename value_t>(value_t&& value) {
-                    if constexpr (variant_supports<spirv_array::variant_t, std::decay_t<value_t>>::value)
+                    if constexpr (variant_supports<spirv_single_type, std::decay_t<value_t>>::value)
                     {
                         array.type = std::forward<value_t>(value);
                     }
@@ -116,119 +138,45 @@ namespace spore::codegen
                 {
                     array.dims[index] = static_cast<std::size_t>(spv_type.traits.array.dims[index]);
                 }
+
+                type = std::move(array);
             }
         }
 
-        // inline void to_type(
-        //     const SpvReflectNumericTraits& spv_traits,
-        //     const SpvReflectArrayTraits& spv_array_traits,
-        //     const SpvReflectTypeFlags spv_flags,
-        //     spirv_type& type)
-        // {
-        //     const auto has_any_flag = [&](const SpvReflectTypeFlags other_spv_flags) {
-        //         return (spv_flags & other_spv_flags) != 0;
-        //     };
-        //
-        //     if (has_any_flag(SPV_REFLECT_TYPE_FLAG_BOOL | SPV_REFLECT_TYPE_FLAG_INT | SPV_REFLECT_TYPE_FLAG_FLOAT))
-        //     {
-        //         spirv_scalar scalar {
-        //             .width = spv_traits.scalar.width,
-        //             .is_signed = static_cast<bool>(spv_traits.scalar.signedness),
-        //         };
-        //
-        //         if (has_any_flag(SPV_REFLECT_TYPE_FLAG_BOOL))
-        //         {
-        //             scalar.kind = spirv_scalar_kind::bool_;
-        //         }
-        //         else if (has_any_flag(SPV_REFLECT_TYPE_FLAG_INT))
-        //         {
-        //             scalar.kind = spirv_scalar_kind::int_;
-        //         }
-        //         else if (has_any_flag(SPV_REFLECT_TYPE_FLAG_FLOAT))
-        //         {
-        //             scalar.kind = spirv_scalar_kind::float_;
-        //         }
-        //
-        //         type = std::move(scalar);
-        //     }
-        //
-        //     if (has_any_flag(SPV_REFLECT_TYPE_FLAG_STRUCT))
-        //     {
-        //         printf("");
-        //     }
-        //
-        //     if (has_any_flag(SPV_REFLECT_TYPE_FLAG_VECTOR))
-        //     {
-        //         auto& scalar = std::get<spirv_scalar>(type);
-        //         spirv_vec vec {
-        //             .scalar = std::move(scalar),
-        //             .components = spv_traits.vector.component_count,
-        //         };
-        //         type = std::move(vec);
-        //     }
-        //     else if (has_any_flag(SPV_REFLECT_TYPE_FLAG_MATRIX))
-        //     {
-        //         auto& scalar = std::get<spirv_scalar>(type);
-        //         spirv_mat mat {
-        //             .scalar = std::move(scalar),
-        //             .rows = spv_traits.matrix.row_count,
-        //             .cols = spv_traits.matrix.column_count,
-        //         };
-        //         type = std::move(mat);
-        //     }
-        //
-        //     if (has_any_flag(SPV_REFLECT_TYPE_FLAG_ARRAY))
-        //     {
-        //         spirv_array array;
-        //         const auto visitor = [&]<typename value_t>(value_t&& value) {
-        //             if constexpr (not std::is_same_v<spirv_array, std::decay_t<value_t>>)
-        //             {
-        //                 array.type = std::forward<value_t>(value);
-        //             }
-        //         };
-        //
-        //         std::visit(visitor, type);
-        //
-        //         for (std::size_t index = 0; index < spv_array_traits.dims_count && index < array.dims.size(); ++index)
-        //         {
-        //             array.dims[index] = static_cast<std::size_t>(spv_array_traits.dims[index]);
-        //         }
-        //     }
-        // }
-
         inline void to_variable(const SpvReflectInterfaceVariable& spv_variable, spirv_variable& variable)
         {
-            variable.name = get_or_make_name(spv_variable.name);
+            variable.name = get_or_make_name<spirv_variable>(spv_variable.name, "var");
             variable.index = static_cast<std::size_t>(spv_variable.location);
 
             if (const SpvReflectTypeDescription* spv_type = spv_variable.type_description)
             {
-                to_type(*spv_type, variable.type);
+                to_type(spv_variable, *spv_type, variable.type);
             }
         }
 
         inline void to_variable(const std::size_t index, const SpvReflectBlockVariable& spv_variable, spirv_variable& variable)
         {
-            variable.name = get_or_make_name(spv_variable.name);
+            variable.name = get_or_make_name<spirv_variable>(spv_variable.name, "var");
             variable.index = index;
 
             if (const SpvReflectTypeDescription* spv_type = spv_variable.type_description)
             {
-                to_type(*spv_type, variable.type);
+                to_type(spv_variable, *spv_type, variable.type);
             }
         }
 
-        inline void to_variable(const std::size_t index, const SpvReflectTypeDescription& spv_member, spirv_variable& variable)
+        template <typename spv_parent_t>
+        void to_variable(const std::size_t index, const spv_parent_t& spv_parent, const SpvReflectTypeDescription& spv_member, spirv_variable& variable)
         {
-            variable.name = get_or_make_name(spv_member.struct_member_name);
+            variable.name = get_or_make_name<spirv_variable>(spv_member.struct_member_name, "var");
             variable.index = index;
 
-            to_type(spv_member, variable.type);
+            to_type(spv_parent, spv_member, variable.type);
         }
 
         inline void to_descriptor_binding(const SpvReflectDescriptorBinding& spv_descriptor_binding, spirv_descriptor_binding& descriptor_binding)
         {
-            descriptor_binding.name = get_or_make_name(spv_descriptor_binding.name);
+            descriptor_binding.name = get_or_make_name<spirv_descriptor_binding>(spv_descriptor_binding.name, "descriptor");
             descriptor_binding.index = static_cast<std::size_t>(spv_descriptor_binding.binding);
             descriptor_binding.count = 1;
 
@@ -240,7 +188,7 @@ namespace spore::codegen
                 for (const SpvReflectTypeDescription& spv_member : std::span {spv_type->members, spv_type->member_count})
                 {
                     const std::size_t spv_member_index = descriptor_binding.variables.size();
-                    to_variable(spv_member_index, spv_member, descriptor_binding.variables.emplace_back());
+                    to_variable(spv_member_index, spv_descriptor_binding, spv_member, descriptor_binding.variables.emplace_back());
                 }
             }
 
@@ -284,8 +232,13 @@ namespace spore::codegen
 
         inline void to_constant(const SpvReflectBlockVariable& spv_variable, spirv_constant& constant)
         {
-            constant.name = get_or_make_name(spv_variable.name);
+            constant.name = get_or_make_name(spv_variable.name, "constant");
             constant.offset = spv_variable.offset;
+
+            if (const SpvReflectTypeDescription* spv_type = spv_variable.type_description)
+            {
+                constant.type = spv_type->type_name;
+            }
 
             for (const SpvReflectBlockVariable& spv_member : std::span {spv_variable.members, spv_variable.member_count})
             {
@@ -405,6 +358,7 @@ namespace spore::codegen
                 return false;
             }
 
+            defer destroy_module = [&] { spvReflectDestroyShaderModule(&spv_module); };
             detail::to_module(path, spv_module, module);
             return true;
         }
