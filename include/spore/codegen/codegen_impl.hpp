@@ -3,49 +3,40 @@
 #include "nlohmann/json.hpp"
 
 #include "spore/codegen/parsers/codegen_condition.hpp"
-#include "spore/codegen/parsers/cpp/codegen_condition_cpp_attribute.hpp"
-#include "spore/codegen/parsers/cpp/codegen_converter_cpp.hpp"
-#include "spore/codegen/parsers/cpp/codegen_parser_cpp.hpp"
-#include "spore/codegen/parsers/spirv/codegen_converter_spirv.hpp"
-#include "spore/codegen/parsers/spirv/codegen_parser_spirv.hpp"
+#include "spore/codegen/parsers/codegen_converter.hpp"
+#include "spore/codegen/parsers/codegen_parser.hpp"
 
 namespace spore::codegen
 {
-    namespace detail
-    {
-        template <typename ast_t>
-        constexpr std::string_view impl_name;
+    // namespace detail
+    // {
+    //     template <typename ast_t>
+    //     void register_default_conditions(codegen_condition_factory<ast_t>& factory)
+    //     {
+    //         factory.template register_condition<codegen_condition_any<ast_t>>();
+    //         factory.template register_condition<codegen_condition_all<ast_t>>();
+    //         factory.template register_condition<codegen_condition_none<ast_t>>();
+    //     }
+    //
+    //     template <typename ast_t>
+    //     void register_conditions(codegen_condition_factory<ast_t>& factory);
+    //
+    //     template <>
+    //     inline void register_conditions<cpp_file>(codegen_condition_factory<cpp_file>& factory)
+    //     {
+    //         register_default_conditions<cpp_file>(factory);
+    //         factory.register_condition<codegen_condition_cpp_attribute>();
+    //     }
+    //
+    //     template <>
+    //     inline void register_conditions<spirv_module>(codegen_condition_factory<spirv_module>& factory)
+    //     {
+    //         register_default_conditions<spirv_module>(factory);
+    //     }
+    // }
 
-        template <>
-        constexpr std::string_view impl_name<cpp_file> = "cpp";
-
-        template <>
-        constexpr std::string_view impl_name<spirv_module> = "spirv";
-
-        template <typename ast_t>
-        void register_default_conditions(codegen_condition_factory<ast_t>& factory)
-        {
-            factory.template register_condition<codegen_condition_any<ast_t>>();
-            factory.template register_condition<codegen_condition_all<ast_t>>();
-            factory.template register_condition<codegen_condition_none<ast_t>>();
-        }
-
-        template <typename ast_t>
-        void register_conditions(codegen_condition_factory<ast_t>& factory);
-
-        template <>
-        inline void register_conditions<cpp_file>(codegen_condition_factory<cpp_file>& factory)
-        {
-            register_default_conditions<cpp_file>(factory);
-            factory.register_condition<codegen_condition_cpp_attribute>();
-        }
-
-        template <>
-        inline void register_conditions<spirv_module>(codegen_condition_factory<spirv_module>& factory)
-        {
-            register_default_conditions<spirv_module>(factory);
-        }
-    }
+    template <typename ast_t>
+    struct codegen_impl_traits;
 
     template <typename ast_t>
     struct codegen_impl
@@ -62,7 +53,7 @@ namespace spore::codegen
 
         static constexpr std::string_view name()
         {
-            return detail::impl_name<ast_t>;
+            return codegen_impl_traits<ast_t>::name();
         }
 
         codegen_parser<ast_t>& parser() const
@@ -86,11 +77,11 @@ namespace spore::codegen
 
         static inline auto _setup = [] {
             codegen_condition_factory<ast_t>& factory = codegen_condition_factory<ast_t>::get();
-            detail::register_conditions(factory);
+            codegen_impl_traits<ast_t>::register_conditions(factory);
             return std::ignore;
         }();
     };
 
-    using codegen_impl_cpp = codegen_impl<cpp_file>;
-    using codegen_impl_spirv = codegen_impl<spirv_module>;
+    // using codegen_impl_cpp = codegen_impl<cpp_file>;
+    // using codegen_impl_spirv = codegen_impl<spirv_module>;
 }

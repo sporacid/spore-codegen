@@ -58,7 +58,7 @@ namespace spore::codegen
         json::get_checked(json, "name", value.name, detail::config_context);
         json::get_checked(json, "directory", value.directory, detail::config_context);
         json::get_checked(json, "steps", value.steps, detail::config_context);
-        json::get_opt(json, "parser", value.parser, codegen_impl_cpp::name());
+        json::get_checked(json, "parser", value.parser, detail::config_context);
 
         nlohmann::json files;
         json::get_opt(json, "files", files);

@@ -13,5 +13,16 @@
     "spirv-reflect",
     "tiny-process-library",
     "yaml-cpp"
-  ]
+  ],
+  "features": {
+    "cpp": {
+      "description": "support for clang-based C++ parser"
+    },
+    "spirv": {
+      "description": "support for SPIR-V parser",
+      "dependencies": [
+        "spirv-reflect"
+      ]
+    }
+  }
 }

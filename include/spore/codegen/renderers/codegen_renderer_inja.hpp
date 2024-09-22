@@ -9,6 +9,7 @@
 #include "inja/inja.hpp"
 #pragma warning(pop)
 
+#include "base64/base64.hpp"
 #include "nlohmann/json.hpp"
 #include "spdlog/spdlog.h"
 

@@ -18,11 +18,8 @@
 #include "spore/codegen/codegen_version.hpp"
 #include "spore/codegen/misc/current_path_scope.hpp"
 #include "spore/codegen/misc/defer.hpp"
-#include "spore/codegen/renderers/codegen_renderer.hpp"
-#include "spore/codegen/renderers/codegen_renderer_composite.hpp"
-#include "spore/codegen/renderers/codegen_renderer_inja.hpp"
+#include "spore/codegen/utils/aggregates.hpp"
 #include "spore/codegen/utils/files.hpp"
-#include "spore/codegen/utils/strings.hpp"
 
 namespace spore::codegen
 {
@@ -43,22 +40,23 @@ namespace spore::codegen
         }
     }
 
+    template <typename renderer_t, typename... impls_t>
     struct codegen_app
     {
         using process_ptr = std::unique_ptr<TinyProcessLib::Process>;
 
+        codegen_options options;
         codegen_config config;
         codegen_cache cache;
-        codegen_options options;
         nlohmann::json user_data;
+        renderer_t renderer;
+        std::tuple<impls_t...> impls;
         std::vector<process_ptr> processes;
-        std::unique_ptr<codegen_renderer> renderer;
 
-        codegen_impl_cpp impl_cpp;
-        codegen_impl_spirv impl_spirv;
-
-        explicit codegen_app(codegen_options in_options)
-            : options(std::move(in_options))
+        codegen_app(codegen_options in_options, renderer_t in_renderer, impls_t... in_impls)
+            : options(std::move(in_options)),
+              renderer(std::move(in_renderer)),
+              impls(std::move(in_impls)...)
         {
             const auto normalize_path = [](std::string& value, const std::string* base = nullptr) {
                 std::filesystem::path path(value);
@@ -114,21 +112,6 @@ namespace spore::codegen
             }
 
             options.templates.emplace_back(std::filesystem::current_path().string());
-
-            renderer = std::make_unique<codegen_renderer_composite>(
-                std::make_shared<codegen_renderer_inja>(options.templates));
-
-            const auto& cpp_args = options.additional_args[codegen_impl_cpp::name()];
-            impl_cpp = codegen_impl_cpp {
-                codegen_parser_cpp {cpp_args},
-                codegen_converter_cpp {},
-            };
-
-            const auto& spirv_args = options.additional_args[codegen_impl_spirv::name()];
-            impl_spirv = codegen_impl_spirv {
-                codegen_parser_spirv {spirv_args},
-                codegen_converter_spirv {},
-            };
         }
 
         void run()
@@ -142,15 +125,24 @@ namespace spore::codegen
                     const codegen_config_stage& stage = config.stages.at(index);
                     codegen_stage_data stage_data = data.make_stage(index);
 
-                    if (stage.parser == codegen_impl_cpp::name())
-                    {
-                        run_stage(impl_cpp, stage, data, stage_data);
-                    }
-                    else if (stage.parser == codegen_impl_spirv::name())
-                    {
-                        run_stage(impl_spirv, stage, data, stage_data);
-                    }
-                    else
+                    bool has_stage_run = false;
+                    const auto action_impl = [&]<typename impl_t>(const impl_t& impl) {
+                        if (stage.parser == impl_t::name())
+                        {
+                            if (has_stage_run)
+                            {
+                                SPDLOG_WARN("duplicate parser implementation, parser={}", stage.parser);
+                                return;
+                            }
+
+                            run_stage(impl, stage, data, stage_data);
+                            has_stage_run = true;
+                        }
+                    };
+
+                    aggregates::for_each(impls, action_impl);
+
+                    if (!has_stage_run)
                     {
                         SPDLOG_WARN("unknown parser implementation, parser={}", stage.parser);
                     }
@@ -262,7 +254,7 @@ namespace spore::codegen
         void parse_asts(const codegen_impl<ast_t>& impl, const codegen_config_stage& stage, const std::vector<std::string>& files, std::vector<ast_t>& asts) const
         {
             const auto action = [&] {
-                SPDLOG_INFO("parsing stage files, stage={} files={} count={}", stage.name, stage.files, files.size());
+                SPDLOG_INFO("parsing stage files, stage={} parser={} files={} count={}", stage.name, stage.parser, stage.files, files.size());
 
                 if (!impl.parser().parse_asts(files, asts))
                 {
@@ -319,7 +311,7 @@ namespace spore::codegen
                     SPDLOG_DEBUG("rendering output, file={}", output_data.path);
 
                     std::string result;
-                    if (!renderer->render_file(template_data.path, json_data, result))
+                    if (!renderer.render_file(template_data.path, json_data, result))
                     {
                         throw codegen_error(codegen_error_code::rendering, "failed to render input, file={} template={}", file_data.path, template_data.path);
                     }
@@ -379,7 +371,7 @@ namespace spore::codegen
                 for (const std::filesystem::path& template_file : template_files)
                 {
                     std::string template_string = template_file.string();
-                    if (renderer->can_render_file(template_string))
+                    if (renderer.can_render_file(template_string))
                     {
                         const codegen_cache_status status = cache.check_and_update(template_string);
 
