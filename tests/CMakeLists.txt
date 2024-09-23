@@ -3,11 +3,9 @@ set(
   CACHE STRING "Target for the codegen unit tests"
 )
 
-file(
-  GLOB_RECURSE SPORE_CODEGEN_TESTS_FILES
-    ${PROJECT_SOURCE_DIR}/include/**.hpp
-    ${PROJECT_SOURCE_DIR}/tests/**.cpp
-)
+if (SPORE_WITH_CPP)
+  list(APPEND SPORE_CODEGEN_TESTS_FILES t_codegen_parser_cpp.cpp)
+endif ()
 
 add_executable(
   ${SPORE_CODEGEN_TESTS_TARGET}

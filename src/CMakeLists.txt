@@ -40,7 +40,6 @@ target_link_libraries(
     spdlog::spdlog
     tiny-process-library::tiny-process-library
     yaml-cpp::yaml-cpp
-    ${CLANG_LIBRARIES}
 )
 
 target_include_directories(
