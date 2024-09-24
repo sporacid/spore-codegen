@@ -63,7 +63,7 @@ if (SPORE_WITH_CPP)
   target_link_libraries(
     ${SPORE_CODEGEN_LIBRARY_TARGET}
     INTERFACE
-      unofficial::spirv-reflect
+      ${CLANG_LIBRARIES}
   )
 
   target_compile_definitions(
@@ -79,13 +79,13 @@ if (SPORE_WITH_SPIRV)
   target_link_libraries(
     ${SPORE_CODEGEN_LIBRARY_TARGET}
     INTERFACE
-    ${CLANG_LIBRARIES}
+      unofficial::spirv-reflect
   )
 
   target_compile_definitions(
     ${SPORE_CODEGEN_LIBRARY_TARGET}
     INTERFACE
-    SPORE_WITH_SPIRV
+      SPORE_WITH_SPIRV
   )
 endif ()
 

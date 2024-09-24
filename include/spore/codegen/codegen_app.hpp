@@ -186,15 +186,15 @@ namespace spore::codegen
         template <typename ast_t>
         void run_stage(const codegen_impl<ast_t>& impl, const codegen_config_stage& stage, const codegen_data& data, codegen_stage_data& stage_data)
         {
-            const std::filesystem::path directory = std::filesystem::current_path() / stage.directory;
+            const std::filesystem::path stage_directory {stage.directory};
 
-            if (!std::filesystem::exists(directory))
+            if (!std::filesystem::exists(stage_directory))
             {
-                SPDLOG_DEBUG("skipping stage because directory does not exist, stage={} directory={}", stage.name, directory.string());
+                SPDLOG_DEBUG("skipping stage because directory does not exist, stage={} directory={}", stage.name, stage.directory);
                 return;
             }
 
-            current_path_scope directory_scope {directory};
+            current_path_scope directory_scope {stage_directory};
 
             std::vector<std::size_t> dirty_indices;
             dirty_indices.reserve(stage_data.files.size());
@@ -397,8 +397,9 @@ namespace spore::codegen
         codegen_stage_data make_stage_data(const codegen_config_stage& stage, const codegen_data& data)
         {
             std::vector<std::filesystem::path> stage_files;
+            if (std::filesystem::exists(stage.directory))
             {
-                current_path_scope directory_scope {std::filesystem::current_path() / stage.directory};
+                current_path_scope directory_scope {stage.directory};
                 stage_files = glob::rglob(stage.files);
             }
 
