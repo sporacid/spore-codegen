@@ -396,27 +396,27 @@ namespace spore::codegen
 
         codegen_stage_data make_stage_data(const codegen_config_stage& stage, const codegen_data& data)
         {
-            std::vector<std::filesystem::path> stage_files;
+            codegen_stage_data stage_data;
+
             if (std::filesystem::exists(stage.directory))
             {
                 current_path_scope directory_scope {stage.directory};
-                stage_files = glob::rglob(stage.files);
-            }
 
-            codegen_stage_data stage_data;
-            stage_data.files.reserve(stage_files.size());
+                std::vector<std::filesystem::path> stage_files = glob::rglob(stage.files);
+                stage_data.files.reserve(stage_files.size());
 
-            for (const std::filesystem::path& stage_file : stage_files)
-            {
-                std::string file_string = stage_file.string();
-                const codegen_cache_status status = cache.check_and_update(file_string);
+                for (const std::filesystem::path& stage_file : stage_files)
+                {
+                    std::string file_string = stage_file.string();
+                    const codegen_cache_status status = cache.check_and_update(file_string);
 
-                codegen_file_data file_data {
-                    .path = std::move(file_string),
-                    .status = status,
-                };
+                    codegen_file_data file_data {
+                        .path = std::move(file_string),
+                        .status = status,
+                    };
 
-                stage_data.files.emplace_back(std::move(file_data));
+                    stage_data.files.emplace_back(std::move(file_data));
+                }
             }
 
             for (std::size_t step_index = 0; step_index < stage.steps.size(); ++step_index)
