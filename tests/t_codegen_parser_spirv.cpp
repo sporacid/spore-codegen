@@ -157,4 +157,19 @@ TEST_CASE("spore::codegen::codegen_parser_spirv", "[spore::codegen][spore::codeg
         REQUIRE(descriptor1_1.variables.empty());
         REQUIRE(std::holds_alternative<spirv_image>(descriptor1_1.type));
     }
+
+    SECTION("parse constants is feature complete")
+    {
+        const spirv_constant& constant0 = spirv_module.constants[0];
+
+        REQUIRE(not constant0.name.empty());
+        REQUIRE(constant0.offset == 0);
+        REQUIRE(std::holds_alternative<spirv_struct>(constant0.type));
+        REQUIRE(constant0.variables.size() == 2);
+
+        REQUIRE(constant0.variables[0].index == 0);
+        REQUIRE(constant0.variables[0].name == "constant0");
+        REQUIRE(std::holds_alternative<spirv_vec>(constant0.variables[0].type));
+        REQUIRE(std::holds_alternative<spirv_scalar>(constant0.variables[1].type));
+    }
 }

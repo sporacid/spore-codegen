@@ -267,7 +267,7 @@ namespace spore::codegen
 
             if (const SpvReflectTypeDescription* spv_type = spv_variable.type_description)
             {
-                constant.type = spv_type->type_name;
+                to_type(spv_variable, *spv_type, constant.type);
             }
 
             for (const SpvReflectBlockVariable& spv_member : std::span {spv_variable.members, spv_variable.member_count})
