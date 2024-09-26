@@ -14,7 +14,8 @@
     "yaml-cpp"
   ],
   "default-features": [
-    "cpp"
+    "cpp",
+    "spirv"
   ],
   "features": {
     "cpp": {

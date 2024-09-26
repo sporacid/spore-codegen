@@ -51,21 +51,6 @@ namespace spore::codegen
         }
     }
 
-    inline void to_json(nlohmann::json& json, const spirv_variable_kind value)
-    {
-        static const std::map<spirv_variable_kind, std::string_view> value_map {
-            {spirv_variable_kind::none, "none"},
-            {spirv_variable_kind::input, "input"},
-            {spirv_variable_kind::output, "output"},
-        };
-
-        const auto it_value = value_map.find(value);
-        if (it_value != value_map.end())
-        {
-            json = it_value->second.data();
-        }
-    }
-
     inline void to_json(nlohmann::json& json, const spirv_scalar_kind value)
     {
         static const std::map<spirv_scalar_kind, std::string_view> name_map {
@@ -136,7 +121,6 @@ namespace spore::codegen
 
     inline void to_json(nlohmann::json& json, const spirv_variable& value)
     {
-        json["kind"] = value.kind;
         json["name"] = value.name;
         json["index"] = value.index;
         json["type"] = value.type;

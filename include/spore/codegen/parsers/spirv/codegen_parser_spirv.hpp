@@ -1,9 +1,15 @@
 #pragma once
 
+#include <ranges>
+
+#include "spdlog/spdlog.h"
 #include "spirv_reflect.h"
 
+#include "spore/codegen/misc/defer.hpp"
+#include "spore/codegen/misc/make_unique_id.hpp"
 #include "spore/codegen/parsers/codegen_parser.hpp"
 #include "spore/codegen/parsers/spirv/ast/spirv_module.hpp"
+#include "spore/codegen/utils/files.hpp"
 
 namespace spore::codegen
 {
@@ -271,10 +277,28 @@ namespace spore::codegen
             }
         }
 
+        inline void to_stage(const SpvReflectShaderStageFlagBits spv_stage, spirv_module_stage& stage)
+        {
+            static const std::map<SpvReflectShaderStageFlagBits, spirv_module_stage> stage_map {
+                {SPV_REFLECT_SHADER_STAGE_VERTEX_BIT, spirv_module_stage::vertex},
+                {SPV_REFLECT_SHADER_STAGE_TESSELLATION_CONTROL_BIT, spirv_module_stage::tesselation_control},
+                {SPV_REFLECT_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, spirv_module_stage::tesselation_eval},
+                {SPV_REFLECT_SHADER_STAGE_GEOMETRY_BIT, spirv_module_stage::geometry},
+                {SPV_REFLECT_SHADER_STAGE_FRAGMENT_BIT, spirv_module_stage::fragment},
+                {SPV_REFLECT_SHADER_STAGE_COMPUTE_BIT, spirv_module_stage::compute},
+                {SPV_REFLECT_SHADER_STAGE_MESH_BIT_NV, spirv_module_stage::mesh},
+                {SPV_REFLECT_SHADER_STAGE_MESH_BIT_EXT, spirv_module_stage::mesh},
+            };
+
+            const auto it_stage = stage_map.find(spv_stage);
+            stage = it_stage != stage_map.end() ? it_stage->second : spirv_module_stage::none;
+        }
+
         inline void to_module(std::string_view path, const SpvReflectShaderModule& spv_module, spirv_module& module)
         {
             module.path = path;
             module.entry_point = spv_module.entry_point_name;
+            to_stage(spv_module.shader_stage, module.stage);
 
             std::vector<SpvReflectDescriptorSet*> spv_descriptor_sets;
             SpvReflectResult spv_result = spv_enumerate(spv_module, &spvReflectEnumerateDescriptorSets, spv_descriptor_sets);

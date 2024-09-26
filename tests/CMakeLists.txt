@@ -7,6 +7,10 @@ if (SPORE_WITH_CPP)
   list(APPEND SPORE_CODEGEN_TESTS_FILES t_codegen_parser_cpp.cpp)
 endif ()
 
+if (SPORE_WITH_SPIRV)
+  list(APPEND SPORE_CODEGEN_TESTS_FILES t_codegen_parser_spirv.cpp)
+endif ()
+
 add_executable(
   ${SPORE_CODEGEN_TESTS_TARGET}
   ${SPORE_CODEGEN_TESTS_FILES}

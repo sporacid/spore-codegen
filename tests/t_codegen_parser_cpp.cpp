@@ -7,12 +7,12 @@
 
 namespace spore::codegen::detail
 {
-    std::string get_data_file()
+    std::string get_cpp_file()
     {
-        std::source_location source_location = std::source_location::current();
-        std::filesystem::path current_file = source_location.file_name();
-        std::filesystem::path current_dir = current_file.parent_path();
-        std::filesystem::path input_file = current_dir / "t_codegen_parser_cpp_data.hpp";
+        constexpr std::source_location source_location = std::source_location::current();
+        const std::filesystem::path current_file = source_location.file_name();
+        const std::filesystem::path current_dir = current_file.parent_path();
+        const std::filesystem::path input_file = current_dir / "t_codegen_parser_cpp_data.hpp";
         return input_file.string();
     }
 }
@@ -24,7 +24,7 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
     constexpr std::string_view parser_args[] {"-std=c++20"};
 
     codegen_parser_cpp parser {parser_args};
-    std::vector input_files {detail::get_data_file()};
+    std::vector input_files {detail::get_cpp_file()};
     std::vector<cpp_file> cpp_files;
 
     REQUIRE(parser.parse_asts(input_files, cpp_files));
