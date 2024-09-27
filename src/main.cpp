@@ -107,7 +107,7 @@ int main(const int argc, const char* argv[])
         "Additional implementation specific arguments can be supplied via the syntax --<impl>:<arg>, e.g.\n"
 #ifdef SPORE_WITH_CPP
         "  --cpp:-std=c++11\n"
-        "  --cpp:-Iinclude/dir\n"
+        "  --cpp:-Iinclude/dir"
 #endif
         ;
 

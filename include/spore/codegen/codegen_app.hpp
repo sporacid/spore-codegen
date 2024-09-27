@@ -123,6 +123,14 @@ namespace spore::codegen
                 for (std::size_t index = 0; index < config.stages.size(); ++index)
                 {
                     const codegen_config_stage& stage = config.stages.at(index);
+                    const std::filesystem::path stage_directory {stage.directory};
+
+                    if (!std::filesystem::exists(stage_directory))
+                    {
+                        SPDLOG_DEBUG("skipping stage because directory does not exist, stage={} directory={}", stage.name, stage.directory);
+                        return;
+                    }
+
                     codegen_stage_data stage_data = data.make_stage(index);
 
                     bool has_stage_run = false;
@@ -186,15 +194,7 @@ namespace spore::codegen
         template <typename ast_t>
         void run_stage(const codegen_impl<ast_t>& impl, const codegen_config_stage& stage, const codegen_data& data, codegen_stage_data& stage_data)
         {
-            const std::filesystem::path stage_directory {stage.directory};
-
-            if (!std::filesystem::exists(stage_directory))
-            {
-                SPDLOG_DEBUG("skipping stage because directory does not exist, stage={} directory={}", stage.name, stage.directory);
-                return;
-            }
-
-            current_path_scope directory_scope {stage_directory};
+            current_path_scope directory_scope {stage.directory};
 
             std::vector<std::size_t> dirty_indices;
             dirty_indices.reserve(stage_data.files.size());
@@ -398,7 +398,6 @@ namespace spore::codegen
         {
             codegen_stage_data stage_data;
 
-            if (std::filesystem::exists(stage.directory))
             {
                 current_path_scope directory_scope {stage.directory};
 
@@ -429,9 +428,10 @@ namespace spore::codegen
 
                 for (const std::string& template_ : step.templates)
                 {
+                    const std::string template_deterministic = std::filesystem::path(template_).make_preferred().string();
                     const auto template_predicate = [&](const codegen_template_data& template_data) {
                         // TODO @sporacid Find a better way to achieve the same thing without suffix matching
-                        return template_data.path.ends_with(std::filesystem::path(template_).make_preferred().string());
+                        return template_data.path.ends_with(template_deterministic);
                     };
 
                     const auto it_template = std::ranges::find_if(data.templates, template_predicate);

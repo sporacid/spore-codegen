@@ -113,8 +113,7 @@ TEST_CASE("spore::codegen::codegen_parser_spirv", "[spore::codegen][spore::codeg
         REQUIRE(std::get<spirv_vec>(output_elem_type2).scalar.width == 32);
         REQUIRE(std::get<spirv_vec>(output_elem_type2).scalar.kind == spirv_scalar_kind::float_);
 
-        // TODO @sporacid invalid value should be max of std::size_t
-        REQUIRE(spirv_module.outputs[3].index == std::numeric_limits<std::uint32_t>::max());
+        REQUIRE(spirv_module.outputs[3].index == std::numeric_limits<std::size_t>::max());
         REQUIRE(not spirv_module.outputs[3].name.empty());
 
         const spirv_type& output_type3 = spirv_module.outputs[3].type;

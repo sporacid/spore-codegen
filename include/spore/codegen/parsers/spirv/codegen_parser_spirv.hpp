@@ -189,7 +189,17 @@ namespace spore::codegen
         inline void to_variable(const SpvReflectInterfaceVariable& spv_variable, spirv_variable& variable)
         {
             variable.name = get_or_make_name<spirv_variable>(spv_variable.name, "var");
-            variable.index = static_cast<std::size_t>(spv_variable.location);
+
+            using spv_location_t = decltype(spv_variable.location);
+
+            if (spv_variable.location == std::numeric_limits<spv_location_t>::max())
+            {
+                variable.index = std::numeric_limits<std::size_t>::max();
+            }
+            else
+            {
+                variable.index = static_cast<std::size_t>(spv_variable.location);
+            }
 
             if (const SpvReflectTypeDescription* spv_type = spv_variable.type_description)
             {
