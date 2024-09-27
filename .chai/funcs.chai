@@ -1,0 +1,9 @@
+namespace("funcs")
+
+funcs.add = fun(x, y) {
+    x + y;
+}
+
+funcs.remove = fun(x, y) {
+    x - y;
+}

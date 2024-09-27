@@ -105,8 +105,18 @@ int main(const int argc, const char* argv[])
 
     spdlog::set_pattern("%l: %v");
 
+    codegen_scripting_functions_chaiscript chai(
+        std::initializer_list<std::string> {
+            R"(C:\production\spore-codegen\.chai\funcs.chai)",
+        });
 
-    codegen_scripting_functions_chaiscript chai;
+    nlohmann::json result;
+    nlohmann::json params {
+        {"x", 42},
+        {"y", 18},
+    };
+
+    std::ignore = chai.invoke("funcs.add", params, result);
 
     argparse::ArgumentParser arg_parser {
         SPORE_CODEGEN_NAME,
