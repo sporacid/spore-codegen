@@ -89,6 +89,25 @@ if (SPORE_WITH_SPIRV)
   )
 endif ()
 
+if (SPORE_WITH_SCRIPTING_CHAISCRIPT)
+  find_path(
+    SPORE_CHAISCRIPT_INCLUDE_DIRS
+    chaiscript/chaiscript.hpp
+  )
+
+  target_include_directories(
+    ${SPORE_CODEGEN_LIBRARY_TARGET}
+    INTERFACE
+      ${SPORE_CHAISCRIPT_INCLUDE_DIRS}
+  )
+
+  target_compile_definitions(
+    ${SPORE_CODEGEN_LIBRARY_TARGET}
+    INTERFACE
+      SPORE_WITH_SCRIPTING_CHAISCRIPT
+  )
+endif ()
+
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   find_package(TBB REQUIRED)
   target_link_libraries(

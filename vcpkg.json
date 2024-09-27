@@ -16,7 +16,8 @@
   "default-features": [
     "cpp",
     "spirv",
-    "scripting-lua"
+    "scripting-lua",
+    "scripting-chaiscript"
   ],
   "features": {
     "cpp": {
@@ -31,7 +32,13 @@
     "scripting-lua": {
       "description": "Support for renderer scripting with LUA",
       "dependencies": [
-        "lua"
+        "luabridge"
+      ]
+    },
+    "scripting-chaiscript": {
+      "description": "Support for renderer scripting with chaiscript",
+      "dependencies": [
+        "chaiscript"
       ]
     }
   }

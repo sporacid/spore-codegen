@@ -25,6 +25,16 @@
 #include "spore/codegen/parsers/spirv/codegen_parser_spirv.hpp"
 #endif
 
+#include "spore/codegen/renderers/codegen_scripting_functions_native.hpp"
+
+#ifdef SPORE_WITH_SCRIPTING_LUA
+#include "spore/codegen/renderers/codegen_scripting_functions_lua.hpp"
+#endif
+
+#ifdef SPORE_WITH_SCRIPTING_CHAISCRIPT
+#include "spore/codegen/renderers/codegen_scripting_functions_chaiscript.hpp"
+#endif
+
 namespace spore::codegen
 {
     namespace detail
@@ -94,6 +104,9 @@ int main(const int argc, const char* argv[])
     using namespace spore::codegen;
 
     spdlog::set_pattern("%l: %v");
+
+
+    codegen_scripting_functions_chaiscript chai;
 
     argparse::ArgumentParser arg_parser {
         SPORE_CODEGEN_NAME,

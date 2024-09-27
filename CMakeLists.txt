@@ -10,6 +10,7 @@ option(SPORE_BUILD_TESTS "Whether to build tests" ON)
 option(SPORE_WITH_CPP "Whether to build and enable C++ parser" ON)
 option(SPORE_WITH_SPIRV "Whether to build and enable SPIR-V parser" OFF)
 option(SPORE_WITH_SCRIPTING_LUA "Whether to build and enable LUA scripting for template renderers" OFF)
+option(SPORE_WITH_SCRIPTING_CHAISCRIPT "Whether to build and enable chaiscript scripting for template renderers" OFF)
 
 set(CMAKE_CXX_STANDARD 20)
 
