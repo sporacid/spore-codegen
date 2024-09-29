@@ -53,12 +53,12 @@ namespace spore::codegen::json
             property.insert(property.begin(), '/');
         }
 
-        nlohmann::json::json_pointer json_ptr {property};
+        const nlohmann::json::json_pointer json_ptr {property};
         return json.contains(json_ptr) && truthy(json[json_ptr]);
     }
 
     template <typename value_t>
-    bool get(const nlohmann::json& json, std::string_view key, value_t& value)
+    bool get(const nlohmann::json& json, const std::string_view key, value_t& value)
     {
         if (json.contains(key))
         {
@@ -79,7 +79,7 @@ namespace spore::codegen::json
     }
 
     template <typename value_t>
-    void get_checked(const nlohmann::json& json, std::string_view key, value_t& value, std::string_view context)
+    void get_checked(const nlohmann::json& json, std::string_view key, value_t& value, const std::string_view context)
     {
         if (!get(json, key, value)) [[unlikely]]
         {

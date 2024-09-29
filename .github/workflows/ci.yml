@@ -20,14 +20,13 @@ jobs:
           sudo apt-get -qq update &&
           sudo apt-get install -y build-essential libtbb-dev ninja-build
       - name: Install LLVM
-        uses: KyleMayes/install-llvm-action@v2
-        with:
-          version: 17.0
-          env: true
-      - name: Export LLVM Environment
         run: |
-          echo "LLVM_DIR=${{ env.LLVM_PATH }}" >> $GITHUB_ENV &&
-          echo "CXXFLAGS=-isystem${{ env.LLVM_PATH }}/lib/clang/17/include" >> $GITHUB_ENV
+          wget https://apt.llvm.org/llvm.sh &&
+          chmod u+x llvm.sh &&
+          sudo ./llvm.sh 18 all &&
+          sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-18 100 &&
+          sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-18 100 &&
+          echo /usr/lib/llvm-18 >> $GITHUB_PATH
       - name: Install CMake
         uses: lukka/get-cmake@latest
       - name: Install Vcpkg

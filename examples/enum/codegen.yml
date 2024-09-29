@@ -6,6 +6,6 @@ stages:
   parser: cpp
   steps:
   - name: enum
-    directory: include
+    directory: .codegen/include
     templates:
       - templates/enum.hpp.inja
