@@ -48,7 +48,6 @@ target_include_directories(
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/thirdparty
     ${SPORE_PICOSHA2_INCLUDE_DIRS}
-    ${CLANG_INCLUDE_DIRS}
 )
 
 if (SPORE_WITH_CPP)

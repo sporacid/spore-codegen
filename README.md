@@ -87,7 +87,7 @@ at [this repository](https://github.com/sporacid/spore-codegen-example) for a mo
 ### Windows
 
 1. Install `LLVM` from [GitHub releases](https://github.com/llvm/llvm-project/releases).
-2. Set `LLVM_DIR` environment variable to the `LLVM` install path.
+2. Add `LLVM` install path to `PATH` environment variable.
 3. Clone and set up `Vcpkg`:
    ```shell
    set VCPKG_DEFAULT_TRIPLET="x64-windows"
@@ -95,7 +95,6 @@ at [this repository](https://github.com/sporacid/spore-codegen-example) for a mo
    cd vcpkg
    ./bootstrap-vcpkg.bat
    set VCPKG_ROOT="%cd%"
-   set VCPKG_KEEP_ENV_VARS="LLVM_DIR"
    ```
 
 ### Ubuntu
@@ -103,8 +102,11 @@ at [this repository](https://github.com/sporacid/spore-codegen-example) for a mo
 1. Install `LLVM`:
 
    ```shell
-   sudo apt-get -qq update
-   sudo apt-get install llvm llvm-dev
+    export LLVM_VERSION=18
+    wget https://apt.llvm.org/llvm.sh
+    chmod u+x llvm.sh
+    sudo ./llvm.sh ${LLVM_VERSION} all
+    export PATH="$PATH:/usr/lib/llvm-${LLVM_VERSION}"
    ```
 
 2. Clone and set up `Vcpkg`:

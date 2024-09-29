@@ -6,6 +6,6 @@ stages:
   parser: cpp
   steps:
   - name: json
-    directory: include
+    directory: .codegen/include
     templates:
       - templates/json.hpp.inja

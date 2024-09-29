@@ -5,6 +5,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "picosha2.h"
 
@@ -22,7 +23,7 @@ namespace spore::codegen::files
             yaml,
         };
 
-        inline json_file_type get_json_type(std::string_view path)
+        inline json_file_type get_json_type(const std::string_view path)
         {
             constexpr std::string_view json_exts[] {".json"};
             constexpr std::string_view bson_exts[] {".bson"};
@@ -36,12 +37,12 @@ namespace spore::codegen::files
                 return json_file_type::json;
             }
 
-            if (std::any_of(std::begin(bson_exts), std::end(bson_exts), predicate))
+            if (std::ranges::any_of(bson_exts, predicate))
             {
                 return json_file_type::bson;
             }
 
-            if (std::any_of(std::begin(yaml_exts), std::end(yaml_exts), predicate))
+            if (std::ranges::any_of(yaml_exts, predicate))
             {
                 return json_file_type::yaml;
             }
@@ -49,9 +50,9 @@ namespace spore::codegen::files
             return json_file_type::none;
         }
 
-        inline bool create_directories(std::string_view path)
+        inline bool create_directories(const std::string_view path)
         {
-            std::filesystem::path parent = std::filesystem::path(path).parent_path();
+            const std::filesystem::path parent = std::filesystem::path(path).parent_path();
 
             if (!parent.empty() && !std::filesystem::exists(parent) && !std::filesystem::create_directories(parent))
             {
@@ -62,7 +63,7 @@ namespace spore::codegen::files
         }
     }
 
-    inline bool write_file(std::string_view path, const std::string& content)
+    inline bool write_file(const std::string_view path, const std::string& content)
     {
         if (!detail::create_directories(path))
         {
@@ -75,7 +76,7 @@ namespace spore::codegen::files
         return !stream.bad();
     }
 
-    inline bool write_file(std::string_view path, const std::vector<std::uint8_t>& bytes)
+    inline bool write_file(const std::string_view path, const std::vector<std::uint8_t>& bytes)
     {
         if (!detail::create_directories(path))
         {
@@ -88,7 +89,7 @@ namespace spore::codegen::files
         return !stream.bad();
     }
 
-    inline bool write_file(std::string_view path, const nlohmann::json& json)
+    inline bool write_file(const std::string_view path, const nlohmann::json& json)
     {
         constexpr std::size_t indent = 2;
         switch (detail::get_json_type(path))
@@ -111,9 +112,9 @@ namespace spore::codegen::files
         }
     }
 
-    inline bool read_file(std::string_view path, std::string& content)
+    inline bool read_file(const std::string_view path, std::string& content)
     {
-        std::ifstream stream(path.data());
+        const std::ifstream stream(path.data());
         if (!stream.is_open())
         {
             return false;
@@ -125,7 +126,7 @@ namespace spore::codegen::files
         return !stream.bad();
     }
 
-    inline bool read_file(std::string_view path, std::vector<std::uint8_t>& bytes)
+    inline bool read_file(const std::string_view path, std::vector<std::uint8_t>& bytes)
     {
         std::ifstream stream(path.data(), std::ios::in | std::ios::binary);
         if (!stream.is_open())
@@ -142,7 +143,7 @@ namespace spore::codegen::files
         return !stream.bad();
     }
 
-    inline bool read_file(std::string_view path, nlohmann::json& json)
+    inline bool read_file(const std::string_view path, nlohmann::json& json)
     {
         json = nlohmann::json(nlohmann::json::value_t::discarded);
         switch (detail::get_json_type(path))
@@ -185,7 +186,7 @@ namespace spore::codegen::files
         return !json.is_discarded();
     }
 
-    inline bool hash_file(std::string_view path, std::string& hash)
+    inline bool hash_file(const std::string_view path, std::string& hash)
     {
         std::vector<std::uint8_t> data;
         if (!read_file(path, data))

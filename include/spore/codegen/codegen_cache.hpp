@@ -2,12 +2,11 @@
 
 #include <filesystem>
 #include <map>
+#include <set>
 #include <string>
 #include <string_view>
-#include <vector>
 
 #include "nlohmann/json.hpp"
-#include "spdlog/spdlog.h"
 
 #include "spore/codegen/codegen_version.hpp"
 #include "spore/codegen/utils/files.hpp"
@@ -26,40 +25,40 @@ namespace spore::codegen
     {
         std::string file;
         std::string hash;
-        std::int64_t mtime = 0;
-
-        bool operator<(const codegen_cache_entry& other) const
-        {
-            return file < other.file;
-        }
-
-        bool operator==(const codegen_cache_entry& other) const
-        {
-            return file == other.file;
-        }
-
-        bool operator<(const std::string& other) const
-        {
-            return file < other;
-        }
-
-        bool operator==(const std::string& other) const
-        {
-            return file == other;
-        }
+        std::size_t size = 0;
     };
 
     struct codegen_cache
     {
+        struct entry_comparator
+        {
+            using is_transparent = void;
+
+            bool operator()(const codegen_cache_entry& entry, const codegen_cache_entry& other_entry) const
+            {
+                return entry.file < other_entry.file;
+            }
+
+            bool operator()(const codegen_cache_entry& entry, const std::string_view& other_file) const
+            {
+                return entry.file < other_file;
+            }
+
+            bool operator()(const std::string_view& file, const codegen_cache_entry& other_entry) const
+            {
+                return file < other_entry.file;
+            }
+        };
+
         std::string version;
-        std::vector<codegen_cache_entry> entries;
+        std::set<codegen_cache_entry, entry_comparator> entries;
 
         [[nodiscard]] bool empty() const
         {
             return entries.empty();
         }
 
-        [[nodiscard]] codegen_cache_status check_and_update(const std::string& file)
+        [[nodiscard]] codegen_cache_status check_and_update(const std::string_view file)
         {
             std::string hash;
             if (!files::hash_file(file, hash))
@@ -67,24 +66,28 @@ namespace spore::codegen
                 return codegen_cache_status::dirty;
             }
 
-            const std::int64_t mtime = std::filesystem::last_write_time(file).time_since_epoch().count();
+            const std::size_t file_size = std::filesystem::file_size(file);
+            const auto make_entry = [&] {
+                return codegen_cache_entry {
+                    .file = std::string(file),
+                    .hash = std::move(hash),
+                    .size = file_size,
+                };
+            };
 
-            const auto it_entry = std::lower_bound(entries.begin(), entries.end(), file);
-            if (it_entry == entries.end() || it_entry->file != file)
+            const auto it_entry = entries.find(file);
+
+            if (it_entry == entries.end())
             {
-                codegen_cache_entry entry;
-                entry.file = file;
-                entry.hash = std::move(hash);
-                entry.mtime = mtime;
-                entries.insert(it_entry, std::move(entry));
+                entries.emplace(make_entry());
                 return codegen_cache_status::new_;
             }
 
-            if (mtime != it_entry->mtime || hash != it_entry->hash)
+            const bool is_entry_dirty = file_size != it_entry->size || hash != it_entry->hash;
+
+            if (is_entry_dirty)
             {
-                codegen_cache_entry& entry = *it_entry;
-                entry.hash = std::move(hash);
-                entry.mtime = mtime;
+                entries.emplace(make_entry());
                 return codegen_cache_status::dirty;
             }
 
@@ -107,14 +110,14 @@ namespace spore::codegen
     {
         json["file"] = value.file;
         json["hash"] = value.hash;
-        json["mtime"] = value.mtime;
+        json["size"] = value.size;
     }
 
     inline void from_json(const nlohmann::json& json, codegen_cache_entry& value)
     {
         json::get_checked(json, "file", value.file, detail::cache_context);
         json::get_checked(json, "hash", value.hash, detail::cache_context);
-        json::get_checked(json, "mtime", value.mtime, detail::cache_context);
+        json::get_checked(json, "size", value.size, detail::cache_context);
     }
 
     inline void to_json(nlohmann::json& json, const codegen_cache& value)
