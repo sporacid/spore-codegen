@@ -87,6 +87,7 @@ namespace spore::codegen
 
             if (is_entry_dirty)
             {
+                entries.erase(it_entry);
                 entries.emplace(make_entry());
                 return codegen_cache_status::dirty;
             }
@@ -134,17 +135,17 @@ namespace spore::codegen
 
     inline void to_json(nlohmann::json& json, const codegen_cache_status& value)
     {
-        static const std::map<codegen_cache_status, std::string_view> name_map {
+        static const std::map<codegen_cache_status, std::string_view> value_map {
             {codegen_cache_status::up_to_date, "up-to-date"},
             {codegen_cache_status::new_, "new"},
             {codegen_cache_status::dirty, "dirty"},
         };
 
-        const auto it_name = name_map.find(value);
+        const auto it_value = value_map.find(value);
 
-        if (it_name != name_map.end())
+        if (it_value != value_map.end())
         {
-            json = it_name->second;
+            json = it_value->second;
         }
     }
 }
