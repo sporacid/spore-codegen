@@ -152,6 +152,7 @@ namespace spore::codegen
     inline void to_json(nlohmann::json& json, const spirv_module& value)
     {
         json["path"] = value.path;
+        json["stage"] = value.stage;
         json["entry_point"] = value.entry_point;
         json["inputs"] = value.inputs;
         json["outputs"] = value.outputs;
