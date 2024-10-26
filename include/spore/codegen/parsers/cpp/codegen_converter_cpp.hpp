@@ -208,5 +208,19 @@ namespace spore::codegen
             json = file;
             return true;
         }
+
+        bool convert_asts(const std::span<const cpp_file> files, nlohmann::json& json) const override
+        {
+            std::vector<nlohmann::json> jsons;
+            jsons.reserve(files.size());
+
+            for (const cpp_file& file : files)
+            {
+                jsons.emplace_back() = file;
+            }
+
+            json["files"] = std::move(jsons);
+            return true;
+        }
     };
 }

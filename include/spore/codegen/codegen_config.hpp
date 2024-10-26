@@ -12,6 +12,13 @@
 
 namespace spore::codegen
 {
+    enum class codegen_config_step_frequency
+    {
+        none,
+        per_file,
+        per_step,
+    };
+
     struct codegen_config_step
     {
         std::string name;
@@ -19,6 +26,7 @@ namespace spore::codegen
         std::vector<std::string> templates;
         std::vector<std::string> data;
         std::optional<nlohmann::json> condition;
+        codegen_config_step_frequency frequency = codegen_config_step_frequency::per_file;
     };
 
     struct codegen_config_stage
@@ -40,11 +48,28 @@ namespace spore::codegen
         constexpr std::string_view config_context = "config";
     }
 
+    inline void to_json(nlohmann::json& json, const codegen_config_step_frequency& value)
+    {
+        static const std::map<codegen_config_step_frequency, std::string_view> value_map {
+            {codegen_config_step_frequency::none, "none"},
+            {codegen_config_step_frequency::per_file, "per_file"},
+            {codegen_config_step_frequency::per_step, "per_step"},
+        };
+
+        const auto it_value = value_map.find(value);
+
+        if (it_value != value_map.end())
+        {
+            json = it_value->second;
+        }
+    }
+
     inline void from_json(const nlohmann::json& json, codegen_config_step& value)
     {
         json::get_checked(json, "name", value.name, detail::config_context);
         json::get_checked(json, "directory", value.directory, detail::config_context);
         json::get_checked(json, "templates", value.templates, detail::config_context);
+        json::get_opt(json, "frequency", value.frequency, codegen_config_step_frequency::per_file);
 
         nlohmann::json condition;
         if (json::get(json, "condition", condition))
