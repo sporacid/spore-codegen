@@ -140,6 +140,7 @@ namespace spore::codegen
         json["name"] = value.name;
         json["type"] = value.type;
         json["index"] = value.index;
+        json["count"] = value.count;
         json["variables"] = value.variables;
     }
 
