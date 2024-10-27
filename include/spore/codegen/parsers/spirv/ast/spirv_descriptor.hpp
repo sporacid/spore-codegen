@@ -22,6 +22,7 @@ namespace spore::codegen
         spirv_descriptor_kind kind = spirv_descriptor_kind::none;
         std::string name;
         std::size_t index = 0;
+        std::size_t count = 0;
         spirv_type type;
         std::vector<spirv_variable> variables;
     };

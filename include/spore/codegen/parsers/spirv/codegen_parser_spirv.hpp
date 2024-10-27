@@ -222,6 +222,7 @@ namespace spore::codegen
         {
             descriptor_binding.name = get_or_make_name<spirv_descriptor_binding>(spv_descriptor_binding.name, "descriptor");
             descriptor_binding.index = static_cast<std::size_t>(spv_descriptor_binding.binding);
+            descriptor_binding.count = static_cast<std::size_t>(spv_descriptor_binding.count);
 
             if (const SpvReflectTypeDescription* spv_type = spv_descriptor_binding.type_description)
             {
