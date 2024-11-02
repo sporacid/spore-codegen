@@ -427,7 +427,7 @@ namespace spore::codegen
                 switch (v_cursor.kind)
                 {
                     case CXCursor_ParmDecl: {
-                        insert_end(function.arguments, [&] { return make_argument(v_cursor, function.template_params.size()); });
+                        insert_end(function.arguments, [&] { return make_argument(v_cursor, function.arguments.size()); });
                         break;
                     }
 
