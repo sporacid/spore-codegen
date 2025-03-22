@@ -9,5 +9,6 @@ namespace spore::codegen
     struct cpp_ref : cpp_has_flags<cpp_ref>
     {
         std::string name;
+        bool is_variadic = false;
     };
 }

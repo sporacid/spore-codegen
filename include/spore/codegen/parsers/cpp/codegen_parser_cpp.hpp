@@ -23,6 +23,7 @@ namespace spore::codegen
     namespace detail
     {
         constexpr std::string_view ellipsis = "...";
+        constexpr std::string_view valid_name_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_$";
 
         template <typename func_t>
         void visit_children(const CXCursor& cursor, func_t&& func)
@@ -237,6 +238,39 @@ namespace spore::codegen
             return scope;
         }
 
+        inline std::string_view get_source(const CXCursor& cursor, const std::string& source)
+        {
+            const CXSourceRange extent = clang_getCursorExtent(cursor);
+            const CXSourceLocation location_begin = clang_getRangeStart(extent);
+            const CXSourceLocation location_end = clang_getRangeEnd(extent);
+
+            std::uint32_t offset_begin;
+            std::uint32_t offset_end;
+
+            clang_getFileLocation(location_begin, nullptr, nullptr, nullptr, &offset_begin);
+            clang_getFileLocation(location_end, nullptr, nullptr, nullptr, &offset_end);
+
+            return std::string_view {
+                source.data() + offset_begin,
+                source.data() + offset_end,
+            };
+        }
+
+        inline std::string_view get_epilogue(const CXCursor& cursor, const std::string& source)
+        {
+            const CXSourceRange extent = clang_getCursorExtent(cursor);
+            const CXSourceLocation location_end = clang_getRangeEnd(extent);
+
+            std::uint32_t offset_end;
+
+            clang_getFileLocation(location_end, nullptr, nullptr, nullptr, &offset_end);
+
+            return std::string_view {
+                source.data() + offset_end,
+                source.size() - offset_end,
+            };
+        }
+
         inline std::vector<CXToken> get_tokens(const CXTranslationUnit tu, const CXCursor& cursor)
         {
             const CXSourceRange extent = clang_getCursorExtent(cursor);
@@ -291,6 +325,175 @@ namespace spore::codegen
             return get_default_value(tu, tokens);
         }
 
+        inline cpp_template_param make_template_param(const std::string_view param_source, const std::size_t index)
+        {
+            cpp_template_param param;
+
+            std::string_view remaining = param_source;
+
+            const std::size_t index_equal = remaining.find_last_of('=');
+
+            if (index_equal != std::string_view::npos)
+            {
+                std::string_view default_value = remaining.substr(index_equal + 1);
+                strings::trim(default_value);
+                param.default_value = default_value;
+
+                remaining = remaining.substr(0, index_equal - 1);
+                strings::trim(remaining);
+            }
+
+            std::size_t index_name_begin = remaining.find_last_of(strings::whitespaces);
+
+            for (std::ptrdiff_t index_previous = index_name_begin; index_previous > 0; --index_previous)
+            {
+                // Handles case where we don't have a name and we have a space in the type, e.g.
+                //   template <std :: size_t>
+
+                if (std::ranges::find(valid_name_chars, remaining[index_previous]) != valid_name_chars.end())
+                {
+                    break;
+                }
+
+                if (remaining[index_previous] == ':')
+                {
+                    index_name_begin = std::string_view::npos;
+                    break;
+                }
+            }
+
+            if (index_name_begin != std::string_view::npos)
+            {
+                std::string_view name = remaining.substr(index_name_begin);
+                strings::trim(name);
+
+                constexpr std::string_view keywords[] = {
+                    "auto",
+                    "typename",
+                    "template",
+                    "class",
+                };
+
+                if (std::ranges::find(keywords, name) != std::end(keywords))
+                {
+                    index_name_begin = std::string_view::npos;
+                }
+            }
+
+            if (index_name_begin == std::string_view::npos)
+            {
+                param.name = fmt::format("_t{}", index);
+            }
+            else
+            {
+                param.name = param_source.substr(index_name_begin, index_equal - index_name_begin);
+                strings::trim(param.name);
+
+                remaining = remaining.substr(0, index_name_begin);
+                strings::trim(remaining);
+            }
+
+            param.type = remaining;
+            strings::trim(param.type);
+
+            if (param.type.ends_with(ellipsis))
+            {
+                param.is_variadic = true;
+            }
+
+            return param;
+        }
+
+        inline std::vector<cpp_template_param> make_template_params(const CXCursor& cursor, const std::string& source)
+        {
+            const std::string_view cursor_source = get_source(cursor, source);
+
+            std::vector<cpp_template_param> template_params;
+
+            if (!cursor_source.starts_with("template"))
+            {
+                return template_params;
+            }
+
+            const std::size_t index_bracket_begin = cursor_source.find_first_of("<");
+
+            if (index_bracket_begin == std::string_view::npos)
+            {
+                return template_params;
+            }
+
+            const std::size_t index_template_begin = index_bracket_begin + 1;
+            std::size_t index_template_end = cursor_source.find_first_of("<>", index_template_begin);
+            std::size_t bracket_count = 1;
+
+            while (index_template_end != std::string_view::npos && index_template_end < cursor_source.size() && bracket_count > 0)
+            {
+                switch (cursor_source[index_template_end])
+                {
+                    case '<':
+                        ++bracket_count;
+                        break;
+                    case '>':
+                        --bracket_count;
+                        break;
+                    default:
+                        break;
+                }
+
+                if (bracket_count > 0)
+                {
+                    index_template_end = cursor_source.find_first_of("<>", index_template_end + 1);
+                }
+            }
+
+            std::string_view template_source = cursor_source.substr(index_template_begin, index_template_end - index_template_begin);
+            std::size_t index_param_end = 0;
+            std::size_t index_param = 0;
+
+            bracket_count = 0;
+
+            while (!template_source.empty())
+            {
+                index_param_end = template_source.find_first_of("<>,", index_param_end + 1);
+
+                if (index_param_end == std::string_view::npos)
+                {
+                    const std::string_view param_source = template_source;
+                    template_params.emplace_back(make_template_param(param_source, index_param++));
+                    template_source = std::string_view {};
+                }
+                else
+                {
+                    switch (template_source[index_param_end])
+                    {
+                        case '<':
+                            ++bracket_count;
+                            break;
+                        case '>':
+                            --bracket_count;
+                            break;
+                        case ',':
+                            if (bracket_count == 0)
+                            {
+                                const std::string_view param_source = template_source.substr(0, index_param_end);
+                                template_params.emplace_back(make_template_param(param_source, index_param++));
+
+                                template_source = template_source.substr(index_param_end + 1);
+                                strings::trim_start(template_source);
+
+                                index_param_end = 0;
+                            }
+
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+
+            return template_params;
+        }
+
         inline nlohmann::json make_attributes(const CXCursor& cursor)
         {
             std::string attributes = get_spelling(cursor);
@@ -305,47 +508,21 @@ namespace spore::codegen
             return nlohmann::json {};
         }
 
-        inline cpp_template_param make_template_param(const CXCursor& cursor, const std::size_t index)
+        inline cpp_ref make_ref(const CXCursor& cursor, const cpp_file& file)
         {
-            cpp_template_param template_param;
-            template_param.name = get_name(cursor);
+            cpp_ref ref;
+            ref.name = get_name(cursor);
 
-            if (template_param.name.empty())
+            std::string_view cursor_epilogue = get_epilogue(cursor, file.source);
+            strings::trim_start(cursor_epilogue);
+
+            if (cursor_epilogue.starts_with(ellipsis))
             {
-                template_param.name = fmt::format("_t{}", index);
+                ref.is_variadic = true;
+                ref.name += ellipsis;
             }
 
-            const CXTranslationUnit tu = clang_Cursor_getTranslationUnit(cursor);
-            const std::vector<CXToken> tokens = get_tokens(tu, cursor);
-
-            std::string* token_ptr = &template_param.type;
-            for (const CXToken& token : tokens)
-            {
-                const std::string spelling = get_spelling(tu, token);
-
-                if (spelling == template_param.name)
-                {
-                    token_ptr = nullptr;
-                }
-                else if (spelling == "=")
-                {
-                    token_ptr = &template_param.default_value.emplace();
-                }
-                else if (token_ptr != nullptr)
-                {
-                    append_token(*token_ptr, spelling);
-                }
-            }
-
-            // TODO @sporacid Figure out why unnamed template parameter may end with a comma
-            strings::trim_end(template_param.type, ",");
-
-            if (template_param.type.ends_with(ellipsis))
-            {
-                template_param.is_variadic = true;
-            }
-
-            return template_param;
+            return ref;
         }
 
         inline cpp_argument make_argument(const CXCursor& cursor, const std::size_t index)
@@ -386,11 +563,12 @@ namespace spore::codegen
             return argument;
         }
 
-        inline cpp_function make_function(const CXCursor& cursor)
+        inline cpp_function make_function(const CXCursor& cursor, const cpp_file& file)
         {
             cpp_function function;
             function.name = get_spelling(cursor);
             function.scope = get_scope(cursor);
+            function.template_params = make_template_params(cursor, file.source);
 
             const CXType type = clang_getCursorType(cursor);
             const CXType return_type = clang_getResultType(type);
@@ -434,7 +612,6 @@ namespace spore::codegen
                     case CXCursor_TemplateTypeParameter:
                     case CXCursor_TemplateTemplateParameter:
                     case CXCursor_NonTypeTemplateParameter: {
-                        insert_end(function.template_params, [&] { return make_template_param(v_cursor, function.template_params.size()); });
                         break;
                     }
 
@@ -455,9 +632,9 @@ namespace spore::codegen
             return function;
         }
 
-        inline cpp_constructor make_constructor(const CXCursor& cursor)
+        inline cpp_constructor make_constructor(const CXCursor& cursor, const cpp_file& file)
         {
-            cpp_function function = make_function(cursor);
+            cpp_function function = make_function(cursor, file);
 
             cpp_constructor constructor;
             constructor.flags = function.flags;
@@ -567,6 +744,7 @@ namespace spore::codegen
             cpp_class class_;
             class_.name = get_name(cursor);
             class_.scope = get_scope(cursor);
+            class_.template_params = make_template_params(cursor, file.source);
 
             const CXCursor specialization = clang_getSpecializedCursorTemplate(cursor);
             erase_template(class_.name, clang_Cursor_isNull(specialization) ? nullptr : &class_.template_specialization_params);
@@ -603,7 +781,6 @@ namespace spore::codegen
                     case CXCursor_TemplateTypeParameter:
                     case CXCursor_TemplateTemplateParameter:
                     case CXCursor_NonTypeTemplateParameter: {
-                        insert_end(class_.template_params, [&] { return make_template_param(v_cursor, class_.template_params.size()); });
                         break;
                     }
 
@@ -613,8 +790,7 @@ namespace spore::codegen
                     }
 
                     case CXCursor_CXXBaseSpecifier: {
-                        cpp_ref& base = class_.bases.emplace_back();
-                        base.name = get_name(v_cursor);
+                        insert_end(class_.bases, [&] { return make_ref(v_cursor, file); });
                         break;
                     }
 
@@ -624,14 +800,14 @@ namespace spore::codegen
                     }
 
                     case CXCursor_Constructor: {
-                        insert_end(class_.constructors, [&] { return make_constructor(v_cursor); });
+                        insert_end(class_.constructors, [&] { return make_constructor(v_cursor, file); });
                         break;
                     }
 
                     case CXCursor_FunctionDecl:
                     case CXCursor_FunctionTemplate:
                     case CXCursor_CXXMethod: {
-                        insert_end(class_.functions, [&] { return make_function(v_cursor); });
+                        insert_end(class_.functions, [&] { return make_function(v_cursor, file); });
                         break;
                     }
 
@@ -697,7 +873,7 @@ namespace spore::codegen
                     case CXCursor_FunctionTemplate:
                     case CXCursor_FunctionDecl:
                     case CXCursor_CXXMethod: {
-                        insert_end(file.functions, [&] { return make_function(v_cursor); });
+                        insert_end(file.functions, [&] { return make_function(v_cursor, file); });
                         break;
                     }
 
@@ -818,7 +994,7 @@ namespace spore::codegen
 
             defer dispose_translation_unit = [&] { clang_disposeTranslationUnit(translation_unit); };
 
-            std::size_t diagnostics_count = clang_getNumDiagnostics(translation_unit);
+            const std::size_t diagnostics_count = clang_getNumDiagnostics(translation_unit);
             if (diagnostics_count > 0)
             {
                 SPDLOG_WARN("clang diagnostics --");

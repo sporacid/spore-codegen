@@ -87,9 +87,15 @@ struct ATTRIBUTE(a, b = 1, c = "2", d = 3.0, e = (f = 4, g = (h = 5))) _attribut
 };
 
 template <typename>
-concept concept_ = true;
+concept _concept = true;
 
-template <typename value_t, int size_v, template <typename arg_t, typename, int> typename template_t, concept_ concept_t, typename... variadic_t>
+namespace _nested
+{
+    template <typename, typename>
+    concept _other_concept = true;
+}
+
+template <typename value_t, int size_v, template <typename arg_t, typename, int> typename template_t, _concept concept_t, _nested::_other_concept<int> nested_concept_t, typename... variadic_t>
 struct _template
 {
     template <typename... args_t>
@@ -98,7 +104,7 @@ struct _template
     }
 };
 
-template <typename, int, template <typename, typename, int> typename, concept_, typename...>
+template <typename, int, template <typename, typename, int> typename, _concept, _nested::_other_concept<int>, typename...>
 struct _unnamed_template
 {
 };
@@ -110,5 +116,28 @@ struct _template_specialization
 
 template <typename value_t>
 struct _template_specialization<int, float, value_t, _template_specialization<int, float>>
+{
+};
+
+namespace _nested
+{
+    template <typename>
+    concept _some_concept = true;
+}
+
+template <_nested
+    ::
+        _some_concept>
+struct _weird_template
+{
+};
+
+template <typename...>
+struct _variadic_base
+{
+};
+
+template <typename... args_t>
+struct _variadic_impl : _variadic_base<args_t>...
 {
 };
