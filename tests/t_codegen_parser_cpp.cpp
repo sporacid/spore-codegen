@@ -32,7 +32,7 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
 
     cpp_file& cpp_file = cpp_files.at(0);
 
-    REQUIRE(cpp_file.classes.size() == 10);
+    REQUIRE(cpp_file.classes.size() == 13);
     REQUIRE(cpp_file.functions.size() == 3);
     REQUIRE(cpp_file.enums.size() == 2);
 
@@ -314,7 +314,7 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         cpp_class& class_ = cpp_file.classes[6];
 
         REQUIRE(class_.name == "_template");
-        REQUIRE(class_.template_params.size() == 5);
+        REQUIRE(class_.template_params.size() == 6);
         REQUIRE(class_.template_params[0].name == "value_t");
         REQUIRE(class_.template_params[0].type == "typename");
         REQUIRE(class_.template_params[1].name == "size_v");
@@ -322,10 +322,12 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         REQUIRE(class_.template_params[2].name == "template_t");
         REQUIRE(class_.template_params[2].type == "template <typename arg_t, typename, int> typename");
         REQUIRE(class_.template_params[3].name == "concept_t");
-        REQUIRE(class_.template_params[3].type == "concept_");
-        REQUIRE(class_.template_params[4].name == "variadic_t");
-        REQUIRE(class_.template_params[4].type == "typename...");
-        REQUIRE(class_.template_params[4].is_variadic);
+        REQUIRE(class_.template_params[3].type == "_concept");
+        REQUIRE(class_.template_params[4].name == "nested_concept_t");
+        REQUIRE(class_.template_params[4].type == "_nested::_other_concept<int>");
+        REQUIRE(class_.template_params[5].name == "variadic_t");
+        REQUIRE(class_.template_params[5].type == "typename...");
+        REQUIRE(class_.template_params[5].is_variadic);
 
         REQUIRE(class_.functions.size() == 1);
         REQUIRE(class_.functions[0].arguments.size() == 1);
@@ -339,7 +341,7 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         cpp_class& class_ = cpp_file.classes[7];
 
         REQUIRE(class_.name == "_unnamed_template");
-        REQUIRE(class_.template_params.size() == 5);
+        REQUIRE(class_.template_params.size() == 6);
         REQUIRE(class_.template_params[0].name == "_t0");
         REQUIRE(class_.template_params[0].type == "typename");
         REQUIRE(class_.template_params[1].name == "_t1");
@@ -347,12 +349,12 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         REQUIRE(class_.template_params[2].name == "_t2");
         REQUIRE(class_.template_params[2].type == "template <typename, typename, int> typename");
         REQUIRE(class_.template_params[3].name == "_t3");
-        REQUIRE(class_.template_params[3].type == "concept_");
-
-        // TODO @sporacid Fix unnamed variadic templates
-        // REQUIRE(class_.template_params[4].name == "_t4");
-        // REQUIRE(class_.template_params[4].type == "typename...");
-        // REQUIRE(class_.template_params[4].is_variadic);
+        REQUIRE(class_.template_params[3].type == "_concept");
+        REQUIRE(class_.template_params[4].name == "_t4");
+        REQUIRE(class_.template_params[4].type == "_nested::_other_concept<int>");
+        REQUIRE(class_.template_params[5].name == "_t5");
+        REQUIRE(class_.template_params[5].type == "typename...");
+        REQUIRE(class_.template_params[5].is_variadic);
     }
 
     SECTION("parse template specialization is feature complete")
@@ -369,5 +371,34 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         REQUIRE(class_.template_specialization_params[1] == "float");
         REQUIRE(class_.template_specialization_params[2] == "value_t");
         REQUIRE(class_.template_specialization_params[3] == "_template_specialization<int, float>");
+    }
+
+    SECTION("parse weird template is feature complete")
+    {
+        cpp_class& class_ = cpp_file.classes[10];
+
+        REQUIRE(class_.name == "_weird_template");
+        REQUIRE(class_.full_name() == "_weird_template<_t0>");
+        REQUIRE(class_.template_params.size() == 1);
+
+        std::string template_param0 = class_.template_params[0].type;
+        std::string template_param0_trimmed;
+
+        const auto predicate = [](const char c) { return std::isspace(c); };
+        std::ranges::remove_copy_if(template_param0, std::back_inserter(template_param0_trimmed), predicate);
+
+        REQUIRE(class_.template_params[0].name == "_t0");
+        REQUIRE(template_param0_trimmed == "_nested::_some_concept");
+    }
+
+    SECTION("parse variadic base is feature complete")
+    {
+        cpp_class& class_ = cpp_file.classes[12];
+
+        REQUIRE(class_.name == "_variadic_impl");
+        REQUIRE(class_.full_name() == "_variadic_impl<args_t...>");
+        REQUIRE(class_.bases.size() == 1);
+        REQUIRE(class_.bases[0].name == "_variadic_base<args_t>...");
+        REQUIRE(class_.bases[0].is_variadic);
     }
 }
