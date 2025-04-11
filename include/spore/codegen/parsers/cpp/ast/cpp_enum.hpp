@@ -28,5 +28,6 @@ namespace spore::codegen
         cpp_ref base;
         std::vector<cpp_enum_value> values;
         bool nested = false;
+        bool definition = false;
     };
 }

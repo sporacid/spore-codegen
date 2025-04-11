@@ -154,6 +154,7 @@ namespace spore::codegen
         json["functions"] = value.functions;
         json["constructors"] = value.constructors;
         json["nested"] = value.nested;
+        json["definition"] = value.definition;
     }
 
     inline void to_json(nlohmann::json& json, const cpp_enum_value& value)
@@ -165,7 +166,7 @@ namespace spore::codegen
         json["value"] = value.value;
     }
 
-    inline void to_json(nlohmann::json& json, cpp_enum_type value)
+    inline void to_json(nlohmann::json& json, const cpp_enum_type value)
     {
         static const std::map<cpp_enum_type, std::string> value_map {
             {cpp_enum_type::none, "none"},
@@ -190,6 +191,7 @@ namespace spore::codegen
         json["base"] = value.base;
         json["values"] = value.values;
         json["nested"] = value.nested;
+        json["definition"] = value.definition;
     }
 
     inline void to_json(nlohmann::json& json, const cpp_file& value)
