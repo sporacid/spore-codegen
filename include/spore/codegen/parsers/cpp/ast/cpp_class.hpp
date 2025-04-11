@@ -28,5 +28,6 @@ namespace spore::codegen
         std::vector<cpp_function> functions;
         std::vector<cpp_constructor> constructors;
         bool nested = false;
+        bool definition = false;
     };
 }

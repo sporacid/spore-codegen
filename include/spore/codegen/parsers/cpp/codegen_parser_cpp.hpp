@@ -678,6 +678,7 @@ namespace spore::codegen
             enum_.name = get_name(cursor);
             enum_.scope = get_scope(cursor);
             enum_.type = clang_EnumDecl_isScoped(cursor) ? cpp_enum_type::enum_class : cpp_enum_type::enum_;
+            enum_.definition = clang_isCursorDefinition(cursor);
 
             const CXCursor parent = clang_getCursorSemanticParent(cursor);
             enum_.nested = parent.kind != CXCursor_Namespace;
@@ -745,6 +746,7 @@ namespace spore::codegen
             class_.name = get_name(cursor);
             class_.scope = get_scope(cursor);
             class_.template_params = make_template_params(cursor, file.source);
+            class_.definition = clang_isCursorDefinition(cursor);
 
             const CXCursor specialization = clang_getSpecializedCursorTemplate(cursor);
             erase_template(class_.name, clang_Cursor_isNull(specialization) ? nullptr : &class_.template_specialization_params);
@@ -815,20 +817,12 @@ namespace spore::codegen
                     case CXCursor_ClassDecl:
                     case CXCursor_ClassTemplate:
                     case CXCursor_ClassTemplatePartialSpecialization: {
-                        if (clang_isCursorDefinition(v_cursor))
-                        {
-                            insert_end(file.classes, [&] { return make_class(v_cursor, file); });
-                        }
-
+                        insert_end(file.classes, [&] { return make_class(v_cursor, file); });
                         break;
                     }
 
                     case CXCursor_EnumDecl: {
-                        if (clang_isCursorDefinition(v_cursor))
-                        {
-                            insert_end(file.enums, [&] { return make_enum(v_cursor); });
-                        }
-
+                        insert_end(file.enums, [&] { return make_enum(v_cursor); });
                         break;
                     }
 
@@ -853,20 +847,12 @@ namespace spore::codegen
                     case CXCursor_ClassDecl:
                     case CXCursor_StructDecl:
                     case CXCursor_ClassTemplatePartialSpecialization: {
-                        if (clang_isCursorDefinition(v_cursor))
-                        {
-                            insert_end(file.classes, [&] { return make_class(v_cursor, file); });
-                        }
-
+                        insert_end(file.classes, [&] { return make_class(v_cursor, file); });
                         break;
                     }
 
                     case CXCursor_EnumDecl: {
-                        if (clang_isCursorDefinition(v_cursor))
-                        {
-                            insert_end(file.enums, [&] { return make_enum(v_cursor); });
-                        }
-
+                        insert_end(file.enums, [&] { return make_enum(v_cursor); });
                         break;
                     }
 
