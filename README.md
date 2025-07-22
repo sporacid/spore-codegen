@@ -306,6 +306,8 @@ Some additional functions have been added to the `inja` templating engine to sim
 | `include(string, object)`         | `{{ include("class.inja", class) }}`                   | Include a template with the given object.                                                              |
 | `json(any)`                       | `{{ json(this) }}`                                     | Dump the given value to JSON with an indent of 2.                                                      |
 | `json(any, number)`               | `{{ json(this, 4) }}`                                  | Dump the given value to JSON with the given indent.                                                    |
+| `flatten(object)`                 | `{{ flatten(this) }}`                                  | Flatten the given object into an object of depth 1.                                                    |
+| `flatten(object, string)`         | `{{ flatten(this, ":") }}`                             | Flatten the given object into an object of depth 1 with the given key separator.                       |
 | `yaml(any)`                       | `{{ yaml(this) }}`                                     | Dump the given value to YAML with an indent of 2.                                                      |
 | `yaml(any, number)`               | `{{ yaml(this, 4) }}`                                  | Dump the given value to YAML with the given indent.                                                    |
 | `truthy(any)`                     | `{% if truthy(class.attributes.json) %}{% endif %}`    | Evaluates whether a given value is truthy.                                                             |
