@@ -110,7 +110,7 @@ namespace spore::codegen
                 return json;
             }
 
-            nlohmann::json flattened;
+            nlohmann::json flattened = nlohmann::json::object();
             std::vector<std::string> keys;
 
             to_flattened(json, separator, flattened, keys);
