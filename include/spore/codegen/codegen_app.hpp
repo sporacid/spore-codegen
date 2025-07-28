@@ -107,6 +107,8 @@ namespace spore::codegen
                 std::ignore = cache.check_and_update(options.config);
             }
 
+            user_data = nlohmann::json::object();
+
             for (const auto& [key, value] : options.user_data)
             {
                 user_data[key] = value;
