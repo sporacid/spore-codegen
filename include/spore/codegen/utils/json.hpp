@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdint>
 #include <map>
+#include <ranges>
 #include <string>
 #include <vector>
 
@@ -17,9 +18,13 @@ namespace spore::codegen::json
         bool truthy = false;
         switch (json.type())
         {
-            case nlohmann::json::value_t::string:
-                truthy = !json.get<std::string>().empty();
+            case nlohmann::json::value_t::string: {
+                constexpr char false_string[] {'f', 'a', 'l', 's', 'e'};
+                constexpr auto predicate = [](const char c1, const char c2) { return std::tolower(c1) == std::tolower(c2); };
+                const std::string& string = json.get<std::string>();
+                truthy = !string.empty() && !std::ranges::equal(string, false_string, predicate);
                 break;
+            }
             case nlohmann::json::value_t::array:
                 truthy = !json.get<std::vector<nlohmann::json>>().empty();
                 break;
