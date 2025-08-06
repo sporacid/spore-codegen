@@ -31,8 +31,20 @@ configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/include/spore/codegen/codegen_version.hpp
 )
 
+if (NOT SPORE_STACK_SIZE)
+  # Clang AST parser might hit stack overflow with template-heavy code.
+  # See https://github.com/llvm/llvm-project/blob/main/llvm/cmake/modules/HandleLLVMOptions.cmake
+  set(SPORE_STACK_SIZE 16777216)
+endif ()
+
 add_compile_options(
   "$<$<CXX_COMPILER_ID:MSVC>:/bigobj>"
+)
+
+add_link_options(
+  "$<$<CXX_COMPILER_ID:MSVC>:/STACK:${SPORE_STACK_SIZE}>"
+  "$<$<CXX_COMPILER_ID:GNU>:-Wl,--defsym,_stack_size=${SPORE_STACK_SIZE}>"
+  "$<$<CXX_COMPILER_ID:Clang>:-Wl,--defsym,_stack_size=${SPORE_STACK_SIZE}>"
 )
 
 add_compile_definitions(
@@ -75,4 +87,3 @@ if (SPORE_BUILD_TESTS)
   enable_testing()
   add_subdirectory(tests)
 endif ()
-

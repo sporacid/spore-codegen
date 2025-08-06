@@ -30,11 +30,12 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
     REQUIRE(parser.parse_asts(input_files, cpp_files));
     REQUIRE(cpp_files.size() == input_files.size());
 
-    cpp_file& cpp_file = cpp_files.at(0);
+    cpp_file& cpp_file = cpp_files[0];
 
     REQUIRE(cpp_file.classes.size() == 13);
     REQUIRE(cpp_file.functions.size() == 3);
     REQUIRE(cpp_file.enums.size() == 2);
+    REQUIRE(cpp_file.variables.size() == 9);
 
     SECTION("parse enum is feature complete")
     {
@@ -332,7 +333,7 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         REQUIRE(class_.functions.size() == 1);
         REQUIRE(class_.functions[0].arguments.size() == 1);
         REQUIRE(class_.functions[0].arguments[0].name == "args");
-        REQUIRE(class_.functions[0].arguments[0].type.name == "args_t &&");
+        REQUIRE(class_.functions[0].arguments[0].type.name == "args_t &&...");
         REQUIRE(class_.functions[0].arguments[0].is_variadic);
     }
 
@@ -362,7 +363,7 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         cpp_class& class_ = cpp_file.classes[9];
 
         REQUIRE(class_.name == "_template_specialization");
-        REQUIRE(class_.full_name() == "_template_specialization<int, float, value_t, _template_specialization<int, float>>");
+        REQUIRE(class_.full_name() == "_template_specialization<int, float, value_t, _template_specialization<int, float, value_t>>");
         REQUIRE(class_.template_params.size() == 1);
         REQUIRE(class_.template_params[0].name == "value_t");
         REQUIRE(class_.template_params[0].type == "typename");
@@ -370,7 +371,7 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         REQUIRE(class_.template_specialization_params[0] == "int");
         REQUIRE(class_.template_specialization_params[1] == "float");
         REQUIRE(class_.template_specialization_params[2] == "value_t");
-        REQUIRE(class_.template_specialization_params[3] == "_template_specialization<int, float>");
+        REQUIRE(class_.template_specialization_params[3] == "_template_specialization<int, float, value_t>");
     }
 
     SECTION("parse weird template is feature complete")
@@ -388,7 +389,7 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         std::ranges::remove_copy_if(template_param0, std::back_inserter(template_param0_trimmed), predicate);
 
         REQUIRE(class_.template_params[0].name == "_t0");
-        REQUIRE(template_param0_trimmed == "_nested::_some_concept");
+        REQUIRE(template_param0_trimmed == "_nested::_concept");
     }
 
     SECTION("parse variadic base is feature complete")
@@ -400,5 +401,87 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         REQUIRE(class_.bases.size() == 1);
         REQUIRE(class_.bases[0].name == "_variadic_base<args_t>...");
         REQUIRE(class_.bases[0].is_variadic);
+    }
+
+    SECTION("parse variable is feature complete")
+    {
+        cpp_variable var0 = cpp_file.variables[0];
+
+        REQUIRE(var0.name == "_var");
+        REQUIRE(var0.default_value.has_value());
+        REQUIRE(var0.default_value.value() == "42");
+        REQUIRE(var0.type.name == "int");
+
+        cpp_variable var1 = cpp_file.variables[1];
+
+        REQUIRE(var1.name == "_static_var");
+        REQUIRE(var1.default_value.has_value());
+        REQUIRE(var1.default_value.value() == "42");
+        REQUIRE(var1.type.name == "int");
+        REQUIRE(var1.has_flags(cpp_flags::static_));
+
+        cpp_variable var2 = cpp_file.variables[2];
+
+        REQUIRE(var2.name == "_const_var");
+        REQUIRE(var2.default_value.has_value());
+        REQUIRE(var2.default_value.value() == "42");
+        REQUIRE(var2.type.name == "const int");
+        REQUIRE(var2.type.has_flags(cpp_flags::const_));
+
+        cpp_variable var3 = cpp_file.variables[3];
+
+        REQUIRE(var3.name == "_constexpr_var");
+        REQUIRE(var3.default_value.has_value());
+        REQUIRE(var3.default_value.value() == "42");
+        REQUIRE(var3.type.name == "const int");
+        REQUIRE(var3.type.has_flags(cpp_flags::const_));
+        REQUIRE(var3.has_flags(cpp_flags::constexpr_));
+
+        cpp_variable var4 = cpp_file.variables[4];
+
+        REQUIRE(var4.name == "_inline_var");
+        REQUIRE(var4.default_value.has_value());
+        REQUIRE(var4.default_value.value() == "42");
+        REQUIRE(var4.type.name == "int");
+        REQUIRE(var4.has_flags(cpp_flags::inline_));
+
+        cpp_variable var5 = cpp_file.variables[5];
+
+        REQUIRE(var5.name == "_complex_var");
+        REQUIRE(var5.default_value.has_value());
+        REQUIRE(var5.default_value.value() == "42");
+        REQUIRE(var5.type.name == "const int");
+        REQUIRE(var5.type.has_flags(cpp_flags::const_));
+        REQUIRE(var5.has_flags(cpp_flags::inline_ | cpp_flags::static_));
+        REQUIRE(var5.attributes.size() == 1);
+        REQUIRE(var5.attributes.contains("_var"));
+        REQUIRE(var5.attributes["_var"] == true);
+
+        cpp_variable var6 = cpp_file.variables[6];
+
+        REQUIRE(var6.name == "_nested_var");
+        REQUIRE(var6.full_name() == "_nested::_nested_var");
+        REQUIRE(var6.default_value.has_value());
+        REQUIRE(var6.default_value.value() == "42");
+
+        cpp_variable var7 = cpp_file.variables[7];
+
+        REQUIRE(var7.name == "_template_var");
+        REQUIRE(var7.full_name() == "_template_var<value_t>");
+        REQUIRE(var7.template_params.size() == 1);
+        REQUIRE(var7.template_params[0].name == "value_t");
+        REQUIRE(var7.template_params[0].type == "typename");
+        REQUIRE(var7.default_value.has_value());
+        REQUIRE(var7.default_value.value() == "{}");
+
+        cpp_variable var8 = cpp_file.variables[8];
+
+        REQUIRE(var8.name == "_template_var");
+        REQUIRE(var8.full_name() == "_template_var<int>");
+        REQUIRE(var8.template_params.size() == 0);
+        REQUIRE(var8.template_specialization_params.size() == 1);
+        REQUIRE(var8.template_specialization_params[0] == "int");
+        REQUIRE(var8.default_value.has_value());
+        REQUIRE(var8.default_value.value() == "42");
     }
 }

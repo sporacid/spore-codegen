@@ -19,9 +19,12 @@ namespace spore::codegen
         protected_ = 1 << 9,
         constexpr_ = 1 << 10,
         consteval_ = 1 << 11,
-        lvalue_ref = 1 << 12,
-        rvalue_ref = 1 << 13,
-        pointer = 1 << 14,
+        constinit_ = 1 << 12,
+        inline_ = 1 << 13,
+        explicit_ = 1 << 14,
+        lvalue_ref = 1 << 15,
+        rvalue_ref = 1 << 16,
+        pointer = 1 << 17,
     };
 
     constexpr cpp_flags operator~(cpp_flags flags)

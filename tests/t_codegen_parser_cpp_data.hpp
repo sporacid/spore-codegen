@@ -115,19 +115,19 @@ struct _template_specialization
 };
 
 template <typename value_t>
-struct _template_specialization<int, float, value_t, _template_specialization<int, float>>
+struct _template_specialization<int, float, value_t, _template_specialization<int, float, value_t>>
 {
 };
 
 namespace _nested
 {
     template <typename>
-    concept _some_concept = true;
+    concept _concept = true;
 }
 
 template <_nested
     ::
-        _some_concept>
+        _concept>
 struct _weird_template
 {
 };
@@ -141,3 +141,21 @@ template <typename... args_t>
 struct _variadic_impl : _variadic_base<args_t>...
 {
 };
+
+int _var = 42;
+static int _static_var = 42;
+const int _const_var = 42;
+constexpr int _constexpr_var = 42;
+inline int _inline_var = 42;
+ATTRIBUTE(_var) static const inline int _complex_var = 42;
+
+namespace _nested
+{
+    int _nested_var = 42;
+}
+
+template <typename value_t>
+value_t _template_var {};
+
+template <>
+int _template_var<int> = 42;
