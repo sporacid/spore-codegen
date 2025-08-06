@@ -49,23 +49,28 @@ target_include_directories(
 )
 
 if (SPORE_WITH_CPP)
-  find_package(Clang REQUIRED)
+  find_package(LLVM REQUIRED CONFIG)
+  find_package(Clang REQUIRED CONFIG)
 
   target_include_directories(
     ${SPORE_CODEGEN_LIBRARY_TARGET}
     INTERFACE
+      ${LLVM_INCLUDE_DIRS}
       ${CLANG_INCLUDE_DIRS}
   )
 
   target_link_libraries(
     ${SPORE_CODEGEN_LIBRARY_TARGET}
     INTERFACE
-      ${CLANG_LIBRARIES}
+      clangTooling
+      clangBasic
+      clangASTMatchers
   )
 
   target_compile_definitions(
     ${SPORE_CODEGEN_LIBRARY_TARGET}
     INTERFACE
+      ${LLVM_DEFINITIONS}
       SPORE_WITH_CPP
   )
 endif ()
@@ -88,6 +93,7 @@ endif ()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   find_package(TBB REQUIRED)
+
   target_link_libraries(
     ${SPORE_CODEGEN_LIBRARY_TARGET}
     INTERFACE

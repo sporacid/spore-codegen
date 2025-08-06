@@ -26,6 +26,9 @@ namespace spore::codegen
         json["protected"] = predicate(cpp_flags::protected_);
         json["constexpr"] = predicate(cpp_flags::constexpr_);
         json["consteval"] = predicate(cpp_flags::consteval_);
+        json["constinit"] = predicate(cpp_flags::constinit_);
+        json["inline"] = predicate(cpp_flags::inline_);
+        json["explicit"] = predicate(cpp_flags::explicit_);
         json["lvalue_ref"] = predicate(cpp_flags::lvalue_ref);
         json["rvalue_ref"] = predicate(cpp_flags::rvalue_ref);
         json["pointer"] = predicate(cpp_flags::pointer);

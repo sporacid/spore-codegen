@@ -7,7 +7,18 @@
 
 #include "glob/glob.h"
 #include "nlohmann/json.hpp"
+
+#ifdef UNICODE
+#    undef UNICODE
+#    define _TINY_PROCESS_LIBRARY_UNICODE
+#endif
+
 #include "process.hpp"
+
+#ifdef _TINY_PROCESS_LIBRARY_UNICODE
+#    define UNICODE
+#    undef _TINY_PROCESS_LIBRARY_UNICODE
+#endif
 
 #include "spore/codegen/codegen_cache.hpp"
 #include "spore/codegen/codegen_config.hpp"

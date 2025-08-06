@@ -86,9 +86,18 @@ at [this repository](https://github.com/sporacid/spore-codegen-example) for a mo
 
 ### Windows
 
-1. Install `LLVM` from [GitHub releases](https://github.com/llvm/llvm-project/releases).
-2. Add `LLVM` install path to `PATH` environment variable.
-3. Clone and set up `Vcpkg`:
+1. Install `LLVM`:
+    ```shell
+    git clone https://github.com/llvm/llvm-project llvm-18 --branch llvmorg-18.1.8
+    cd llvm-18
+    mkdir .build .install
+    cmake -S llvm -B .build -G "Ninja" -DCMAKE_BUILD_TYPE="Release" -DLLVM_ENABLE_PROJECTS="clang" -DLLVM_ADDITIONAL_BUILD_TYPES="Debug" -DLLVM_TARGETS_TO_BUILD="host"
+    cmake --build .build
+    cmake --install .build --prefix .install
+    set PATH="%PATH%;%cd%/.install;%cd%/.install/bin"
+   ```
+
+2. Clone and set up `Vcpkg`:
    ```shell
    set VCPKG_DEFAULT_TRIPLET="x64-windows"
    git clone https://github.com/microsoft/vcpkg
@@ -171,11 +180,11 @@ stages:
     steps:
       - name: "step"                   # Name of the step for logging purposes
         directory: ".codegen/include"  # Output directory for generated files
-        templates:                     # List of templates to generate for this step
+        templates: # List of templates to generate for this step
           - "template.inl.inja"
-        condition:                     # Optional condition for this step, evaluated per input file
+        condition: # Optional condition for this step, evaluated per input file
           type: "attribute"            # Type of the condition
-          value:                       # Optional value to match the condition
+          value: # Optional value to match the condition
             generated: true            # e.g. Matches only C++ files which contain an element with the attribute `generated` set to true 
 ```
 
@@ -215,18 +224,18 @@ spore_codegen(target)
 
 # With all arguments
 spore_codegen(
-  target
-  CONFIG codegen.yml
-  CACHE cache.yml
-  REFORMAT clang-format -i
-  USER_DATA
-      key1=value1
-      key2=value2
-  ADDITIONAL_ARGS
-      --cpp:-isystem/system/include
-      --cpp:-v
-  FORCE
-  DEBUG
+    target
+    CONFIG codegen.yml
+    CACHE cache.yml
+    REFORMAT clang-format -i
+    USER_DATA
+    key1=value1
+    key2=value2
+    ADDITIONAL_ARGS
+    --cpp:-isystem/system/include
+    --cpp:-v
+    FORCE
+    DEBUG
 )
 ```
 

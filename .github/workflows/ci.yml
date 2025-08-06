@@ -23,10 +23,10 @@ jobs:
         run: |
           wget https://apt.llvm.org/llvm.sh &&
           chmod u+x llvm.sh &&
-          sudo ./llvm.sh 18 all &&
-          sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-18 100 &&
-          sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-18 100 &&
-          echo /usr/lib/llvm-18 >> $GITHUB_PATH
+          sudo ./llvm.sh 20 all &&
+          sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-20 100 &&
+          sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-20 100 &&
+          echo /usr/lib/llvm-20 >> $GITHUB_PATH
       - name: Install CMake
         uses: lukka/get-cmake@v3.31.6
       - name: Install Vcpkg

@@ -248,3 +248,5 @@ FixNamespaceComments: False
 # QAS_Right (in configuration: Right) Change specifiers/qualifiers to be right-aligned.
 # QAS_Custom (in configuration: Custom) Change specifiers/qualifiers to be aligned based on QualifierOrder.
 # QualifierAlignment: Left
+
+IndentPPDirectives: AfterHash
