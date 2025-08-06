@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <format>
 #include <string>
 #include <vector>
 
@@ -43,7 +44,7 @@ namespace spore::codegen
 
             for (const std::uint8_t byte : bytes)
             {
-                fmt::format_to(std::back_inserter(hex), "{:#04x}, ", byte);
+                std::format_to(std::back_inserter(hex), "{:#04x}, ", byte);
                 current_width += hex_width;
 
                 if (current_width >= width)

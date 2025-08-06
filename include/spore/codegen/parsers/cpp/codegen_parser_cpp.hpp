@@ -1,12 +1,12 @@
 #pragma once
 
 #include <algorithm>
+#include <format>
 #include <map>
 #include <string>
 #include <string_view>
 #include <vector>
 
-#include "fmt/format.h"
 #include "spdlog/spdlog.h"
 #include "clang-c/CXSourceLocation.h"
 #include "clang-c/Index.h"
@@ -382,7 +382,7 @@ namespace spore::codegen
 
             if (index_name_begin == std::string_view::npos)
             {
-                param.name = fmt::format("_t{}", index);
+                param.name = std::format("_t{}", index);
             }
             else
             {
@@ -540,7 +540,7 @@ namespace spore::codegen
 
             if (argument.name.empty())
             {
-                argument.name = fmt::format("_arg{}", index);
+                argument.name = std::format("_arg{}", index);
             }
 
             const auto visitor = [&](const CXCursor& v_cursor, const CXCursor&) {
@@ -884,9 +884,9 @@ namespace spore::codegen
         {
             using pointer = CXIndex;
 
-            void operator()(CXIndex index) const
+            void operator()(CXIndex clang_index) const
             {
-                clang_disposeIndex(index);
+                clang_disposeIndex(clang_index);
             }
         };
 
@@ -956,10 +956,10 @@ namespace spore::codegen
             std::vector<CXUnsavedFile> unsaved_files;
             unsaved_files.reserve(cpp_files.size() + 1);
 
-            for (std::size_t index = 0; index < paths.size(); ++index)
+            for (std::size_t path_index = 0; path_index < paths.size(); ++path_index)
             {
-                const std::string& source = cpp_files[index].source;
-                unsaved_files.emplace_back() = CXUnsavedFile {paths[index].data(), source.data(), static_cast<unsigned long>(source.size())};
+                const std::string& source = cpp_files[path_index].source;
+                unsaved_files.emplace_back() = CXUnsavedFile {paths[path_index].data(), source.data(), static_cast<unsigned long>(source.size())};
             }
 
             constexpr std::string_view source_file = "__main.cpp";

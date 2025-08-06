@@ -37,6 +37,7 @@ add_compile_options(
 
 add_compile_definitions(
   SPDLOG_NO_SOURCE_LOC
+  SPDLOG_USE_STD_FORMAT
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")

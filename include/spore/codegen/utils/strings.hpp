@@ -1,10 +1,9 @@
 #pragma once
 
 #include <cstdint>
+#include <format>
 #include <string>
 #include <string_view>
-
-#include "fmt/format.h"
 
 namespace spore::codegen::strings
 {
@@ -61,7 +60,7 @@ namespace spore::codegen::strings
 }
 
 template <typename string_t>
-struct fmt::formatter<std::vector<string_t>> : formatter<std::string>
+struct std::formatter<std::vector<string_t>> : formatter<std::string>
 {
     auto format(const std::vector<string_t>& values, format_context& ctx) const
     {

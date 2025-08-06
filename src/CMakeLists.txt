@@ -24,7 +24,6 @@ find_path(
 )
 
 find_package(argparse CONFIG REQUIRED)
-find_package(fmt CONFIG REQUIRED)
 find_package(inja CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
@@ -34,10 +33,9 @@ find_package(yaml-cpp CONFIG REQUIRED)
 target_link_libraries(
   ${SPORE_CODEGEN_LIBRARY_TARGET}
   INTERFACE
-    fmt::fmt
     nlohmann_json::nlohmann_json
     pantor::inja
-    spdlog::spdlog
+    spdlog::spdlog_header_only
     tiny-process-library::tiny-process-library
     yaml-cpp::yaml-cpp
 )

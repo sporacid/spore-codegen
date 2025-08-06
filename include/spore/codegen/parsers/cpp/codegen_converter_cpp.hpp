@@ -1,13 +1,13 @@
 #pragma once
 
 #include <cstdint>
+#include <format>
 
-#include "fmt/format.h"
 #include "nlohmann/json.hpp"
 
-#include "spore/codegen/parsers/cpp/ast/cpp_file.hpp"
-#include "spore/codegen/parsers/codegen_converter.hpp"
 #include "spore/codegen/misc/make_unique_id.hpp"
+#include "spore/codegen/parsers/codegen_converter.hpp"
+#include "spore/codegen/parsers/cpp/ast/cpp_file.hpp"
 
 namespace spore::codegen
 {
@@ -74,7 +74,7 @@ namespace spore::codegen
         std::size_t unique_id = make_unique_id<cpp_template_param>();
 
         json["id"] = unique_id;
-        json["name"] = value.name.empty() ? fmt::format("_{}", unique_id) : value.name;
+        json["name"] = value.name.empty() ? std::format("_{}", unique_id) : value.name;
         json["type"] = value.type;
         json["default_value"] = value.default_value.value_or("");
         json["has_default_value"] = value.default_value.has_value();
