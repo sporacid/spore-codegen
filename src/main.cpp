@@ -1,3 +1,4 @@
+#include <format>
 #include <string>
 #include <vector>
 
@@ -192,7 +193,7 @@ int main(const int argc, const char* argv[])
     }
 
     const auto parse_impl_args = [&]<typename impl_t> {
-        const std::string prefix = fmt::format("--{}:", impl_t::name());
+        const std::string prefix = std::format("--{}:", impl_t::name());
 
         std::vector<std::string> impl_args;
         for (const std::string& additional_arg : additional_args)

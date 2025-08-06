@@ -1,5 +1,6 @@
 #pragma once
 
+#include <format>
 #include <ranges>
 
 #include "spdlog/spdlog.h"
@@ -47,7 +48,7 @@ namespace spore::codegen
         {
             if (name == nullptr || std::strlen(name) == 0)
             {
-                return fmt::format("_{}{}", prefix, make_unique_id<seed_t>());
+                return std::format("_{}{}", prefix, make_unique_id<seed_t>());
             }
 
             return name;

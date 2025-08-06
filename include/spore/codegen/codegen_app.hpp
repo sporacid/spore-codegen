@@ -328,7 +328,7 @@ namespace spore::codegen
 
                     if (!options.reformat.empty())
                     {
-                        std::string command = fmt::format("{} {}", options.reformat, output_data.path);
+                        std::string command = std::format("{} {}", options.reformat, output_data.path);
                         processes.emplace_back(std::make_unique<TinyProcessLib::Process>(command));
                     }
                 }
@@ -458,7 +458,7 @@ namespace spore::codegen
                             codegen_output_data output_data {
                                 .step_index = step_index,
                                 .template_index = template_index,
-                                .path = fmt::format("{}.{}", output_prefix.string(), output_suffix.string()),
+                                .path = std::format("{}.{}", output_prefix.string(), output_suffix.string()),
                             };
 
                             file_data.outputs.emplace_back(std::move(output_data));
