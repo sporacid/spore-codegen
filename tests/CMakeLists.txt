@@ -1,41 +1,28 @@
-set(
-  SPORE_CODEGEN_TESTS_TARGET "${PROJECT_NAME}-tests"
-  CACHE STRING "Target for the codegen unit tests"
-)
+set(TARGET_NAME ${PROJECT_NAME}-tests)
 
 if (SPORE_WITH_CPP)
-  list(APPEND SPORE_CODEGEN_TESTS_FILES t_codegen_parser_cpp.cpp)
+  list(APPEND TARGET_FILES ${CMAKE_CURRENT_SOURCE_DIR}/t_codegen_parser_cpp.cpp)
 endif ()
 
 if (SPORE_WITH_SPIRV)
-  list(APPEND SPORE_CODEGEN_TESTS_FILES t_codegen_parser_spirv.cpp)
+  list(APPEND TARGET_FILES ${CMAKE_CURRENT_SOURCE_DIR}/t_codegen_parser_spirv.cpp)
 endif ()
 
 add_executable(
-  ${SPORE_CODEGEN_TESTS_TARGET}
-  ${SPORE_CODEGEN_TESTS_FILES}
-)
-
-set_target_properties(
-  ${SPORE_CODEGEN_TESTS_TARGET}
-  PROPERTIES
-    LINKER_LANGUAGE CXX
+  ${TARGET_NAME}
+  ${TARGET_FILES}
 )
 
 target_link_libraries(
-  ${SPORE_CODEGEN_TESTS_TARGET}
-  PRIVATE
-    ${SPORE_CODEGEN_LIBRARY_TARGET}
-    Catch2::Catch2WithMain
+  ${TARGET_NAME} PRIVATE
+  ${SPORE_CODEGEN_LIB}
+  Catch2::Catch2WithMain
 )
 
-list(
-  APPEND CMAKE_MODULE_PATH
-    ${CMAKE_CURRENT_BINARY_DIR}/content/catch2/extras
-)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_BINARY_DIR}/content/catch2/extras)
 
 find_package(Catch2 CONFIG REQUIRED)
 
 include(Catch)
 
-catch_discover_tests(${SPORE_CODEGEN_TESTS_TARGET})
+catch_discover_tests(${TARGET_NAME})
