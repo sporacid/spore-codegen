@@ -302,7 +302,12 @@ namespace spore::codegen
 
             if (const clang::VarTemplateSpecializationDecl* template_spec_decl = llvm::dyn_cast<clang::VarTemplateSpecializationDecl>(&var_decl))
             {
-                cpp_variable.template_specialization_params = make_template_specialization_params(ast_context, *template_spec_decl->getTemplateArgsAsWritten());
+#if LLVM_VERSION_MAJOR >= 19
+                const clang::ASTTemplateArgumentListInfo* template_spec_args = template_spec_decl->getTemplateArgsAsWritten();
+#else
+                const clang::ASTTemplateArgumentListInfo* template_spec_args = template_spec_decl->getTemplateArgsInfo();
+#endif
+                cpp_variable.template_specialization_params = make_template_specialization_params(ast_context, *template_spec_args);
             }
 
             return cpp_variable;
@@ -480,7 +485,12 @@ namespace spore::codegen
 
             if (const clang::ClassTemplateSpecializationDecl* template_spec_decl = llvm::dyn_cast<clang::ClassTemplateSpecializationDecl>(&class_decl))
             {
-                cpp_class.template_specialization_params = make_template_specialization_params(ast_context, *template_spec_decl->getTemplateArgsAsWritten());
+#if LLVM_VERSION_MAJOR >= 19
+                const clang::ASTTemplateArgumentListInfo* template_spec_args = template_spec_decl->getTemplateArgsAsWritten();
+#else
+                const clang::ASTTemplateArgumentListInfo* template_spec_args = template_spec_decl->getTemplateArgsInfo();
+#endif
+                cpp_class.template_specialization_params = make_template_specialization_params(ast_context, *template_spec_args);
             }
 
             if (cpp_class.definition)
