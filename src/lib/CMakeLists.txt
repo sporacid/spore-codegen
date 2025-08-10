@@ -41,6 +41,13 @@ set_target_properties(
   OUTPUT_NAME ${PROJECT_NAME}
 )
 
+if (BUILD_SHARED_LIBS)
+  set_target_properties(
+    ${TARGET_NAME} PROPERTIES
+    WINDOWS_EXPORT_ALL_SYMBOLS ON
+  )
+endif ()
+
 if (SPORE_WITH_CPP)
   find_package(LLVM REQUIRED CONFIG)
   find_package(Clang REQUIRED CONFIG)

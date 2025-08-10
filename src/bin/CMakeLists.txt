@@ -18,3 +18,12 @@ set_target_properties(
   ${TARGET_NAME} PROPERTIES
   OUTPUT_NAME ${PROJECT_NAME}
 )
+
+if (BUILD_SHARED_LIBS)
+  add_custom_command(
+    TARGET ${TARGET_NAME} PRE_LINK
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    $<TARGET_FILE:${SPORE_CODEGEN_LIB}>
+    $<TARGET_FILE_DIR:${TARGET_NAME}>
+  )
+endif ()
