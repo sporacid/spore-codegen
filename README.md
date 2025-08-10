@@ -88,8 +88,8 @@ at [this repository](https://github.com/sporacid/spore-codegen-example) for a mo
 
 1. Install `LLVM`:
     ```shell
-    git clone https://github.com/llvm/llvm-project llvm-18 --branch llvmorg-18.1.8
-    cd llvm-18
+    git clone https://github.com/llvm/llvm-project llvm --branch llvmorg-20.1.8
+    cd llvm
     mkdir .build .install
     cmake -S llvm -B .build -G "Ninja" -DCMAKE_BUILD_TYPE="Release" -DLLVM_ENABLE_PROJECTS="clang" -DLLVM_ADDITIONAL_BUILD_TYPES="Debug" -DLLVM_TARGETS_TO_BUILD="host"
     cmake --build .build
@@ -111,7 +111,7 @@ at [this repository](https://github.com/sporacid/spore-codegen-example) for a mo
 1. Install `LLVM`:
 
    ```shell
-    export LLVM_VERSION=18
+    export LLVM_VERSION=20
     wget https://apt.llvm.org/llvm.sh
     chmod u+x llvm.sh
     sudo ./llvm.sh ${LLVM_VERSION} all
