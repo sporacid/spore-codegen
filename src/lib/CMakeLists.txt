@@ -3,7 +3,9 @@ set(TARGET_NAME ${PROJECT_NAME}-lib)
 set(SPORE_CODEGEN_LIB ${TARGET_NAME} CACHE STRING "Target for the codegen library")
 
 if (SPORE_WITH_CPP)
-  list(APPEND TARGET_FILES ${CMAKE_CURRENT_SOURCE_DIR}/codegen_parser_cpp.cpp)
+  list(APPEND TARGET_FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/codegen_parser_cpp.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/codegen_formatter_cpp.cpp)
 endif ()
 
 if (SPORE_WITH_SPIRV)
@@ -15,17 +17,15 @@ find_path(SPORE_PICOSHA2_INCLUDE_DIRS picosha2.h)
 find_package(inja CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
-find_package(tiny-process-library CONFIG REQUIRED)
 find_package(yaml-cpp CONFIG REQUIRED)
 
 add_library(${TARGET_NAME} ${TARGET_FILES})
 
 target_link_libraries(
   ${TARGET_NAME} PUBLIC
-  nlohmann_json::nlohmann_json
   pantor::inja
+  nlohmann_json::nlohmann_json
   spdlog::spdlog_header_only
-  tiny-process-library::tiny-process-library
   yaml-cpp::yaml-cpp
 )
 

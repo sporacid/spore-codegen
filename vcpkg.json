@@ -9,7 +9,6 @@
     "nlohmann-json",
     "picosha2",
     "spdlog",
-    "tiny-process-library",
     "yaml-cpp"
   ],
   "default-features": [

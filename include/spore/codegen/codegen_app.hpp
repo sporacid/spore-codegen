@@ -8,18 +8,6 @@
 #include "glob/glob.h"
 #include "nlohmann/json.hpp"
 
-#ifdef UNICODE
-#    undef UNICODE
-#    define _TINY_PROCESS_LIBRARY_UNICODE
-#endif
-
-#include "process.hpp"
-
-#ifdef _TINY_PROCESS_LIBRARY_UNICODE
-#    define UNICODE
-#    undef _TINY_PROCESS_LIBRARY_UNICODE
-#endif
-
 #include "spore/codegen/codegen_cache.hpp"
 #include "spore/codegen/codegen_config.hpp"
 #include "spore/codegen/codegen_data.hpp"
@@ -52,22 +40,21 @@ namespace spore::codegen
         }
     }
 
-    template <typename renderer_t, typename... impls_t>
+    template <typename renderer_t, typename formatter_t, typename... impls_t>
     struct codegen_app
     {
-        using process_ptr = std::unique_ptr<TinyProcessLib::Process>;
-
         codegen_options options;
         codegen_config config;
         codegen_cache cache;
         nlohmann::json user_data;
         renderer_t renderer;
+        formatter_t formatter;
         std::tuple<impls_t...> impls;
-        std::vector<process_ptr> processes;
 
-        codegen_app(codegen_options in_options, renderer_t in_renderer, impls_t... in_impls)
+        codegen_app(codegen_options in_options, renderer_t in_renderer, formatter_t in_formatter, impls_t... in_impls)
             : options(std::move(in_options)),
               renderer(std::move(in_renderer)),
+              formatter(std::move(in_formatter)),
               impls(std::move(in_impls)...)
         {
             const auto normalize_path = [](std::string& value, const std::string* base = nullptr) {
@@ -131,7 +118,6 @@ namespace spore::codegen
         void run()
         {
             const auto action = [&] {
-                defer defer_wait_processes = [&] { wait_pending_processes(); };
                 codegen_data data = make_data();
 
                 for (std::size_t index = 0; index < config.stages.size(); ++index)
@@ -178,28 +164,6 @@ namespace spore::codegen
 
             const auto finally = [](std::float_t duration) {
                 SPDLOG_INFO("codegen completed, duration={:.3f}s", duration);
-            };
-
-            detail::run_timed(action, finally);
-        }
-
-        void wait_pending_processes()
-        {
-            if (processes.empty())
-                return;
-
-            const auto action = [&] {
-                SPDLOG_DEBUG("waiting on pending processes, count={}", processes.size());
-
-                for (const std::unique_ptr<TinyProcessLib::Process>& process : processes)
-                {
-                    process->get_exit_status();
-                }
-            };
-
-            const auto finally = [&](std::float_t duration) {
-                SPDLOG_DEBUG("wait on pending processes completed, duration={:.3f}s", duration);
-                processes.clear();
             };
 
             detail::run_timed(action, finally);
@@ -330,17 +294,21 @@ namespace spore::codegen
                         throw codegen_error(codegen_error_code::rendering, "failed to render input, file={} template={}", file_data.path, template_data.path);
                     }
 
+                    if (options.reformat)
+                    {
+                        SPDLOG_DEBUG("reformatting output, file={}", output_data.path);
+
+                        if (!formatter.format_file(output_data.path, result))
+                        {
+                            SPDLOG_DEBUG("failed to reformat output, file={}", output_data.path);
+                        }
+                    }
+
                     SPDLOG_DEBUG("writing output, file={}", output_data.path);
 
                     if (!files::write_file(output_data.path, result))
                     {
                         throw codegen_error(codegen_error_code::io, "failed to write output, file={}", output_data.path);
-                    }
-
-                    if (!options.reformat.empty())
-                    {
-                        std::string command = std::format("{} {}", options.reformat, output_data.path);
-                        processes.emplace_back(std::make_unique<TinyProcessLib::Process>(command));
                     }
                 }
             }
