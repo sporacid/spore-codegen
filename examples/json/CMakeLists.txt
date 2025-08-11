@@ -30,6 +30,7 @@ include(SporeCodegen)
 spore_codegen(
   ${TARGET_NAME}
   CACHE .codegen/cache.yml
+  REFORMAT
   DEBUG
 )
 

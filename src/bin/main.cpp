@@ -12,20 +12,24 @@
 #include "spore/codegen/codegen_version.hpp"
 #include "spore/codegen/conditions/codegen_condition_factory.hpp"
 #include "spore/codegen/conditions/codegen_condition_logical.hpp"
+#include "spore/codegen/formatters/codegen_formatter_composite.hpp"
+#include "spore/codegen/formatters/codegen_formatter_json.hpp"
+#include "spore/codegen/formatters/codegen_formatter_yaml.hpp"
 #include "spore/codegen/renderers/codegen_renderer_composite.hpp"
 #include "spore/codegen/renderers/codegen_renderer_inja.hpp"
 
 #ifdef SPORE_WITH_CPP
-#include "spore/codegen/conditions/codegen_condition_attribute.hpp"
-#include "spore/codegen/parsers/cpp/ast/cpp_file.hpp"
-#include "spore/codegen/parsers/cpp/codegen_converter_cpp.hpp"
-#include "spore/codegen/parsers/cpp/codegen_parser_cpp.hpp"
+#    include "spore/codegen/conditions/codegen_condition_attribute.hpp"
+#    include "spore/codegen/formatters/codegen_formatter_cpp.hpp"
+#    include "spore/codegen/parsers/cpp/ast/cpp_file.hpp"
+#    include "spore/codegen/parsers/cpp/codegen_converter_cpp.hpp"
+#    include "spore/codegen/parsers/cpp/codegen_parser_cpp.hpp"
 #endif
 
 #ifdef SPORE_WITH_SPIRV
-#include "spore/codegen/parsers/spirv/ast/spirv_module.hpp"
-#include "spore/codegen/parsers/spirv/codegen_converter_spirv.hpp"
-#include "spore/codegen/parsers/spirv/codegen_parser_spirv.hpp"
+#    include "spore/codegen/parsers/spirv/ast/spirv_module.hpp"
+#    include "spore/codegen/parsers/spirv/codegen_converter_spirv.hpp"
+#    include "spore/codegen/parsers/spirv/codegen_parser_spirv.hpp"
 #endif
 
 namespace spore::codegen
@@ -37,8 +41,6 @@ namespace spore::codegen
             constexpr auto file = "FILE";
             constexpr auto directory = "DIR";
             constexpr auto pair = "PAIR";
-            constexpr auto command = "COMMAND";
-            constexpr auto argument = "ARG";
         }
 
         std::pair<std::string, std::string> parse_pair(std::string_view pair)
@@ -146,12 +148,9 @@ int main(const int argc, const char* argv[])
 
     arg_parser
         .add_argument("-r", "--reformat")
-        .help("Command to reformat output files, or false to disable reformatting")
-        .default_value(std::string {})
-        .metavar(detail::metavars::command)
-        .action([](const std::string& reformat) {
-            return reformat != "false" ? reformat : "";
-        });
+        .help("Whether to reformat output files or not")
+        .default_value(false)
+        .implicit_value(true);
 
     arg_parser
         .add_argument("-f", "--force")
@@ -180,9 +179,9 @@ int main(const int argc, const char* argv[])
     codegen_options options {
         .config = arg_parser.get<std::string>("--config"),
         .cache = arg_parser.get<std::string>("--cache"),
-        .reformat = arg_parser.get<std::string>("--reformat"),
         .templates = arg_parser.get<std::vector<std::string>>("--templates"),
         .user_data = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--user-data"),
+        .reformat = arg_parser.get<bool>("--reformat"),
         .force = arg_parser.get<bool>("--force"),
         .debug = arg_parser.get<bool>("--debug"),
     };
@@ -228,11 +227,20 @@ int main(const int argc, const char* argv[])
         std::make_shared<codegen_renderer_inja>(options.templates),
     };
 
+    codegen_formatter_composite formatter {
+        std::make_shared<codegen_formatter_json>(),
+        std::make_shared<codegen_formatter_yaml>(),
+#ifdef SPORE_WITH_CPP
+        std::make_shared<codegen_formatter_cpp>(),
+#endif
+    };
+
     try
     {
         codegen_app app {
             std::move(options),
             std::move(renderer),
+            std::move(formatter),
 #ifdef SPORE_WITH_CPP
             std::move(impl_cpp),
 #endif

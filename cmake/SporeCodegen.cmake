@@ -15,15 +15,6 @@ function(spore_codegen SPORE_TARGET_NAME)
     set(SPORE_CODEGEN_TARGET_NAME "${SPORE_TARGET_NAME}-codegen")
   endif ()
 
-  if (NOT SPORE_CODEGEN_REFORMAT)
-    find_package(ClangFormat)
-    if (CLANG_FORMAT_FOUND)
-      set(SPORE_CODEGEN_REFORMAT "${CLANG_FORMAT_EXECUTABLE} -i")
-    else ()
-      set(SPORE_CODEGEN_REFORMAT "false")
-    endif ()
-  endif ()
-
   if (NOT SPORE_CODEGEN_WORKING_DIRECTORY)
     set(SPORE_CODEGEN_WORKING_DIRECTORY $<TARGET_PROPERTY:${SPORE_TARGET_NAME},SOURCE_DIR>)
   endif ()
@@ -69,7 +60,7 @@ function(spore_codegen SPORE_TARGET_NAME)
       ${SPORE_CODEGEN_BIN_NAME}
       "$<$<BOOL:${SPORE_CODEGEN_CONFIG}>:--config;${SPORE_CODEGEN_CONFIG};>"
       "$<$<BOOL:${SPORE_CODEGEN_CACHE}>:--cache;${SPORE_CODEGEN_CACHE};>"
-      "$<$<BOOL:${SPORE_CODEGEN_REFORMAT}>:--reformat;${SPORE_CODEGEN_REFORMAT};>"
+      "$<$<BOOL:${SPORE_CODEGEN_REFORMAT}>:--reformat;>"
       "$<$<BOOL:${SPORE_CODEGEN_FORCE}>:--force;>"
       "$<$<BOOL:${SPORE_CODEGEN_DEBUG}>:--debug;>"
       "$<$<BOOL:$<FILTER:${SPORE_CODEGEN_TEMPLATES},EXCLUDE,^$>>:--templates;$<JOIN:${SPORE_CODEGEN_TEMPLATES},;--templates;>>"
