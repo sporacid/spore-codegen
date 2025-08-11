@@ -26,7 +26,7 @@ namespace spore::codegen
 
             if (not yaml.IsDefined())
             {
-                SPDLOG_DEBUG("invalid YAML, path={}", path);
+                SPDLOG_DEBUG("invalid YAML, path={}", file);
                 return false;
             }
 
