@@ -22,7 +22,7 @@ namespace spore::codegen
 
             if (json.is_discarded())
             {
-                SPDLOG_DEBUG("invalid JSON, path={}", path);
+                SPDLOG_DEBUG("invalid JSON, path={}", file);
                 return false;
             }
 
