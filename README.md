@@ -150,16 +150,16 @@ cmake --build .cmake --config Release
 
 `spore-codegen` is a command line application that can be added to any build pipeline.
 
-| Argument             | Short | Long                    | Default        | Description                                                                                                                                             |
-|----------------------|-------|-------------------------|----------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Configuration file   | `-c`  | `--config`              | `codegen.yml`  | Configuration file to use. Contains all codegen steps to execute, which files to process and with which templates.                                      |
-| Cache file           | `-C`  | `--cache`               | `.codegen.yml` | Cache file to use. This file will be used to detect whether parsing and generation is required for any given input files.                               |
-| Template directories | `-t`  | `--templates`           | Empty          | List of directories in which to search for templates in case the template is not found in the command's working directory.                              |
-| User data            | `-D`  | `--user-data`           | Empty          | Additional user data to be passed to the rendering stage. Can be passed as `key=value` and will be accessible through the `$.user_data` JSON property.  |
-| Reformat command     | `-r`  | `--reformat`            | `false`        | Set the command to execute to reformat output files. The command will be supplied a single argument which will be the relative path to the output file. |
-| Force generate       | `-f`  | `--force`               | `false`        | Skip cache and force generate all input files.                                                                                                          |
-| Debug mode           | `-d`  | `--debug`               | `false`        | Enable debug output.                                                                                                                                    |
-| Parser arguments     | N/A   | `--<parser>:<argument>` | Empty          | Additional arguments to pass verbatim to the parser implementation (e.g. `--cpp:-std=c++20 --cpp:-Iproject/include`).                                   |
+| Argument             | Short | Long                    | Default        | Description                                                                                                                                            |
+|----------------------|-------|-------------------------|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Configuration file   | `-c`  | `--config`              | `codegen.yml`  | Configuration file to use. Contains all codegen steps to execute, which files to process and with which templates.                                     |
+| Cache file           | `-C`  | `--cache`               | `.codegen.yml` | Cache file to use. This file will be used to detect whether parsing and generation is required for any given input files.                              |
+| Template directories | `-t`  | `--templates`           | Empty          | List of directories in which to search for templates in case the template is not found in the command's working directory.                             |
+| User data            | `-D`  | `--user-data`           | Empty          | Additional user data to be passed to the rendering stage. Can be passed as `key=value` and will be accessible through the `$.user_data` JSON property. |
+| Reformat             | `-r`  | `--reformat`            | `false`        | Whether to reformat output files. Will use `.clang-format` configuration file for `cpp` files.                                                         |
+| Force generate       | `-f`  | `--force`               | `false`        | Skip cache and force generate all input files.                                                                                                         |
+| Debug mode           | `-d`  | `--debug`               | `false`        | Enable debug output.                                                                                                                                   |
+| Parser arguments     | N/A   | `--<parser>:<argument>` | Empty          | Additional arguments to pass verbatim to the parser implementation (e.g. `--cpp:-std=c++20 --cpp:-Iproject/include`).                                  |
 
 # Configuration
 
@@ -224,18 +224,18 @@ spore_codegen(target)
 
 # With all arguments
 spore_codegen(
-    target
-    CONFIG codegen.yml
-    CACHE cache.yml
-    REFORMAT clang-format -i
-    USER_DATA
+  target
+  CONFIG codegen.yml
+  CACHE cache.yml
+  USER_DATA
     key1=value1
     key2=value2
-    ADDITIONAL_ARGS
+  ADDITIONAL_ARGS
     --cpp:-isystem/system/include
     --cpp:-v
-    FORCE
-    DEBUG
+  REFORMAT
+  FORCE
+  DEBUG
 )
 ```
 
