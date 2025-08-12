@@ -17,6 +17,8 @@
 #include "spore/codegen/formatters/codegen_formatter_yaml.hpp"
 #include "spore/codegen/renderers/codegen_renderer_composite.hpp"
 #include "spore/codegen/renderers/codegen_renderer_inja.hpp"
+#include "spore/codegen/renderers/scripting/codegen_script_interface_composite.hpp"
+#include "spore/codegen/renderers/scripting/codegen_script_interface_native.hpp"
 
 #ifdef SPORE_WITH_CPP
 #    include "spore/codegen/conditions/codegen_condition_attribute.hpp"
@@ -32,6 +34,10 @@
 #    include "spore/codegen/parsers/spirv/codegen_parser_spirv.hpp"
 #endif
 
+#ifdef SPORE_WITH_SCRIPTING_LUA
+#    include "spore/codegen/renderers/scripting/codegen_script_interface_lua.hpp"
+#endif
+
 namespace spore::codegen
 {
     namespace detail
@@ -40,6 +46,7 @@ namespace spore::codegen
         {
             constexpr auto file = "FILE";
             constexpr auto directory = "DIR";
+            constexpr auto path = "PATH";
             constexpr auto pair = "PAIR";
         }
 
@@ -139,6 +146,13 @@ int main(const int argc, const char* argv[])
         .append();
 
     arg_parser
+        .add_argument("-s", "--scripts")
+        .help("Directories to search for scripts")
+        .default_value(std::vector<std::string> {})
+        .metavar(detail::metavars::path)
+        .append();
+
+    arg_parser
         .add_argument("-D", "--user-data")
         .help("Additional data to be passed to the rendering stage, can be accessed through the \"$.user_data\" JSON property")
         .default_value(std::vector<std::pair<std::string, std::string>> {})
@@ -180,6 +194,7 @@ int main(const int argc, const char* argv[])
         .config = arg_parser.get<std::string>("--config"),
         .cache = arg_parser.get<std::string>("--cache"),
         .templates = arg_parser.get<std::vector<std::string>>("--templates"),
+        .scripts = arg_parser.get<std::vector<std::string>>("--scripts"),
         .user_data = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--user-data"),
         .reformat = arg_parser.get<bool>("--reformat"),
         .force = arg_parser.get<bool>("--force"),
@@ -223,15 +238,22 @@ int main(const int argc, const char* argv[])
     };
 #endif
 
+    std::shared_ptr script_interface = std::make_shared<codegen_script_interface_composite>(
+#ifdef SPORE_WITH_SCRIPTING_LUA
+        std::make_unique<codegen_script_interface_lua>(options.scripts),
+#endif
+        std::make_unique<codegen_script_interface_native>(codegen_script_interface_native::make_default())
+    );
+
     codegen_renderer_composite renderer {
-        std::make_shared<codegen_renderer_inja>(options.templates),
+        std::make_unique<codegen_renderer_inja>(script_interface, options.templates),
     };
 
     codegen_formatter_composite formatter {
-        std::make_shared<codegen_formatter_json>(),
-        std::make_shared<codegen_formatter_yaml>(),
+        std::make_unique<codegen_formatter_json>(),
+        std::make_unique<codegen_formatter_yaml>(),
 #ifdef SPORE_WITH_CPP
-        std::make_shared<codegen_formatter_cpp>(),
+        std::make_unique<codegen_formatter_cpp>(),
 #endif
     };
 

@@ -51,7 +51,7 @@ namespace spore::codegen
         formatter_t formatter;
         std::tuple<impls_t...> impls;
 
-        codegen_app(codegen_options in_options, renderer_t in_renderer, formatter_t in_formatter, impls_t... in_impls)
+        codegen_app(codegen_options&& in_options, renderer_t&& in_renderer, formatter_t&& in_formatter, impls_t&&... in_impls)
             : options(std::move(in_options)),
               renderer(std::move(in_renderer)),
               formatter(std::move(in_formatter)),

@@ -2,6 +2,9 @@ set(TARGET_NAME ${PROJECT_NAME}-lib)
 
 set(SPORE_CODEGEN_LIB ${TARGET_NAME} CACHE STRING "Target for the codegen library")
 
+list(APPEND TARGET_FILES
+  ${CMAKE_CURRENT_SOURCE_DIR}/codegen_script_interface_native.cpp)
+
 if (SPORE_WITH_CPP)
   list(APPEND TARGET_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/codegen_parser_cpp.cpp
@@ -10,6 +13,10 @@ endif ()
 
 if (SPORE_WITH_SPIRV)
   list(APPEND TARGET_FILES ${CMAKE_CURRENT_SOURCE_DIR}/codegen_parser_spirv.cpp)
+endif ()
+
+if (SPORE_WITH_SCRIPTING_LUA)
+  list(APPEND TARGET_FILES ${CMAKE_CURRENT_SOURCE_DIR}/codegen_script_interface_lua.cpp)
 endif ()
 
 find_path(SPORE_PICOSHA2_INCLUDE_DIRS picosha2.h)
@@ -82,6 +89,27 @@ if (SPORE_WITH_SPIRV)
   target_compile_definitions(
     ${TARGET_NAME} PUBLIC
     SPORE_WITH_SPIRV
+  )
+endif ()
+
+if (SPORE_WITH_SCRIPTING_LUA)
+  find_package(Lua REQUIRED)
+  find_package(sol2 CONFIG REQUIRED)
+
+  target_link_libraries(
+    ${TARGET_NAME} PUBLIC
+    ${LUA_LIBRARIES}
+    sol2
+  )
+
+  target_include_directories(
+    ${TARGET_NAME} PUBLIC
+    ${LUA_INCLUDE_DIR}
+  )
+
+  target_compile_definitions(
+    ${TARGET_NAME} PUBLIC
+    SPORE_WITH_SCRIPTING_LUA
   )
 endif ()
 

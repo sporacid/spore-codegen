@@ -21,12 +21,12 @@ namespace spore::codegen::json
             case nlohmann::json::value_t::string: {
                 constexpr char false_string[] {'f', 'a', 'l', 's', 'e'};
                 constexpr auto predicate = [](const char c1, const char c2) { return std::tolower(c1) == std::tolower(c2); };
-                const std::string& string = json.get<std::string>();
+                const std::string& string = json.get_ref<const std::string&>();
                 truthy = !string.empty() && !std::ranges::equal(string, false_string, predicate);
                 break;
             }
             case nlohmann::json::value_t::array:
-                truthy = !json.get<std::vector<nlohmann::json>>().empty();
+                truthy = !json.get_ref<const std::vector<nlohmann::json>&>().empty();
                 break;
             case nlohmann::json::value_t::object:
                 truthy = !json.get<std::map<std::string, nlohmann::json>>().empty();

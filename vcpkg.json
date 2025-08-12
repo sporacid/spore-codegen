@@ -13,16 +13,24 @@
   ],
   "default-features": [
     "cpp",
-    "spirv"
+    "spirv",
+    "scripting-lua"
   ],
   "features": {
     "cpp": {
-      "description": "support for clang-based C++ parser"
+      "description": "Support for clang-based C++ parser"
     },
     "spirv": {
-      "description": "support for SPIR-V parser",
+      "description": "Support for SPIR-V parser",
       "dependencies": [
         "spirv-reflect"
+      ]
+    },
+    "scripting-lua": {
+      "description": "Support for renderer scripting with LUA",
+      "dependencies": [
+        "lua",
+        "sol2"
       ]
     }
   }
