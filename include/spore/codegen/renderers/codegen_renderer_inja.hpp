@@ -118,6 +118,37 @@ namespace spore::codegen
 
             return flattened;
         }
+
+        inline std::string format_impl(const std::string_view format, const std::span<const nlohmann::json* const> args)
+        {
+            const auto make_format_args = [&]<std::size_t... indices_v>(std::index_sequence<indices_v...>) {
+                return std::make_format_args(*args[indices_v]...);
+            };
+
+            switch (args.size())
+            {
+                case 0:
+                    return std::string(format);
+                case 1:
+                    return std::vformat(format, make_format_args(std::make_index_sequence<1>()));
+                case 2:
+                    return std::vformat(format, make_format_args(std::make_index_sequence<2>()));
+                case 3:
+                    return std::vformat(format, make_format_args(std::make_index_sequence<3>()));
+                case 4:
+                    return std::vformat(format, make_format_args(std::make_index_sequence<4>()));
+                case 5:
+                    return std::vformat(format, make_format_args(std::make_index_sequence<5>()));
+                case 6:
+                    return std::vformat(format, make_format_args(std::make_index_sequence<6>()));
+                case 7:
+                    return std::vformat(format, make_format_args(std::make_index_sequence<7>()));
+                case 8:
+                    return std::vformat(format, make_format_args(std::make_index_sequence<8>()));
+                default:
+                    throw codegen_error(codegen_error_code::rendering, "unsupported format");
+            }
+        }
     }
 
     struct codegen_renderer_inja final : codegen_renderer
@@ -164,6 +195,13 @@ namespace spore::codegen
                     const std::string& to = args.at(2)->get<std::string>();
                     strings::replace_all(value, from, to);
                     return value;
+                });
+
+            inja_env.add_callback("format",
+                [](const inja::Arguments& args) {
+                    const std::string& format = args.at(0)->get<std::string>();
+                    const std::span format_args {args.begin() + 1, args.end()};
+                    return detail::format_impl(format, format_args);
                 });
 
             inja_env.add_callback("starts_with", 2,

@@ -322,6 +322,8 @@ Some additional functions have been added to the `inja` templating engine to sim
 | `truthy(any)`                     | `{% if truthy(class.attributes.json) %}{% endif %}`    | Evaluates whether a given value is truthy.                                                             |
 | `truthy(any, string)`             | `{% if truthy(class.attributes, "json") %}{% endif %}` | Evaluates whether a given value at the given path is truthy.                                           |
 | `contains(string, string)`        | `{{ contains(class.name, "_test") }}`                  | Checks whether a string contains a given substring.                                                    |
+| `replace(string, string, string)` | `{{ replace(class.name, "_t", "_test") }}`             | Replaces a given substring within string with another given substring.                                 |
+| `format(string, ...)`             | `{{ format("{}: {}", key, value) }}`                   | Formats the given string with the given arguments. Follows `std::format` rules.                        |
 | `starts_with(string, string)`     | `{{ starts_with(class.name, "prefix_") }}`             | Checks whether a string starts with the given substring.                                               |
 | `ends_with(string, string)`       | `{{ ends_with(class.name, "_suffix") }}`               | Checks whether a string ends with the given substring.                                                 |
 | `trim_start(string)`              | `{{ trim_start(class.name) }}`                         | Remove any leading whitespaces from the given string.                                                  |
@@ -330,7 +332,6 @@ Some additional functions have been added to the `inja` templating engine to sim
 | `trim_end(string, string)`        | `{{ trim_end(class.name, "_") }}`                      | Remove any trailing characters from the given string.                                                  |
 | `trim(string)`                    | `{{ trim(class.name) }}`                               | Remove any leading and trailing whitespaces from the given string.                                     |
 | `trim(string, string)`            | `{{ trim(class.name, "_") }}`                          | Remove any leading and  trailing characters from the given string.                                     |
-| `replace(string, string, string)` | `{{ replace(class.name, "_t", "_test") }}`             | Replaces a given substring within string with another given substring.                                 |
 | `cpp.name(string)`                | `{{ cpp.name(path) }}`                                 | Replace any invalid C++ character for an underscore (e.g. `/some-name` -> `_path_name`).               |
 | `cpp.embed(binary)`               | `{{ cpp.embed(base64) }}`                              | Embed the given binary as hex codes, to be used within a `C` or `C++` byte array.                      |
 | `cpp.embed(binary, number)`       | `{{ cpp.embed(base64, 80) }}`                          | Embed the given binary as hex codes with the given width, to be used within a `C` or `C++` byte array. |
