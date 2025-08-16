@@ -141,6 +141,8 @@ namespace spore::codegen
 
                 if (const clang::TemplateTypeParmDecl* type_param_decl = llvm::dyn_cast<clang::TemplateTypeParmDecl>(template_param_decl))
                 {
+                    cpp_template_param.kind = cpp_template_param_kind::type;
+
                     if (const clang::TypeConstraint* type_constraint = type_param_decl->getTypeConstraint())
                     {
                         llvm::raw_string_ostream stream {cpp_template_param.type};
@@ -166,6 +168,7 @@ namespace spore::codegen
                 }
                 else if (const clang::NonTypeTemplateParmDecl* non_type_param_decl = llvm::dyn_cast<clang::NonTypeTemplateParmDecl>(template_param_decl))
                 {
+                    cpp_template_param.kind = cpp_template_param_kind::non_type;
                     cpp_template_param.type = non_type_param_decl->getType().getAsString(get_printing_policy(ast_context));
 
                     if (non_type_param_decl->hasDefaultArgument())
@@ -180,6 +183,8 @@ namespace spore::codegen
                 }
                 else if (const clang::TemplateTemplateParmDecl* template_template_param_decl = llvm::dyn_cast<clang::TemplateTemplateParmDecl>(template_param_decl))
                 {
+                    cpp_template_param.kind = cpp_template_param_kind::template_;
+
                     // TODO @sporacid Is there a better way?
 
                     llvm::raw_string_ostream stream(cpp_template_param.type);

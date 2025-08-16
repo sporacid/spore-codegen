@@ -13,7 +13,7 @@ namespace spore::codegen
 {
     enum class cpp_class_type
     {
-        unknown,
+        none,
         class_,
         struct_,
     };
@@ -22,7 +22,7 @@ namespace spore::codegen
                        cpp_has_name<cpp_class>,
                        cpp_has_template_params<cpp_class>
     {
-        cpp_class_type type = cpp_class_type::unknown;
+        cpp_class_type type = cpp_class_type::none;
         std::vector<cpp_ref> bases;
         std::vector<cpp_field> fields;
         std::vector<cpp_function> functions;

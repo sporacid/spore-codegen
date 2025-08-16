@@ -1,8 +1,5 @@
 #pragma once
 
-#include <cstdint>
-#include <format>
-
 #include "nlohmann/json.hpp"
 
 #include "spore/codegen/misc/make_unique_id.hpp"
@@ -11,9 +8,10 @@
 
 namespace spore::codegen
 {
-    inline void to_json(nlohmann::json& json, cpp_flags value)
+    inline void to_json(nlohmann::json& json, const cpp_flags value)
     {
-        const auto predicate = [&](cpp_flags flags) { return (value & flags) == flags; };
+        const auto predicate = [&](const cpp_flags flags) { return (value & flags) == flags; };
+
         json["const"] = predicate(cpp_flags::const_);
         json["volatile"] = predicate(cpp_flags::volatile_);
         json["mutable"] = predicate(cpp_flags::mutable_);
@@ -72,12 +70,28 @@ namespace spore::codegen
         json["name"] = value.name;
     }
 
+    inline void to_json(nlohmann::json& json, const cpp_template_param_kind value)
+    {
+        static const std::map<cpp_template_param_kind, std::string> value_map {
+            {cpp_template_param_kind::none, "none"},
+            {cpp_template_param_kind::type, "type"},
+            {cpp_template_param_kind::non_type, "non_type"},
+            {cpp_template_param_kind::template_, "template"},
+        };
+
+        const auto it_value = value_map.find(value);
+
+        if (it_value != value_map.end())
+        {
+            json = it_value->second;
+        }
+    }
+
     inline void to_json(nlohmann::json& json, const cpp_template_param& value)
     {
-        std::size_t unique_id = make_unique_id<cpp_template_param>();
-
-        json["id"] = unique_id;
-        json["name"] = value.name.empty() ? std::format("_{}", unique_id) : value.name;
+        json["id"] = make_unique_id<cpp_template_param>();
+        json["kind"] = value.kind;
+        json["name"] = value.name;
         json["type"] = value.type;
         json["default_value"] = value.default_value.value_or("");
         json["has_default_value"] = value.default_value.has_value();
@@ -129,18 +143,19 @@ namespace spore::codegen
         json["type"] = value.type;
     }
 
-    inline void to_json(nlohmann::json& json, cpp_class_type value)
+    inline void to_json(nlohmann::json& json, const cpp_class_type value)
     {
         static const std::map<cpp_class_type, std::string> value_map {
-            {cpp_class_type::unknown, "unknown"},
+            {cpp_class_type::none, "none"},
             {cpp_class_type::class_, "class"},
             {cpp_class_type::struct_, "struct"},
         };
 
-        const auto it = value_map.find(value);
-        if (it != value_map.end())
+        const auto it_value = value_map.find(value);
+
+        if (it_value != value_map.end())
         {
-            json = it->second;
+            json = it_value->second;
         }
     }
 
@@ -177,10 +192,11 @@ namespace spore::codegen
             {cpp_enum_type::enum_class, "enum class"},
         };
 
-        const auto it = value_map.find(value);
-        if (it != value_map.end())
+        const auto it_value = value_map.find(value);
+
+        if (it_value != value_map.end())
         {
-            json = it->second;
+            json = it_value->second;
         }
     }
 

@@ -6,8 +6,17 @@
 
 namespace spore::codegen
 {
+    enum class cpp_template_param_kind
+    {
+        none,
+        type,
+        non_type,
+        template_,
+    };
+
     struct cpp_template_param
     {
+        cpp_template_param_kind kind = cpp_template_param_kind::none;
         std::string type;
         std::string name;
         std::optional<std::string> default_value;
