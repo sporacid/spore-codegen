@@ -224,14 +224,14 @@ int main(const int argc, const char* argv[])
 #endif
 
     codegen_renderer_composite renderer {
-        std::make_shared<codegen_renderer_inja>(options.templates),
+        codegen_renderer_inja {options.templates},
     };
 
     codegen_formatter_composite formatter {
-        std::make_shared<codegen_formatter_json>(),
-        std::make_shared<codegen_formatter_yaml>(),
+        codegen_formatter_json {},
+        codegen_formatter_yaml {},
 #ifdef SPORE_WITH_CPP
-        std::make_shared<codegen_formatter_cpp>(),
+        codegen_formatter_cpp {},
 #endif
     };
 
