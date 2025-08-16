@@ -197,9 +197,11 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         REQUIRE(class_.bases.size() == 1);
         REQUIRE(class_.bases[0].name == "_base");
         REQUIRE(class_.template_params.size() == 2);
+        REQUIRE(class_.template_params[0].kind == cpp_template_param_kind::type);
         REQUIRE(class_.template_params[0].type == "typename");
         REQUIRE(class_.template_params[0].name == "_value_t");
         REQUIRE(class_.template_params[0].default_value.has_value() == false);
+        REQUIRE(class_.template_params[1].kind == cpp_template_param_kind::non_type);
         REQUIRE(class_.template_params[1].type == "int");
         REQUIRE(class_.template_params[1].name == "_n");
         REQUIRE(class_.template_params[1].default_value.has_value());
@@ -223,6 +225,7 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         REQUIRE(class_.scope == "_namespace1::_namespace2::_struct_template<_value_t, _n>");
         REQUIRE(class_.full_name() == "_namespace1::_namespace2::_struct_template<_value_t, _n>::_nested_template<_nested_value_t>");
         REQUIRE(class_.type == cpp_class_type::struct_);
+        REQUIRE(class_.template_params[0].kind == cpp_template_param_kind::type);
         REQUIRE(class_.template_params[0].type == "typename");
         REQUIRE(class_.template_params[0].name == "_nested_value_t");
         REQUIRE(class_.template_params[0].default_value.has_value());
@@ -234,49 +237,57 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
     {
         REQUIRE(cpp_file.functions.size() == 3);
 
-        REQUIRE(cpp_file.functions[0].name == "_free_func");
-        REQUIRE(cpp_file.functions[0].scope == "_namespace1::_namespace2");
-        REQUIRE(cpp_file.functions[0].full_name() == "_namespace1::_namespace2::_free_func");
-        REQUIRE(cpp_file.functions[0].return_type.name == "int");
-        REQUIRE(cpp_file.functions[0].attributes.size() == 1);
-        REQUIRE(cpp_file.functions[0].attributes.contains("_function"));
-        REQUIRE(cpp_file.functions[0].attributes["_function"] == true);
-        REQUIRE(cpp_file.functions[0].arguments.size() == 1);
-        REQUIRE(cpp_file.functions[0].arguments[0].name == "_arg");
-        REQUIRE(cpp_file.functions[0].arguments[0].type.name == "int");
-        REQUIRE(cpp_file.functions[0].arguments[0].default_value.has_value());
-        REQUIRE(cpp_file.functions[0].arguments[0].default_value.value() == "42");
-        REQUIRE(cpp_file.functions[0].arguments[0].attributes.size() == 1);
-        REQUIRE(cpp_file.functions[0].arguments[0].attributes.contains("_argument"));
-        REQUIRE(cpp_file.functions[0].arguments[0].attributes["_argument"] == true);
+        const auto& function0 = cpp_file.functions[0];
 
-        REQUIRE(cpp_file.functions[1].name == "_template_free_func");
-        REQUIRE(cpp_file.functions[1].return_type.name == "_value_t");
-        REQUIRE(cpp_file.functions[1].attributes.size() == 1);
-        REQUIRE(cpp_file.functions[1].attributes.contains("_function"));
-        REQUIRE(cpp_file.functions[1].attributes["_function"] == true);
-        REQUIRE(cpp_file.functions[1].template_params.size() == 2);
-        REQUIRE(cpp_file.functions[1].template_params[0].type == "typename");
-        REQUIRE(cpp_file.functions[1].template_params[0].name == "_value_t");
-        REQUIRE(cpp_file.functions[1].template_params[0].default_value.has_value() == false);
-        REQUIRE(cpp_file.functions[1].template_params[1].type == "int");
-        REQUIRE(cpp_file.functions[1].template_params[1].name == "_n");
-        REQUIRE(cpp_file.functions[1].template_params[1].default_value.has_value());
-        REQUIRE(cpp_file.functions[1].template_params[1].default_value == "42");
-        REQUIRE(cpp_file.functions[1].arguments.size() == 1);
-        REQUIRE(cpp_file.functions[1].arguments[0].name == "_arg");
-        REQUIRE(cpp_file.functions[1].arguments[0].type.name == "_value_t");
-        REQUIRE(cpp_file.functions[1].arguments[0].attributes.size() == 1);
-        REQUIRE(cpp_file.functions[1].arguments[0].attributes.contains("_argument"));
-        REQUIRE(cpp_file.functions[1].arguments[0].attributes["_argument"] == true);
-        REQUIRE(cpp_file.functions[1].arguments[0].default_value.has_value() == false);
+        REQUIRE(function0.name == "_free_func");
+        REQUIRE(function0.scope == "_namespace1::_namespace2");
+        REQUIRE(function0.full_name() == "_namespace1::_namespace2::_free_func");
+        REQUIRE(function0.return_type.name == "int");
+        REQUIRE(function0.attributes.size() == 1);
+        REQUIRE(function0.attributes.contains("_function"));
+        REQUIRE(function0.attributes["_function"] == true);
+        REQUIRE(function0.arguments.size() == 1);
+        REQUIRE(function0.arguments[0].name == "_arg");
+        REQUIRE(function0.arguments[0].type.name == "int");
+        REQUIRE(function0.arguments[0].default_value.has_value());
+        REQUIRE(function0.arguments[0].default_value.value() == "42");
+        REQUIRE(function0.arguments[0].attributes.size() == 1);
+        REQUIRE(function0.arguments[0].attributes.contains("_argument"));
+        REQUIRE(function0.arguments[0].attributes["_argument"] == true);
 
-        REQUIRE(cpp_file.functions[2].name == "_global_func");
-        REQUIRE(cpp_file.functions[2].scope.empty());
-        REQUIRE(cpp_file.functions[2].full_name() == "_global_func");
-        REQUIRE(cpp_file.functions[2].return_type.name == "void");
-        REQUIRE(cpp_file.functions[2].attributes.empty());
-        REQUIRE(cpp_file.functions[2].arguments.empty());
+        const auto& function1 = cpp_file.functions[1];
+
+        REQUIRE(function1.name == "_template_free_func");
+        REQUIRE(function1.return_type.name == "_value_t");
+        REQUIRE(function1.attributes.size() == 1);
+        REQUIRE(function1.attributes.contains("_function"));
+        REQUIRE(function1.attributes["_function"] == true);
+        REQUIRE(function1.template_params.size() == 2);
+        REQUIRE(function1.template_params[0].kind == cpp_template_param_kind::type);
+        REQUIRE(function1.template_params[0].type == "typename");
+        REQUIRE(function1.template_params[0].name == "_value_t");
+        REQUIRE(function1.template_params[0].default_value.has_value() == false);
+        REQUIRE(function1.template_params[1].kind == cpp_template_param_kind::non_type);
+        REQUIRE(function1.template_params[1].type == "int");
+        REQUIRE(function1.template_params[1].name == "_n");
+        REQUIRE(function1.template_params[1].default_value.has_value());
+        REQUIRE(function1.template_params[1].default_value == "42");
+        REQUIRE(function1.arguments.size() == 1);
+        REQUIRE(function1.arguments[0].name == "_arg");
+        REQUIRE(function1.arguments[0].type.name == "_value_t");
+        REQUIRE(function1.arguments[0].attributes.size() == 1);
+        REQUIRE(function1.arguments[0].attributes.contains("_argument"));
+        REQUIRE(function1.arguments[0].attributes["_argument"] == true);
+        REQUIRE(function1.arguments[0].default_value.has_value() == false);
+
+        const auto& function2 = cpp_file.functions[2];
+
+        REQUIRE(function2.name == "_global_func");
+        REQUIRE(function2.scope.empty());
+        REQUIRE(function2.full_name() == "_global_func");
+        REQUIRE(function2.return_type.name == "void");
+        REQUIRE(function2.attributes.empty());
+        REQUIRE(function2.arguments.empty());
     }
 
     SECTION("parse attributes is feature complete")
@@ -316,16 +327,22 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
 
         REQUIRE(class_.name == "_template");
         REQUIRE(class_.template_params.size() == 6);
+        REQUIRE(class_.template_params[0].kind == cpp_template_param_kind::type);
         REQUIRE(class_.template_params[0].name == "value_t");
         REQUIRE(class_.template_params[0].type == "typename");
+        REQUIRE(class_.template_params[1].kind == cpp_template_param_kind::non_type);
         REQUIRE(class_.template_params[1].name == "size_v");
         REQUIRE(class_.template_params[1].type == "int");
+        REQUIRE(class_.template_params[2].kind == cpp_template_param_kind::template_);
         REQUIRE(class_.template_params[2].name == "template_t");
         REQUIRE(class_.template_params[2].type == "template <typename arg_t, typename, int> typename");
+        REQUIRE(class_.template_params[3].kind == cpp_template_param_kind::type);
         REQUIRE(class_.template_params[3].name == "concept_t");
         REQUIRE(class_.template_params[3].type == "_concept");
+        REQUIRE(class_.template_params[4].kind == cpp_template_param_kind::type);
         REQUIRE(class_.template_params[4].name == "nested_concept_t");
         REQUIRE(class_.template_params[4].type == "_nested::_other_concept<int>");
+        REQUIRE(class_.template_params[5].kind == cpp_template_param_kind::type);
         REQUIRE(class_.template_params[5].name == "variadic_t");
         REQUIRE(class_.template_params[5].type == "typename...");
         REQUIRE(class_.template_params[5].is_variadic);
@@ -343,16 +360,22 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
 
         REQUIRE(class_.name == "_unnamed_template");
         REQUIRE(class_.template_params.size() == 6);
+        REQUIRE(class_.template_params[0].kind == cpp_template_param_kind::type);
         REQUIRE(class_.template_params[0].name == "_t0");
         REQUIRE(class_.template_params[0].type == "typename");
+        REQUIRE(class_.template_params[1].kind == cpp_template_param_kind::non_type);
         REQUIRE(class_.template_params[1].name == "_t1");
         REQUIRE(class_.template_params[1].type == "int");
+        REQUIRE(class_.template_params[2].kind == cpp_template_param_kind::template_);
         REQUIRE(class_.template_params[2].name == "_t2");
         REQUIRE(class_.template_params[2].type == "template <typename, typename, int> typename");
+        REQUIRE(class_.template_params[3].kind == cpp_template_param_kind::type);
         REQUIRE(class_.template_params[3].name == "_t3");
         REQUIRE(class_.template_params[3].type == "_concept");
+        REQUIRE(class_.template_params[4].kind == cpp_template_param_kind::type);
         REQUIRE(class_.template_params[4].name == "_t4");
         REQUIRE(class_.template_params[4].type == "_nested::_other_concept<int>");
+        REQUIRE(class_.template_params[5].kind == cpp_template_param_kind::type);
         REQUIRE(class_.template_params[5].name == "_t5");
         REQUIRE(class_.template_params[5].type == "typename...");
         REQUIRE(class_.template_params[5].is_variadic);
@@ -365,6 +388,7 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         REQUIRE(class_.name == "_template_specialization");
         REQUIRE(class_.full_name() == "_template_specialization<int, float, value_t, _template_specialization<int, float, value_t>>");
         REQUIRE(class_.template_params.size() == 1);
+        REQUIRE(class_.template_params[0].kind == cpp_template_param_kind::type);
         REQUIRE(class_.template_params[0].name == "value_t");
         REQUIRE(class_.template_params[0].type == "typename");
         REQUIRE(class_.template_specialization_params.size() == 4);
@@ -388,6 +412,7 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         const auto predicate = [](const char c) { return std::isspace(c); };
         std::ranges::remove_copy_if(template_param0, std::back_inserter(template_param0_trimmed), predicate);
 
+        REQUIRE(class_.template_params[0].kind == cpp_template_param_kind::type);
         REQUIRE(class_.template_params[0].name == "_t0");
         REQUIRE(template_param0_trimmed == "_nested::_concept");
     }
@@ -469,6 +494,7 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         REQUIRE(var7.name == "_template_var");
         REQUIRE(var7.full_name() == "_template_var<value_t>");
         REQUIRE(var7.template_params.size() == 1);
+        REQUIRE(var7.template_params[0].kind == cpp_template_param_kind::type);
         REQUIRE(var7.template_params[0].name == "value_t");
         REQUIRE(var7.template_params[0].type == "typename");
         REQUIRE(var7.default_value.has_value());
