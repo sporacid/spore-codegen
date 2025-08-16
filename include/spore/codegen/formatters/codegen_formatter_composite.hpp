@@ -1,9 +1,8 @@
 #pragma once
 
 #include <memory>
-#include <unordered_map>
-
-#include "spdlog/spdlog.h"
+#include <ranges>
+#include <vector>
 
 #include "spore/codegen/formatters/codegen_formatter.hpp"
 
@@ -11,17 +10,17 @@ namespace spore::codegen
 {
     struct codegen_formatter_composite final : codegen_formatter
     {
-        std::vector<std::shared_ptr<codegen_formatter>> formatters;
+        std::vector<std::unique_ptr<codegen_formatter>> formatters;
 
         template <typename... formatters_t>
-        explicit codegen_formatter_composite(formatters_t&&... formatters)
-            : formatters {std::forward<formatters_t>(formatters)...}
+        explicit codegen_formatter_composite(formatters_t&&... formatters_)
         {
+            (formatters.emplace_back(std::make_unique<formatters_t>(std::forward<formatters_t>(formatters_))), ...);
         }
-        bool can_format_file(const std::string_view file) const override
 
+        bool can_format_file(const std::string_view file) const override
         {
-            const auto predicate = [&](const std::shared_ptr<codegen_formatter>& formatter) {
+            const auto predicate = [&](const std::unique_ptr<codegen_formatter>& formatter) {
                 return formatter->can_format_file(file);
             };
 
@@ -30,14 +29,15 @@ namespace spore::codegen
 
         bool format_file(const std::string_view file, std::string& file_data) override
         {
-            const auto predicate = [&](const std::shared_ptr<codegen_formatter>& formatter) {
+            const auto predicate = [&](const std::unique_ptr<codegen_formatter>& formatter) {
                 return formatter->can_format_file(file);
             };
 
             const auto it_formatter = std::ranges::find_if(formatters, predicate);
+
             if (it_formatter != formatters.end())
             {
-                const std::shared_ptr<codegen_formatter>& formatter = *it_formatter;
+                const std::unique_ptr<codegen_formatter>& formatter = *it_formatter;
                 return formatter->format_file(file, file_data);
             }
 
