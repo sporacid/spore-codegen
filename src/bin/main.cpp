@@ -224,14 +224,14 @@ int main(const int argc, const char* argv[])
 #endif
 
     codegen_renderer_composite renderer {
-        codegen_renderer_inja {options.templates},
+        std::make_unique<codegen_renderer_inja>(options.templates),
     };
 
     codegen_formatter_composite formatter {
-        codegen_formatter_json {},
-        codegen_formatter_yaml {},
+        std::make_unique<codegen_formatter_json>(),
+        std::make_unique<codegen_formatter_yaml>(),
 #ifdef SPORE_WITH_CPP
-        codegen_formatter_cpp {},
+        std::make_unique<codegen_formatter_cpp>(),
 #endif
     };
 

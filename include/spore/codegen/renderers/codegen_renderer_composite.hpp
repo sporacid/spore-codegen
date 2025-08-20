@@ -1,5 +1,6 @@
 #pragma once
 
+#include <concepts>
 #include <memory>
 #include <ranges>
 #include <vector>
@@ -12,10 +13,10 @@ namespace spore::codegen
     {
         std::vector<std::unique_ptr<codegen_renderer>> renderers;
 
-        template <typename... renderers_t>
-        explicit codegen_renderer_composite(renderers_t&&... renderers_)
+        template <std::derived_from<codegen_renderer>... renderers_t>
+        explicit codegen_renderer_composite(std::unique_ptr<renderers_t>&&... renderers_)
         {
-            (renderers.emplace_back(std::make_unique<renderers_t>(std::forward<renderers_t>(renderers_))), ...);
+            (renderers.emplace_back(std::move(renderers_)), ...);
         }
 
         [[nodiscard]] bool render_file(const std::string& file, const nlohmann::json& data, std::string& result) override
