@@ -1,5 +1,6 @@
 #pragma once
 
+#include <concepts>
 #include <memory>
 #include <ranges>
 #include <vector>
@@ -12,10 +13,10 @@ namespace spore::codegen
     {
         std::vector<std::unique_ptr<codegen_formatter>> formatters;
 
-        template <typename... formatters_t>
-        explicit codegen_formatter_composite(formatters_t&&... formatters_)
+        template <std::derived_from<codegen_formatter>... formatters_t>
+        explicit codegen_formatter_composite(std::unique_ptr<formatters_t>&&... formatters_)
         {
-            (formatters.emplace_back(std::make_unique<formatters_t>(std::forward<formatters_t>(formatters_))), ...);
+            (formatters.emplace_back(std::move(formatters_)), ...);
         }
 
         bool can_format_file(const std::string_view file) const override
