@@ -367,6 +367,24 @@ namespace spore::codegen
                 cpp_function.flags = cpp_function.flags | cpp_flags::static_;
             }
 
+            if (const clang::CXXMethodDecl* method_decl = llvm::dyn_cast<clang::CXXMethodDecl>(&function_decl))
+            {
+                if (method_decl->isConst())
+                {
+                    cpp_function.flags = cpp_function.flags | cpp_flags::const_;
+                }
+
+                if (method_decl->isVirtual())
+                {
+                    cpp_function.flags = cpp_function.flags | cpp_flags::virtual_;
+                }
+
+                if (method_decl->isVolatile())
+                {
+                    cpp_function.flags = cpp_function.flags | cpp_flags::volatile_;
+                }
+            }
+
             if (const clang::TemplateParameterList* template_params = function_decl.getDescribedTemplateParams())
             {
                 cpp_function.template_params = make_template_params(ast_context, *template_params);
@@ -554,17 +572,23 @@ namespace spore::codegen
 
                     if (const clang::CXXConstructorDecl* ctor_decl = llvm::dyn_cast<clang::CXXConstructorDecl>(decl))
                     {
-                        cpp_constructor cpp_constructor = make_constructor(ast_context, *ctor_decl);
-                        cpp_constructor.template_params = std::move(template_params);
-                        cpp_constructor.flags = cpp_constructor.flags | make_access_flags(ctor_decl->getAccess());
-                        cpp_class.constructors.emplace_back(std::move(cpp_constructor));
+                        if (not ctor_decl->isImplicit())
+                        {
+                            cpp_constructor cpp_constructor = make_constructor(ast_context, *ctor_decl);
+                            cpp_constructor.template_params = std::move(template_params);
+                            cpp_constructor.flags = cpp_constructor.flags | make_access_flags(ctor_decl->getAccess());
+                            cpp_class.constructors.emplace_back(std::move(cpp_constructor));
+                        }
                     }
                     else if (const clang::FunctionDecl* function_decl = llvm::dyn_cast<clang::FunctionDecl>(decl))
                     {
-                        cpp_function cpp_function = make_function(ast_context, *function_decl);
-                        cpp_function.template_params = std::move(template_params);
-                        cpp_function.flags = cpp_function.flags | make_access_flags(function_decl->getAccess());
-                        cpp_class.functions.emplace_back(std::move(cpp_function));
+                        if (not function_decl->isImplicit())
+                        {
+                            cpp_function cpp_function = make_function(ast_context, *function_decl);
+                            cpp_function.template_params = std::move(template_params);
+                            cpp_function.flags = cpp_function.flags | make_access_flags(function_decl->getAccess());
+                            cpp_class.functions.emplace_back(std::move(cpp_function));
+                        }
                     }
                 }
             }

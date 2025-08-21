@@ -123,41 +123,51 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
 
         SECTION("parse class function is feature complete")
         {
-            REQUIRE(class_.functions.size() == 2);
+            REQUIRE(class_.functions.size() == 3);
 
-            REQUIRE(class_.functions[0].name == "_member_func");
-            REQUIRE(class_.functions[0].return_type.name == "int");
-            REQUIRE(class_.functions[0].attributes.size() == 1);
-            REQUIRE(class_.functions[0].attributes.contains("_function"));
-            REQUIRE(class_.functions[0].attributes["_function"] == true);
-            REQUIRE(class_.functions[0].arguments.size() == 1);
-            REQUIRE(class_.functions[0].arguments[0].name == "_arg");
-            REQUIRE(class_.functions[0].arguments[0].type.name == "int");
-            REQUIRE(class_.functions[0].arguments[0].attributes.size() == 1);
-            REQUIRE(class_.functions[0].arguments[0].attributes.contains("_argument"));
-            REQUIRE(class_.functions[0].arguments[0].attributes["_argument"] == true);
-            REQUIRE(class_.functions[0].arguments[0].default_value.has_value() == false);
+            const cpp_function& func0 = class_.functions[0];
 
-            REQUIRE(class_.functions[1].name == "_template_member_func");
-            REQUIRE(class_.functions[1].return_type.name == "_value_t");
-            REQUIRE(class_.functions[1].attributes.size() == 1);
-            REQUIRE(class_.functions[1].attributes.contains("_function"));
-            REQUIRE(class_.functions[1].attributes["_function"] == true);
-            REQUIRE(class_.functions[1].template_params.size() == 2);
-            REQUIRE(class_.functions[1].template_params[0].type == "typename");
-            REQUIRE(class_.functions[1].template_params[0].name == "_value_t");
-            REQUIRE(class_.functions[1].template_params[0].default_value.has_value() == false);
-            REQUIRE(class_.functions[1].template_params[1].type == "int");
-            REQUIRE(class_.functions[1].template_params[1].name == "_n");
-            REQUIRE(class_.functions[1].template_params[1].default_value.has_value());
-            REQUIRE(class_.functions[1].template_params[1].default_value == "42");
-            REQUIRE(class_.functions[1].arguments.size() == 1);
-            REQUIRE(class_.functions[1].arguments[0].name == "_arg");
-            REQUIRE(class_.functions[1].arguments[0].type.name == "_value_t");
-            REQUIRE(class_.functions[1].arguments[0].attributes.size() == 1);
-            REQUIRE(class_.functions[1].arguments[0].attributes.contains("_argument"));
-            REQUIRE(class_.functions[1].arguments[0].attributes["_argument"] == true);
-            REQUIRE(class_.functions[1].arguments[0].default_value.has_value() == false);
+            REQUIRE(func0.name == "_member_func");
+            REQUIRE(func0.return_type.name == "int");
+            REQUIRE(func0.attributes.size() == 1);
+            REQUIRE(func0.attributes.contains("_function"));
+            REQUIRE(func0.attributes["_function"] == true);
+            REQUIRE(func0.arguments.size() == 1);
+            REQUIRE(func0.arguments[0].name == "_arg");
+            REQUIRE(func0.arguments[0].type.name == "int");
+            REQUIRE(func0.arguments[0].attributes.size() == 1);
+            REQUIRE(func0.arguments[0].attributes.contains("_argument"));
+            REQUIRE(func0.arguments[0].attributes["_argument"] == true);
+            REQUIRE(func0.arguments[0].default_value.has_value() == false);
+
+            const cpp_function& func1 = class_.functions[1];
+
+            REQUIRE(func1.name == "_template_member_func");
+            REQUIRE(func1.return_type.name == "_value_t");
+            REQUIRE(func1.attributes.size() == 1);
+            REQUIRE(func1.attributes.contains("_function"));
+            REQUIRE(func1.attributes["_function"] == true);
+            REQUIRE(func1.template_params.size() == 2);
+            REQUIRE(func1.template_params[0].type == "typename");
+            REQUIRE(func1.template_params[0].name == "_value_t");
+            REQUIRE(func1.template_params[0].default_value.has_value() == false);
+            REQUIRE(func1.template_params[1].type == "int");
+            REQUIRE(func1.template_params[1].name == "_n");
+            REQUIRE(func1.template_params[1].default_value.has_value());
+            REQUIRE(func1.template_params[1].default_value == "42");
+            REQUIRE(func1.arguments.size() == 1);
+            REQUIRE(func1.arguments[0].name == "_arg");
+            REQUIRE(func1.arguments[0].type.name == "_value_t");
+            REQUIRE(func1.arguments[0].attributes.size() == 1);
+            REQUIRE(func1.arguments[0].attributes.contains("_argument"));
+            REQUIRE(func1.arguments[0].attributes["_argument"] == true);
+            REQUIRE(func1.arguments[0].default_value.has_value() == false);
+
+            const cpp_function& func2 = class_.functions[2];
+
+            REQUIRE(func2.name == "_virtual_const_func");
+            REQUIRE(func2.has_flags(cpp_flags::const_));
+            REQUIRE(func2.has_flags(cpp_flags::virtual_));
         }
     }
 
