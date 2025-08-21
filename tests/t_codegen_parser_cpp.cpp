@@ -360,7 +360,7 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         REQUIRE(class_.functions.size() == 1);
         REQUIRE(class_.functions[0].arguments.size() == 1);
         REQUIRE(class_.functions[0].arguments[0].name == "args");
-        REQUIRE(class_.functions[0].arguments[0].type.name == "args_t &&...");
+        REQUIRE(class_.functions[0].arguments[0].type.name == "args_t &&");
         REQUIRE(class_.functions[0].arguments[0].is_variadic);
     }
 
@@ -434,7 +434,7 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         REQUIRE(class_.name == "_variadic_impl");
         REQUIRE(class_.full_name() == "_variadic_impl<args_t...>");
         REQUIRE(class_.bases.size() == 1);
-        REQUIRE(class_.bases[0].name == "_variadic_base<args_t>...");
+        REQUIRE(class_.bases[0].name == "_variadic_base<args_t>");
         REQUIRE(class_.bases[0].is_variadic);
     }
 

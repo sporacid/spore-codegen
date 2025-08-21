@@ -251,9 +251,11 @@ namespace spore::codegen
             cpp_ref.name = type.getAsString(get_printing_policy(ast_context));
             cpp_ref.is_variadic = is_variadic;
 
-            if (is_variadic and not cpp_ref.name.ends_with("..."))
+            constexpr std::string_view ellipsis = "...";
+
+            if (is_variadic and cpp_ref.name.ends_with(ellipsis))
             {
-                cpp_ref.name += "...";
+                cpp_ref.name.resize(cpp_ref.name.size() - ellipsis.size());
             }
 
             if (type.isConstQualified())
@@ -346,6 +348,7 @@ namespace spore::codegen
             cpp_function.scope = make_scope(ast_context, function_decl);
             cpp_function.attributes = make_attributes(function_decl);
             cpp_function.return_type = make_ref(ast_context, function_decl.getReturnType());
+            cpp_function.flags = cpp_function.flags | make_access_flags(function_decl.getAccess());
 
             if (function_decl.isConstexpr())
             {
@@ -403,10 +406,35 @@ namespace spore::codegen
             return cpp_function;
         }
 
+        cpp_field make_field(clang::ASTContext& ast_context, const clang::FieldDecl& field_decl)
+        {
+            cpp_field cpp_field;
+            cpp_field.name = field_decl.getNameAsString();
+            cpp_field.type = make_ref(ast_context, field_decl.getType(), field_decl.isParameterPack());
+            cpp_field.attributes = make_attributes(field_decl);
+            cpp_field.flags = cpp_field.flags | make_access_flags(field_decl.getAccess());
+
+            if (field_decl.isMutable())
+            {
+                cpp_field.flags = cpp_field.flags | cpp_flags::mutable_;
+            }
+
+            if (field_decl.hasInClassInitializer())
+            {
+                if (const clang::Expr* default_value_expr = field_decl.getInClassInitializer())
+                {
+                    cpp_field.default_value = get_spelling(ast_context, default_value_expr->getSourceRange());
+                }
+            }
+
+            return cpp_field;
+        }
+
         cpp_constructor make_constructor(clang::ASTContext& ast_context, const clang::CXXConstructorDecl& ctor_decl)
         {
             cpp_constructor cpp_constructor;
             cpp_constructor.attributes = make_attributes(ctor_decl);
+            cpp_constructor.flags = cpp_constructor.flags | make_access_flags(ctor_decl.getAccess());
 
             if (ctor_decl.isConstexpr())
             {
@@ -540,33 +568,13 @@ namespace spore::codegen
 
                 for (const clang::FieldDecl* field_decl : class_decl.fields())
                 {
-                    cpp_field& cpp_field = cpp_class.fields.emplace_back();
-                    cpp_field.name = field_decl->getNameAsString();
-                    cpp_field.type = make_ref(ast_context, field_decl->getType(), field_decl->isParameterPack());
-                    cpp_field.attributes = make_attributes(*field_decl);
-                    cpp_field.flags = cpp_field.flags | make_access_flags(field_decl->getAccess());
-
-                    if (field_decl->isMutable())
-                    {
-                        cpp_field.flags = cpp_field.flags | cpp_flags::mutable_;
-                    }
-
-                    if (field_decl->hasInClassInitializer())
-                    {
-                        if (const clang::Expr* default_value_expr = field_decl->getInClassInitializer())
-                        {
-                            cpp_field.default_value = get_spelling(ast_context, default_value_expr->getSourceRange());
-                        }
-                    }
+                    cpp_class.fields.emplace_back(make_field(ast_context, *field_decl));
                 }
 
                 for (const clang::Decl* decl : class_decl.decls())
                 {
-                    std::vector<cpp_template_param> template_params;
-
                     if (const clang::FunctionTemplateDecl* function_template_decl = llvm::dyn_cast<clang::FunctionTemplateDecl>(decl))
                     {
-                        template_params = make_template_params(ast_context, *function_template_decl->getTemplateParameters());
                         decl = function_template_decl->getTemplatedDecl();
                     }
 
@@ -574,20 +582,14 @@ namespace spore::codegen
                     {
                         if (not ctor_decl->isImplicit())
                         {
-                            cpp_constructor cpp_constructor = make_constructor(ast_context, *ctor_decl);
-                            cpp_constructor.template_params = std::move(template_params);
-                            cpp_constructor.flags = cpp_constructor.flags | make_access_flags(ctor_decl->getAccess());
-                            cpp_class.constructors.emplace_back(std::move(cpp_constructor));
+                            cpp_class.constructors.emplace_back(make_constructor(ast_context, *ctor_decl));
                         }
                     }
                     else if (const clang::FunctionDecl* function_decl = llvm::dyn_cast<clang::FunctionDecl>(decl))
                     {
                         if (not function_decl->isImplicit())
                         {
-                            cpp_function cpp_function = make_function(ast_context, *function_decl);
-                            cpp_function.template_params = std::move(template_params);
-                            cpp_function.flags = cpp_function.flags | make_access_flags(function_decl->getAccess());
-                            cpp_class.functions.emplace_back(std::move(cpp_function));
+                            cpp_class.functions.emplace_back(make_function(ast_context, *function_decl));
                         }
                     }
                 }
