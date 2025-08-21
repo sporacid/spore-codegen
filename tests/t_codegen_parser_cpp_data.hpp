@@ -41,6 +41,8 @@ namespace _namespace1::_namespace2
             return _value_t();
         }
 
+        virtual void _virtual_const_func() const {}
+
         struct _nested
         {
         };
