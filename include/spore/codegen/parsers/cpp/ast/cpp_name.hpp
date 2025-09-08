@@ -1,27 +1,53 @@
 #pragma once
 
 #include <string>
+#include <string_view>
+#include <tuple>
 
 #include "spore/codegen/parsers/cpp/ast/cpp_template.hpp"
 
 namespace spore::codegen
 {
+    namespace detail
+    {
+        inline void append_name(std::string& name, const std::string_view value)
+        {
+            if (not value.empty())
+            {
+                if (not name.empty())
+                {
+                    name += "::";
+                }
+
+                name += value;
+            }
+        }
+    }
+
     template <typename cpp_value_t>
     struct cpp_has_name
     {
-        std::string scope;
+        std::string outer_scope;
+        std::string inner_scope;
         std::string name;
+
+        [[nodiscard]] std::string scope() const
+        {
+            std::string scope;
+
+            detail::append_name(scope, outer_scope);
+            detail::append_name(scope, inner_scope);
+
+            return scope;
+        }
 
         [[nodiscard]] std::string full_name() const
         {
             std::string full_name;
 
-            if (!scope.empty())
-            {
-                full_name += scope + "::";
-            }
-
-            full_name += name;
+            detail::append_name(full_name, outer_scope);
+            detail::append_name(full_name, inner_scope);
+            detail::append_name(full_name, name);
 
             if constexpr (std::is_convertible_v<cpp_value_t, cpp_has_template_params<cpp_value_t>>)
             {
@@ -67,7 +93,12 @@ namespace spore::codegen
 
         bool operator==(const cpp_has_name& other) const
         {
-            return scope == other.scope && name == other.name;
+            return std::tie(outer_scope, inner_scope, name) == std::tie(other.outer_scope, other.inner_scope, other.name);
+        }
+
+        bool operator<(const cpp_has_name& other) const
+        {
+            return std::tie(outer_scope, inner_scope, name) < std::tie(other.outer_scope, other.inner_scope, other.name);
         }
     };
 }

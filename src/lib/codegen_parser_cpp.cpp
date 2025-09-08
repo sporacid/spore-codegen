@@ -80,31 +80,52 @@ namespace spore::codegen
             return templated_name;
         }
 
-        std::string make_scope(const clang::ASTContext& ast_context, const clang::Decl& decl)
+        std::tuple<std::string, std::string> make_scope(const clang::ASTContext& ast_context, const clang::Decl& decl)
         {
             constexpr std::string_view separator = "::";
 
-            std::string scope;
+            std::string inner_scope;
+            std::string outer_scope;
 
             const clang::DeclContext* context = decl.getDeclContext();
 
             while (context != nullptr && not context->isTranslationUnit())
             {
-                if (const clang::NamedDecl* named_decl = llvm::dyn_cast<clang::NamedDecl>(context))
+                if (const clang::CXXRecordDecl* record_decl = llvm::dyn_cast<clang::CXXRecordDecl>(context))
                 {
-                    scope.insert(0, separator);
-                    scope.insert(0, make_templated_name(ast_context, *named_decl));
+                    inner_scope.insert(0, separator);
+                    inner_scope.insert(0, make_templated_name(ast_context, *record_decl));
+                }
+                else
+                {
+                    break;
                 }
 
                 context = context->getParent();
             }
 
-            if (scope.ends_with(separator))
+            while (context != nullptr && not context->isTranslationUnit())
             {
-                scope.resize(scope.size() - separator.size());
+                if (const clang::NamedDecl* named_decl = llvm::dyn_cast<clang::NamedDecl>(context))
+                {
+                    outer_scope.insert(0, separator);
+                    outer_scope.insert(0, make_templated_name(ast_context, *named_decl));
+                }
+
+                context = context->getParent();
             }
 
-            return scope;
+            if (inner_scope.ends_with(separator))
+            {
+                inner_scope.resize(inner_scope.size() - separator.size());
+            }
+
+            if (outer_scope.ends_with(separator))
+            {
+                outer_scope.resize(outer_scope.size() - separator.size());
+            }
+
+            return std::make_tuple(outer_scope, inner_scope);
         }
 
         std::vector<std::string> make_template_specialization_params(const clang::ASTContext& ast_context, const clang::ASTTemplateArgumentListInfo& template_args)
@@ -275,9 +296,10 @@ namespace spore::codegen
         {
             cpp_variable cpp_variable;
             cpp_variable.name = var_decl.getNameAsString();
-            cpp_variable.scope = make_scope(ast_context, var_decl);
             cpp_variable.attributes = make_attributes(var_decl);
             cpp_variable.type = make_ref(ast_context, var_decl.getType(), var_decl.isParameterPack());
+
+            std::tie(cpp_variable.outer_scope, cpp_variable.inner_scope) = make_scope(ast_context, var_decl);
 
             if (var_decl.isConstexpr())
             {
@@ -345,10 +367,11 @@ namespace spore::codegen
         {
             cpp_function cpp_function;
             cpp_function.name = function_decl.getNameAsString();
-            cpp_function.scope = make_scope(ast_context, function_decl);
             cpp_function.attributes = make_attributes(function_decl);
             cpp_function.return_type = make_ref(ast_context, function_decl.getReturnType());
             cpp_function.flags = cpp_function.flags | make_access_flags(function_decl.getAccess());
+
+            std::tie(cpp_function.outer_scope, cpp_function.inner_scope) = make_scope(ast_context, function_decl);
 
             if (function_decl.isConstexpr())
             {
@@ -478,10 +501,11 @@ namespace spore::codegen
         {
             cpp_enum cpp_enum;
             cpp_enum.name = enum_decl.getNameAsString();
-            cpp_enum.scope = make_scope(ast_context, enum_decl);
             cpp_enum.base = make_ref(ast_context, enum_decl.getIntegerType());
             cpp_enum.attributes = make_attributes(enum_decl);
             cpp_enum.definition = enum_decl.isThisDeclarationADefinition();
+
+            std::tie(cpp_enum.outer_scope, cpp_enum.inner_scope) = make_scope(ast_context, enum_decl);
 
             if (enum_decl.isScopedUsingClassTag())
             {
@@ -516,9 +540,10 @@ namespace spore::codegen
         {
             cpp_class cpp_class;
             cpp_class.name = class_decl.getNameAsString();
-            cpp_class.scope = make_scope(ast_context, class_decl);
             cpp_class.attributes = make_attributes(class_decl);
             cpp_class.definition = class_decl.isThisDeclarationADefinition();
+
+            std::tie(cpp_class.outer_scope, cpp_class.inner_scope) = make_scope(ast_context, class_decl);
 
             if (class_decl.isStruct())
             {
