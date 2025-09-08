@@ -1,10 +1,10 @@
 #include "spore/codegen/parsers/cpp/codegen_parser_cpp.hpp"
 
 #include <format>
-#include <map>
 #include <ranges>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 #include "spdlog/spdlog.h"
@@ -601,7 +601,7 @@ namespace spore::codegen
         struct frontend_action_context
         {
             std::vector<cpp_file>& cpp_files;
-            std::map<std::string_view, std::size_t>& cpp_file_map;
+            std::unordered_map<std::string, std::size_t>& cpp_file_map;
         };
 
         struct ast_visitor : clang::RecursiveASTVisitor<ast_visitor>
@@ -691,8 +691,7 @@ namespace spore::codegen
 
             cpp_file* get_cpp_file(clang::Decl& decl)
             {
-                clang::SourceManager& source_manager = ast_context.getSourceManager();
-
+                const clang::SourceManager& source_manager = ast_context.getSourceManager();
                 const clang::SourceLocation location = decl.getLocation();
                 const clang::FileID file_id = source_manager.getFileID(location);
 
@@ -801,20 +800,21 @@ namespace spore::codegen
         }
 
         std::string cpp_source;
-        std::map<std::string_view, std::size_t> cpp_file_map;
+        std::unordered_map<std::string, std::size_t> cpp_file_map;
 
         for (const std::string& cpp_source_file : options_parser->getSourcePathList())
         {
-            std::string cpp_source_path = std::filesystem::absolute(cpp_source_file).string();
-
-            cpp_source += std::format("#include \"{}\"\n", cpp_source_path);
-
             const std::size_t cpp_file_index = cpp_files.size();
 
             cpp_file& cpp_file = cpp_files.emplace_back();
-            cpp_file.path = std::move(cpp_source_path);
+            cpp_file.path = cpp_source_file;
 
-            cpp_file_map.emplace(cpp_file.path, cpp_file_index);
+            strings::replace_all(cpp_file.path, "\\", "/");
+
+            std::string path_abs = std::filesystem::absolute(cpp_file.path).string();
+            cpp_file_map.emplace(std::move(path_abs), cpp_file_index);
+
+            cpp_source += std::format("#include \"{}\"\n", cpp_file.path);
         }
 
         constexpr const char cpp_source_path[] = "__source__.cpp";
