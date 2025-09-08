@@ -42,9 +42,11 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         const auto& enum_ = cpp_file.enums[0];
 
         REQUIRE(enum_.name == "_enum");
-        REQUIRE(enum_.scope == "_namespace1::_namespace2");
-        REQUIRE(enum_.type == cpp_enum_type::enum_class);
+        REQUIRE(enum_.outer_scope == "_namespace1::_namespace2");
+        REQUIRE(enum_.inner_scope.empty());
+        REQUIRE(enum_.scope() == "_namespace1::_namespace2");
         REQUIRE(enum_.full_name() == "_namespace1::_namespace2::_enum");
+        REQUIRE(enum_.type == cpp_enum_type::enum_class);
         REQUIRE(enum_.attributes.size() == 1);
         REQUIRE(enum_.attributes.contains("_enum"));
         REQUIRE(enum_.attributes["_enum"] == true);
@@ -71,7 +73,9 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         const auto& class_ = cpp_file.classes[1];
 
         REQUIRE(class_.name == "_struct");
-        REQUIRE(class_.scope == "_namespace1::_namespace2");
+        REQUIRE(class_.outer_scope == "_namespace1::_namespace2");
+        REQUIRE(class_.inner_scope.empty());
+        REQUIRE(class_.scope() == "_namespace1::_namespace2");
         REQUIRE(class_.full_name() == "_namespace1::_namespace2::_struct");
         REQUIRE(class_.type == cpp_class_type::struct_);
         REQUIRE(class_.attributes.size() == 1);
@@ -176,7 +180,9 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         const auto& class_ = cpp_file.classes[2];
 
         REQUIRE(class_.name == "_nested");
-        REQUIRE(class_.scope == "_namespace1::_namespace2::_struct");
+        REQUIRE(class_.outer_scope == "_namespace1::_namespace2");
+        REQUIRE(class_.inner_scope == "_struct");
+        REQUIRE(class_.scope() == "_namespace1::_namespace2::_struct");
         REQUIRE(class_.full_name() == "_namespace1::_namespace2::_struct::_nested");
         REQUIRE(class_.type == cpp_class_type::struct_);
         REQUIRE(class_.nested);
@@ -187,7 +193,9 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         const auto& enum_ = cpp_file.enums[1];
 
         REQUIRE(enum_.name == "_nested_enum");
-        REQUIRE(enum_.scope == "_namespace1::_namespace2::_struct");
+        REQUIRE(enum_.outer_scope == "_namespace1::_namespace2");
+        REQUIRE(enum_.inner_scope == "_struct");
+        REQUIRE(enum_.scope() == "_namespace1::_namespace2::_struct");
         REQUIRE(enum_.full_name() == "_namespace1::_namespace2::_struct::_nested_enum");
         REQUIRE(enum_.type == cpp_enum_type::enum_);
         REQUIRE(enum_.nested);
@@ -198,7 +206,9 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         const auto& class_ = cpp_file.classes[3];
 
         REQUIRE(class_.name == "_struct_template");
-        REQUIRE(class_.scope == "_namespace1::_namespace2");
+        REQUIRE(class_.outer_scope == "_namespace1::_namespace2");
+        REQUIRE(class_.inner_scope.empty());
+        REQUIRE(class_.scope() == "_namespace1::_namespace2");
         REQUIRE(class_.full_name() == "_namespace1::_namespace2::_struct_template<_value_t, _n>");
         REQUIRE(class_.type == cpp_class_type::struct_);
         REQUIRE(class_.attributes.size() == 1);
@@ -232,7 +242,9 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         const auto& class_ = cpp_file.classes[4];
 
         REQUIRE(class_.name == "_nested_template");
-        REQUIRE(class_.scope == "_namespace1::_namespace2::_struct_template<_value_t, _n>");
+        REQUIRE(class_.outer_scope == "_namespace1::_namespace2");
+        REQUIRE(class_.inner_scope == "_struct_template<_value_t, _n>");
+        REQUIRE(class_.scope() == "_namespace1::_namespace2::_struct_template<_value_t, _n>");
         REQUIRE(class_.full_name() == "_namespace1::_namespace2::_struct_template<_value_t, _n>::_nested_template<_nested_value_t>");
         REQUIRE(class_.type == cpp_class_type::struct_);
         REQUIRE(class_.template_params[0].kind == cpp_template_param_kind::type);
@@ -250,7 +262,9 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         const auto& function0 = cpp_file.functions[0];
 
         REQUIRE(function0.name == "_free_func");
-        REQUIRE(function0.scope == "_namespace1::_namespace2");
+        REQUIRE(function0.outer_scope == "_namespace1::_namespace2");
+        REQUIRE(function0.inner_scope.empty());
+        REQUIRE(function0.scope() == "_namespace1::_namespace2");
         REQUIRE(function0.full_name() == "_namespace1::_namespace2::_free_func");
         REQUIRE(function0.return_type.name == "int");
         REQUIRE(function0.attributes.size() == 1);
@@ -293,7 +307,9 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         const auto& function2 = cpp_file.functions[2];
 
         REQUIRE(function2.name == "_global_func");
-        REQUIRE(function2.scope.empty());
+        REQUIRE(function2.outer_scope.empty());
+        REQUIRE(function2.inner_scope.empty());
+        REQUIRE(function2.scope().empty());
         REQUIRE(function2.full_name() == "_global_func");
         REQUIRE(function2.return_type.name == "void");
         REQUIRE(function2.attributes.empty());

@@ -37,8 +37,10 @@ namespace spore::codegen
     template <typename cpp_object_t>
     void to_json(nlohmann::json& json, const cpp_has_name<cpp_object_t>& value)
     {
+        json["outer_scope"] = value.outer_scope;
+        json["inner_scope"] = value.inner_scope;
+        json["scope"] = value.scope();
         json["name"] = value.name;
-        json["scope"] = value.scope;
         json["full_name"] = value.full_name();
     }
 
