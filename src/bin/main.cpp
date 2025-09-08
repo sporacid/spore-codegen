@@ -43,12 +43,12 @@ namespace spore::codegen
             constexpr auto pair = "PAIR";
         }
 
-        std::pair<std::string, std::string> parse_pair(std::string_view pair)
+        std::pair<std::string, nlohmann::json> parse_pair(const std::string_view pair)
         {
-            const auto equal_sign = pair.find_first_of("=:");
-            const std::string_view name = equal_sign != std::string_view::npos ? pair.substr(0, equal_sign) : pair;
-            const std::string_view value = equal_sign != std::string_view::npos ? pair.substr(equal_sign + 1) : "";
-            return {std::string(name), std::string(value)};
+            const auto value_index = pair.find_first_of("=:");
+            const std::string_view name = value_index != std::string_view::npos ? pair.substr(0, value_index) : pair;
+            const std::string_view value = value_index != std::string_view::npos ? pair.substr(value_index + 1) : "true";
+            return std::make_pair(std::string(name), nlohmann::json::parse(value));
         }
 
         template <typename ast_t>
@@ -141,7 +141,7 @@ int main(const int argc, const char* argv[])
     arg_parser
         .add_argument("-D", "--user-data")
         .help("Additional data to be passed to the rendering stage, can be accessed through the \"$.user_data\" JSON property")
-        .default_value(std::vector<std::pair<std::string, std::string>> {})
+        .default_value(std::vector<std::pair<std::string, nlohmann::json>> {})
         .metavar(detail::metavars::pair)
         .append()
         .action(&detail::parse_pair);
@@ -180,7 +180,7 @@ int main(const int argc, const char* argv[])
         .config = arg_parser.get<std::string>("--config"),
         .cache = arg_parser.get<std::string>("--cache"),
         .templates = arg_parser.get<std::vector<std::string>>("--templates"),
-        .user_data = arg_parser.get<std::vector<std::pair<std::string, std::string>>>("--user-data"),
+        .user_data = arg_parser.get<std::vector<std::pair<std::string, nlohmann::json>>>("--user-data"),
         .reformat = arg_parser.get<bool>("--reformat"),
         .force = arg_parser.get<bool>("--force"),
         .debug = arg_parser.get<bool>("--debug"),
