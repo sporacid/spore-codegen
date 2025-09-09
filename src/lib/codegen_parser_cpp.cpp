@@ -32,9 +32,10 @@ namespace spore::codegen
         clang::PrintingPolicy get_printing_policy(const clang::ASTContext& ast_context)
         {
             clang::PrintingPolicy policy {ast_context.getLangOpts()};
-            policy.SuppressTagKeyword = true;
+            policy.adjustForCPlusPlus();
             policy.ConstantsAsWritten = true;
-            policy.Bool = true;
+            policy.Nullptr = true;
+            policy.UseEnumerators = true;
             return policy;
         }
 
@@ -222,7 +223,7 @@ namespace spore::codegen
                     }
                 }
 
-                if (cpp_template_param.is_variadic)
+                if (cpp_template_param.is_variadic and not cpp_template_param.type.ends_with("..."))
                 {
                     cpp_template_param.type += "...";
                 }
