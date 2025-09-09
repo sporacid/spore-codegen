@@ -32,7 +32,7 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
 
     cpp_file& cpp_file = cpp_files[0];
 
-    REQUIRE(cpp_file.classes.size() == 13);
+    REQUIRE(cpp_file.classes.size() == 14);
     REQUIRE(cpp_file.functions.size() == 3);
     REQUIRE(cpp_file.enums.size() == 2);
     REQUIRE(cpp_file.variables.size() == 9);
@@ -452,6 +452,18 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         REQUIRE(class_.bases.size() == 1);
         REQUIRE(class_.bases[0].name == "_variadic_base<args_t>");
         REQUIRE(class_.bases[0].is_variadic);
+    }
+
+    SECTION("parse variadic template template param is feature complete")
+    {
+        cpp_class& class_ = cpp_file.classes[13];
+
+        REQUIRE(class_.name == "_variadic_template_template_param");
+        REQUIRE(class_.full_name() == "_variadic_template_template_param<args_t...>");
+        REQUIRE(class_.template_params[0].kind == cpp_template_param_kind::template_);
+        REQUIRE(class_.template_params[0].name == "args_t");
+        REQUIRE(class_.template_params[0].type == "template <typename ...> typename ...");
+        REQUIRE(class_.template_params[0].is_variadic);
     }
 
     SECTION("parse variable is feature complete")

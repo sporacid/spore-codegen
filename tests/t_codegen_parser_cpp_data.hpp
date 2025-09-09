@@ -144,6 +144,11 @@ struct _variadic_impl : _variadic_base<args_t>...
 {
 };
 
+template <template <typename...> typename... args_t>
+struct _variadic_template_template_param
+{
+};
+
 int _var = 42;
 static int _static_var = 42;
 const int _const_var = 42;
