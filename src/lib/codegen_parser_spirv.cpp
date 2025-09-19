@@ -70,7 +70,7 @@ namespace spore::codegen
             if (has_any_flag(spv_parent.decoration_flags, SPV_REFLECT_DECORATION_BUILT_IN))
             {
                 type = spirv_builtin {
-                    .name = spv_type.type_name,
+                    .name = spv_type.type_name != nullptr ? spv_type.type_name : std::string {},
                 };
             }
             else
@@ -122,7 +122,7 @@ namespace spore::codegen
                 else if (has_any_flag(spv_type.type_flags, SPV_REFLECT_TYPE_FLAG_STRUCT))
                 {
                     type = spirv_struct {
-                        .name = spv_type.type_name,
+                        .name = spv_type.type_name != nullptr ? spv_type.type_name : std::string {},
                     };
                 }
                 else if (has_any_flag(spv_type.type_flags, SPV_REFLECT_TYPE_FLAG_EXTERNAL_IMAGE | SPV_REFLECT_TYPE_FLAG_EXTERNAL_SAMPLER | SPV_REFLECT_TYPE_FLAG_EXTERNAL_SAMPLED_IMAGE))
