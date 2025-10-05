@@ -149,6 +149,25 @@ namespace spore::codegen
                     throw codegen_error(codegen_error_code::rendering, "unsupported format");
             }
         }
+
+        inline nlohmann::json find_by(const nlohmann::json& json, const std::string_view field_name, const std::string_view field_value)
+        {
+            if (!json.is_array())
+            {
+                throw codegen_error(codegen_error_code::rendering, "find_by: first arg is not array");
+            }
+
+            for (auto const& object : json)
+            {
+                const bool is_object_valid = object.is_object() && object.contains(field_name);
+                if (is_object_valid && object[field_name] == field_value)
+                {
+                    return object;
+                }
+            }
+
+            throw codegen_error(codegen_error_code::rendering, "find_by: object not found");
+        }
     }
 
     struct codegen_renderer_inja final : codegen_renderer
@@ -186,6 +205,14 @@ namespace spore::codegen
                     const std::string& value = args.at(0)->get<std::string>();
                     const std::string& str = args.at(1)->get<std::string>();
                     return value.find(str) != std::string::npos;
+                });
+
+            inja_env.add_callback("find_by", 3,
+                [](const inja::Arguments& args) {
+                    const nlohmann::json& json = *args.at(0);
+                    const std::string& field_name = args.at(1)->get<std::string>();
+                    const std::string& field_value = args.at(2)->get<std::string>();
+                    return detail::find_by(json, field_name, field_value);
                 });
 
             inja_env.add_callback("replace", 3,
