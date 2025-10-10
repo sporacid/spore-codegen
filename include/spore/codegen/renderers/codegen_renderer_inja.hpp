@@ -150,7 +150,7 @@ namespace spore::codegen
             }
         }
 
-        inline nlohmann::json find_by(const nlohmann::json& json, const std::string_view field_name, const std::string_view field_value)
+        inline nlohmann::json find_by(const nlohmann::json& json, const std::string_view field_name, const nlohmann::json& field_value)
         {
             if (!json.is_array())
             {
@@ -160,6 +160,7 @@ namespace spore::codegen
             for (auto const& object : json)
             {
                 const bool is_object_valid = object.is_object() && object.contains(field_name);
+
                 if (is_object_valid && object[field_name] == field_value)
                 {
                     return object;
@@ -211,7 +212,7 @@ namespace spore::codegen
                 [](const inja::Arguments& args) {
                     const nlohmann::json& json = *args.at(0);
                     const std::string& field_name = args.at(1)->get<std::string>();
-                    const std::string& field_value = args.at(2)->get<std::string>();
+                    const nlohmann::json& field_value = args.at(2)->get<nlohmann::json>();
                     return detail::find_by(json, field_name, field_value);
                 });
 
