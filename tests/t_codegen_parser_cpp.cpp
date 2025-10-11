@@ -35,7 +35,7 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
     REQUIRE(cpp_file.classes.size() == 14);
     REQUIRE(cpp_file.functions.size() == 3);
     REQUIRE(cpp_file.enums.size() == 2);
-    REQUIRE(cpp_file.variables.size() == 9);
+    REQUIRE(cpp_file.variables.size() == 12);
 
     SECTION("parse enum is feature complete")
     {
@@ -90,7 +90,7 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
 
         SECTION("parse class field is feature complete")
         {
-            REQUIRE(class_.fields.size() == 2);
+            REQUIRE(class_.fields.size() == 3);
 
             REQUIRE(class_.fields[0].name == "_i");
             REQUIRE(class_.fields[0].type.name == "int");
@@ -101,6 +101,11 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
 
             REQUIRE(class_.fields[1].name == "_f");
             REQUIRE(class_.fields[1].type.name == "float");
+
+            REQUIRE(class_.fields[2].name == "_array_field");
+            REQUIRE(class_.fields[2].type.name == "char[4]");
+            REQUIRE(class_.fields[2].type.base_name == "char");
+            REQUIRE(class_.fields[2].type.extent.at(0) == 4);
         }
 
         SECTION("parse class constructor is feature complete")
@@ -547,5 +552,35 @@ TEST_CASE("spore::codegen::codegen_parser_cpp", "[spore::codegen][spore::codegen
         REQUIRE(var8.template_specialization_params[0] == "int");
         REQUIRE(var8.default_value.has_value());
         REQUIRE(var8.default_value.value() == "42");
+
+        cpp_variable var9 = cpp_file.variables[9];
+        REQUIRE(var9.name == "_array_var");
+        REQUIRE(var9.default_value.has_value());
+        REQUIRE(var9.default_value.value() == "{0, 1, 2, 3}");
+        REQUIRE(var9.type.name == "char[4]");
+        REQUIRE(var9.type.base_name == "char");
+        REQUIRE(var9.type.extent.size() == 1);
+        REQUIRE(var9.type.extent.at(0) == 4);
+
+        cpp_variable var10 = cpp_file.variables[10];
+        REQUIRE(var10.name == "_2d_array_var");
+        REQUIRE(var10.default_value.has_value());
+        REQUIRE(var10.default_value.value() == "{{0, 1}, {2, 3}, {4, 5}}");
+        REQUIRE(var10.type.name == "char[3][2]");
+        REQUIRE(var10.type.base_name == "char");
+        REQUIRE(var10.type.extent.size() == 2);
+        REQUIRE(var10.type.extent.at(0) == 3);
+        REQUIRE(var10.type.extent.at(1) == 2);
+
+        cpp_variable var11 = cpp_file.variables[11];
+        REQUIRE(var11.name == "_3d_array_var");
+        REQUIRE(var11.default_value.has_value());
+        REQUIRE(var11.default_value.value() == "{{{0, 1}, {2, 3}}, {{4, 5}, {6, 7}}}");
+        REQUIRE(var11.type.name == "char[2][2][2]");
+        REQUIRE(var11.type.base_name == "char");
+        REQUIRE(var11.type.extent.size() == 3);
+        REQUIRE(var11.type.extent.at(0) == 2);
+        REQUIRE(var11.type.extent.at(1) == 2);
+        REQUIRE(var11.type.extent.at(2) == 2);
     }
 }
