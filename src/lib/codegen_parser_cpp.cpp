@@ -290,6 +290,19 @@ namespace spore::codegen
                 cpp_ref.flags = cpp_ref.flags | cpp_flags::volatile_;
             }
 
+            auto array_type = llvm::dyn_cast<clang::ConstantArrayType>(type.getTypePtr());
+            while (array_type)
+            {
+                cpp_ref.base_name = array_type->getElementType().getAsString();
+                cpp_ref.extent.push_back(array_type->getSize().getZExtValue());
+                array_type = llvm::dyn_cast<clang::ConstantArrayType>(array_type->getElementType().getTypePtr());
+            }
+
+            if (cpp_ref.extent.empty())
+            {
+                cpp_ref.base_name = cpp_ref.name;
+            }
+
             return cpp_ref;
         }
 

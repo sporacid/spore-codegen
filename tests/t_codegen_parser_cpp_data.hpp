@@ -19,6 +19,7 @@ namespace _namespace1::_namespace2
         ATTRIBUTE(_field)
         int _i = 42;
         float _f;
+        char _array_field[4];
 
         ATTRIBUTE(_constructor)
         _struct() = default;
@@ -166,3 +167,7 @@ value_t _template_var {};
 
 template <>
 int _template_var<int> = 42;
+
+char _array_var[4] = {0, 1, 2, 3};
+char _2d_array_var[3][2] = {{0, 1}, {2, 3}, {4, 5}};
+char _3d_array_var[2][2][2] = {{{0, 1}, {2, 3}}, {{4, 5}, {6, 7}}};

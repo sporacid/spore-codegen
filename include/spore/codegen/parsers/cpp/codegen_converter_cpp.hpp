@@ -70,6 +70,15 @@ namespace spore::codegen
         to_json(json, static_cast<const cpp_has_flags<cpp_ref>&>(value));
 
         json["name"] = value.name;
+        json["base_name"] = value.base_name;
+        if (value.extent.size() == 1)
+        {
+            json["extent"] = value.extent.at(0);
+        }
+        else if (value.extent.size() > 1)
+        {
+            json["extent"] = value.extent;
+        }
     }
 
     inline void to_json(nlohmann::json& json, const cpp_template_param_kind value)
