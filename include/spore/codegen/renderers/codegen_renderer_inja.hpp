@@ -291,6 +291,54 @@ namespace spore::codegen
                     return value;
                 });
 
+            inja_env.add_callback("split_into_words", 1,
+                [](const inja::Arguments& args) {
+                    const std::string& input = args.at(0)->get<std::string>();
+                    nlohmann::json json = nlohmann::json::array();
+
+                    strings::for_each_words(input, [&](const std::string_view word) {
+                        json.push_back(word);
+                    });
+
+                    return json;
+                });
+
+            inja_env.add_callback("to_camel_case", 1,
+                [](const inja::Arguments& args) {
+                    const std::string& input = args.at(0)->get<std::string>();
+                    return strings::to_camel_case(input);
+                });
+
+            inja_env.add_callback("to_upper_camel_case", 1,
+                [](const inja::Arguments& args) {
+                    const std::string& input = args.at(0)->get<std::string>();
+                    return strings::to_upper_camel_case(input);
+                });
+
+            inja_env.add_callback("to_snake_case", 1,
+                [](const inja::Arguments& args) {
+                    const std::string& input = args.at(0)->get<std::string>();
+                    return strings::to_snake_case(input);
+                });
+
+            inja_env.add_callback("to_upper_snake_case", 1,
+                [](const inja::Arguments& args) {
+                    const std::string& input = args.at(0)->get<std::string>();
+                    return strings::to_upper_snake_case(input);
+                });
+
+            inja_env.add_callback("to_title_case", 1,
+                [](const inja::Arguments& args) {
+                    const std::string& input = args.at(0)->get<std::string>();
+                    return strings::to_title_case(input);
+                });
+
+            inja_env.add_callback("to_sentence_case", 1,
+                [](const inja::Arguments& args) {
+                    const std::string& input = args.at(0)->get<std::string>();
+                    return strings::to_sentence_case(input);
+                });
+
             inja_env.add_callback("flatten", 1,
                 [](const inja::Arguments& args) -> nlohmann::json {
                     const nlohmann::json* arg0 = args.at(0);
