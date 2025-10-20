@@ -677,6 +677,11 @@ namespace spore::codegen
                 return true;
             }
 
+            [[maybe_unused]] bool VisitClassTemplateSpecializationDecl(const clang::ClassTemplateSpecializationDecl* decl) const
+            {
+                return VisitCXXRecordDecl(decl);
+            }
+
             [[maybe_unused]] bool VisitEnumDecl(const clang::EnumDecl* decl) const
             {
                 if (decl != nullptr)
