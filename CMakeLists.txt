@@ -22,8 +22,8 @@ project(spore-codegen VERSION ${SPORE_VERSION})
 
 set(
   CMAKE_MODULE_PATH
-    ${CMAKE_CURRENT_SOURCE_DIR}/cmake
-    ${CMAKE_MODULE_PATH}
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake
+  ${CMAKE_MODULE_PATH}
 )
 
 configure_file(
@@ -41,11 +41,13 @@ add_compile_options(
   "$<$<CXX_COMPILER_ID:MSVC>:/bigobj>"
 )
 
-add_link_options(
-  "$<$<CXX_COMPILER_ID:MSVC>:/STACK:${SPORE_STACK_SIZE}>"
-  "$<$<CXX_COMPILER_ID:GNU>:-Wl,--defsym,_stack_size=${SPORE_STACK_SIZE}>"
-  "$<$<CXX_COMPILER_ID:Clang>:-Wl,--defsym,_stack_size=${SPORE_STACK_SIZE}>"
-)
+if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" OR CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+  add_link_options(/STACK:${SPORE_STACK_SIZE})
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "GNU")
+  add_link_options(-Wl --defsym _stack_size=${SPORE_STACK_SIZE})
+elseif (SPORE_TARGET_COMPILER STREQUAL "Clang")
+  add_link_options(-Wl --defsym _stack_size=${SPORE_STACK_SIZE})
+endif ()
 
 add_compile_definitions(
   SPDLOG_NO_SOURCE_LOC
