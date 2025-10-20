@@ -643,7 +643,7 @@ namespace spore::codegen
             std::unordered_map<std::string, std::size_t>& cpp_file_map;
         };
 
-        struct ast_visitor : clang::RecursiveASTVisitor<ast_visitor>
+        struct ast_visitor final : clang::RecursiveASTVisitor<ast_visitor>
         {
             frontend_action_context& action_context;
             clang::ASTContext& ast_context;
@@ -654,17 +654,17 @@ namespace spore::codegen
             {
             }
 
-            [[maybe_unused]] bool shouldVisitTemplateInstantiations() const
+            [[maybe_unused]] static bool shouldVisitTemplateInstantiations()
             {
                 return false;
             }
 
-            [[maybe_unused]] bool shouldWalkTypesOfTypeLocs() const
+            [[maybe_unused]] static bool shouldWalkTypesOfTypeLocs()
             {
                 return false;
             }
 
-            [[maybe_unused]] bool VisitCXXRecordDecl(clang::CXXRecordDecl* decl)
+            [[maybe_unused]] bool VisitCXXRecordDecl(const clang::CXXRecordDecl* decl) const
             {
                 if (decl != nullptr and not decl->isUnion())
                 {
@@ -677,7 +677,7 @@ namespace spore::codegen
                 return true;
             }
 
-            [[maybe_unused]] bool VisitEnumDecl(clang::EnumDecl* decl)
+            [[maybe_unused]] bool VisitEnumDecl(const clang::EnumDecl* decl) const
             {
                 if (decl != nullptr)
                 {
@@ -690,7 +690,7 @@ namespace spore::codegen
                 return true;
             }
 
-            [[maybe_unused]] bool VisitFunctionDecl(clang::FunctionDecl* decl)
+            [[maybe_unused]] bool VisitFunctionDecl(const clang::FunctionDecl* decl) const
             {
                 if (decl != nullptr and not decl->isImplicit() and not decl->isTemplateInstantiation())
                 {
@@ -709,7 +709,7 @@ namespace spore::codegen
                 return true;
             }
 
-            [[maybe_unused]] bool VisitVarDecl(clang::VarDecl* decl)
+            [[maybe_unused]] bool VisitVarDecl(const clang::VarDecl* decl) const
             {
                 if (decl != nullptr and not decl->isImplicit())
                 {
@@ -728,7 +728,7 @@ namespace spore::codegen
                 return true;
             }
 
-            cpp_file* get_cpp_file(clang::Decl& decl)
+            cpp_file* get_cpp_file(const clang::Decl& decl) const
             {
                 const clang::SourceManager& source_manager = ast_context.getSourceManager();
                 const clang::SourceLocation location = decl.getLocation();
@@ -750,7 +750,7 @@ namespace spore::codegen
             }
         };
 
-        struct ast_consumer : clang::ASTConsumer
+        struct ast_consumer final : clang::ASTConsumer
         {
             frontend_action_context& action_context;
 
@@ -766,7 +766,7 @@ namespace spore::codegen
             }
         };
 
-        struct frontend_action : clang::ASTFrontendAction
+        struct frontend_action final : clang::ASTFrontendAction
         {
             frontend_action_context& action_context;
 
@@ -792,7 +792,7 @@ namespace spore::codegen
             }
         };
 
-        struct frontend_action_factory : clang::tooling::FrontendActionFactory
+        struct frontend_action_factory final : clang::tooling::FrontendActionFactory
         {
             frontend_action_context& action_context;
 
@@ -856,7 +856,7 @@ namespace spore::codegen
             cpp_source += std::format("#include \"{}\"\n", cpp_file.path);
         }
 
-        constexpr const char cpp_source_path[] = "__source__.cpp";
+        constexpr char cpp_source_path[] = "__source__.cpp";
 
         clang::tooling::ClangTool clang_tool {options_parser->getCompilations(), {std::string {cpp_source_path}}};
         clang_tool.mapVirtualFile(cpp_source_path, cpp_source);
