@@ -8,6 +8,8 @@ if (SPORE_WITH_SPIRV)
   list(APPEND TARGET_FILES ${CMAKE_CURRENT_SOURCE_DIR}/t_codegen_parser_spirv.cpp)
 endif ()
 
+list(APPEND TARGET_FILES ${CMAKE_CURRENT_SOURCE_DIR}/t_utils.cpp)
+
 add_executable(${TARGET_NAME} ${TARGET_FILES})
 
 target_link_libraries(
