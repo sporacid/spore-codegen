@@ -333,6 +333,13 @@ Some additional functions have been added to the `inja` templating engine to sim
 | `trim_end(string, string)`        | `{{ trim_end(class.name, "_") }}`                      | Remove any trailing characters from the given string.                                                  |
 | `trim(string)`                    | `{{ trim(class.name) }}`                               | Remove any leading and trailing whitespaces from the given string.                                     |
 | `trim(string, string)`            | `{{ trim(class.name, "_") }}`                          | Remove any leading and  trailing characters from the given string.                                     |
+| `split_into_words(string)`        | `{{ split_into_words("camelCaseString") }}`            | Split a string in any case into words. In the example function returns `["camel", "Case", "String"]`   |
+| `to_camel_case(string)`           | `{{ to_camel_case("Title Case String") }}`             | Format a string in any case to camel case. In the example function returns `titleCaseString`           |
+| `to_upper_camel_case(string)`     | `{{ to_upper_camel_case("sneak_case_string") }}`       | Format a string in any case to upper camel case. In the example function returns `SneakCaseString`     |
+| `to_snake_case(string)`           | `{{ to_snake_case("Sentence case string") }}`          | Format a string in any case to snake case. In the example function returns `sentence_case_string`      |
+| `to_upper_snake_case(string)`     | `{{ to_upper_snake_case("camelCaseString") }}`         | Format a string in any case to upper snake case. In the example function returns `CAMEL_CASE_STRING`   |
+| `to_title_case(string)`           | `{{ to_title_case("UpperCamelCaseString") }}`          | Format a string in any case to title case. In the example function returns `Upper Camel Case String`   |
+| `to_sentence_case(string)`        | `{{ to_sentence_case("UPPER_SNAKE_CASE") }}`           | Format a string in any case to upper snake case. In the example function returns `Upper snake case`    |
 | `cpp.name(string)`                | `{{ cpp.name(path) }}`                                 | Replace any invalid C++ character for an underscore (e.g. `/some-name` -> `_path_name`).               |
 | `cpp.embed(binary)`               | `{{ cpp.embed(base64) }}`                              | Embed the given binary as hex codes, to be used within a `C` or `C++` byte array.                      |
 | `cpp.embed(binary, number)`       | `{{ cpp.embed(base64, 80) }}`                          | Embed the given binary as hex codes with the given width, to be used within a `C` or `C++` byte array. |
