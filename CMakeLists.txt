@@ -38,43 +38,47 @@ if (NOT SPORE_STACK_SIZE)
   set(SPORE_STACK_SIZE 16777216)
 endif ()
 
-add_compile_options(
-  "$<$<CXX_COMPILER_ID:MSVC>:/bigobj>"
-)
-
-add_link_options(
-  "$<$<CXX_COMPILER_ID:MSVC>:/STACK:${SPORE_STACK_SIZE}>"
-  "$<$<CXX_COMPILER_ID:GNU>:-Wl,--defsym,_stack_size=${SPORE_STACK_SIZE}>"
-  "$<$<CXX_COMPILER_ID:Clang>:-Wl,--defsym,_stack_size=${SPORE_STACK_SIZE}>"
-)
-
 add_compile_definitions(
   SPDLOG_NO_SOURCE_LOC
   SPDLOG_USE_STD_FORMAT
+  "$<$<CONFIG:Debug>:SPDLOG_ACTIVE_LEVEL=0>"
+  "$<$<CONFIG:Release>:SPDLOG_ACTIVE_LEVEL=1>"
 )
 
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-  add_compile_definitions(
-    SPDLOG_ACTIVE_LEVEL=0
-  )
+if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" OR CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
   add_compile_options(
-    "$<$<CXX_COMPILER_ID:MSVC>:/Od>"
-    "$<$<CXX_COMPILER_ID:GNU>:-g3>"
-    "$<$<CXX_COMPILER_ID:GNU>:-O0>"
-    "$<$<CXX_COMPILER_ID:Clang>:-g>"
-    "$<$<CXX_COMPILER_ID:Clang>:-O0>"
-  )
-elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
-  add_compile_definitions(
-    SPDLOG_ACTIVE_LEVEL=1
-  )
-  add_compile_options(
-    "$<$<CXX_COMPILER_ID:MSVC>:/O2;/DNDEBUG;/Zi;/Gy>"
-    "$<$<CXX_COMPILER_ID:GNU>:-O3>"
-    "$<$<CXX_COMPILER_ID:Clang>:-O3>"
+    "/bigobj"
+    "$<$<CONFIG:Debug>:/Od>"
+    "$<$<CONFIG:Release>:/O2>"
+    "$<$<CONFIG:Release>:/Oy>"
+    "$<$<CONFIG:Release>:/Oi>"
+    "$<$<CONFIG:Release>:/fp:fast>"
   )
   add_link_options(
-    "$<$<CXX_COMPILER_ID:MSVC>:/DEBUG;/INCREMENTAL:NO;/OPT:REF;/OPT:ICF>"
+    "/STACK:${SPORE_STACK_SIZE}"
+    "/INCREMENTAL:NO"
+    "/OPT:REF"
+    "/OPT:ICF"
+  )
+elseif (SPORE_TARGET_COMPILER STREQUAL "GNU" OR CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "GNU")
+  add_compile_options(
+    "$<$<CONFIG:Debug>:-g>"
+    "$<$<CONFIG:Debug>:-O0>"
+    "$<$<CONFIG:Release>:-O3>"
+  )
+  add_link_options(
+    "-Wl"
+    "--defsym"
+    "_stack_size=${SPORE_STACK_SIZE}"
+  )
+elseif (SPORE_TARGET_COMPILER STREQUAL "Clang")
+  target_compile_options(
+    "$<$<CONFIG:Debug>:-g>"
+    "$<$<CONFIG:Debug>:-O0>"
+    "$<$<CONFIG:Release>:-O3>"
+  )
+  add_link_options(
+    "-Wl,--defsym,_stack_size=${SPORE_STACK_SIZE}"
   )
 endif ()
 
