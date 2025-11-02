@@ -1,8 +1,8 @@
 #pragma once
 
-namespace spore
+namespace spore::codegen
 {
-struct slang_module
-{
-};
+    struct slang_module
+    {
+    };
 }

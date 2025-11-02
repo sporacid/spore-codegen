@@ -1,13 +1,13 @@
 #pragma once
 
-#include <range>
+#include <ranges>
 
 #include "spdlog/spdlog.h"
 
-#include "spore/codegen/parsers/codegen_converter.hpp"
+#include "spore/codegen/parsers/codegen_parser.hpp"
 #include "spore/codegen/parsers/slang/ast/slang_module.hpp"
 
-namespace spore
+namespace spore::codegen
 {
     struct codegen_parser_slang final : codegen_parser<slang_module>
     {
@@ -19,6 +19,6 @@ namespace spore
             }
         }
 
-        bool parse_asts(const std::vector<std::string>& paths, std::vector<spirv_module>& modules) override;
+        bool parse_asts(const std::vector<std::string>& paths, std::vector<slang_module>& modules) override;
     };
 }

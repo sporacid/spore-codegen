@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ranges>
+
 #include "spdlog/spdlog.h"
 
 #include "spore/codegen/parsers/codegen_parser.hpp"
