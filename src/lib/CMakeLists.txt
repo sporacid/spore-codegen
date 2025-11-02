@@ -83,7 +83,9 @@ endif ()
 
 if (SPORE_WITH_SLANG)
   find_path(SPORE_SLANG_INCLUDE_DIRS slang.h)
+  find_library(SPORE_SLANG_LIB_DIRS slang)
   target_include_directories(${TARGET_NAME} PUBLIC ${SPORE_SLANG_INCLUDE_DIRS})
+  target_link_libraries(${TARGET_NAME} PUBLIC ${SPORE_SLANG_LIB_DIRS})
   target_compile_definitions(${TARGET_NAME} PUBLIC SPORE_WITH_SLANG)
 endif ()
 
