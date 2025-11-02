@@ -9,10 +9,9 @@ namespace spore::codegen
 {
     struct codegen_parser_spirv final : codegen_parser<spirv_module>
     {
-        template <typename args_t>
-        explicit codegen_parser_spirv(const args_t& args)
+        explicit codegen_parser_spirv(const std::span<const std::string> args)
         {
-            if (std::size(args) > 0)
+            if (not args.empty())
             {
                 SPDLOG_WARN("SPIR-V parser does not support additional arguments, they will be ignored");
             }

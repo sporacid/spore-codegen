@@ -9,6 +9,7 @@ option(SPORE_BUILD_TESTS "Whether to build tests" ON)
 
 option(SPORE_WITH_CPP "Whether to build and enable C++ parser" ON)
 option(SPORE_WITH_SPIRV "Whether to build and enable SPIR-V parser" ON)
+option(SPORE_WITH_SLANG "Whether to build and enable Slang parser" ON)
 
 set(CMAKE_CXX_STANDARD 20)
 

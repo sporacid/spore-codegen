@@ -12,9 +12,8 @@ namespace spore::codegen
     {
         std::vector<std::string> additional_args;
 
-        template <typename args_t>
-        explicit codegen_parser_cpp(const args_t& additional_args)
-            : additional_args(std::begin(additional_args), std::end(additional_args))
+        explicit codegen_parser_cpp(const std::span<const std::string> args)
+            : additional_args(args.begin(), args.end())
         {
         }
 

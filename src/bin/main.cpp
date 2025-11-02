@@ -32,6 +32,12 @@
 #    include "spore/codegen/parsers/spirv/codegen_parser_spirv.hpp"
 #endif
 
+#ifdef SPORE_WITH_SLANG
+#    include "spore/codegen/parsers/slang/ast/slang_module.hpp"
+#    include "spore/codegen/parsers/slang/codegen_converter_slang.hpp"
+#    include "spore/codegen/parsers/slang/codegen_parser_slang.hpp"
+#endif
+
 namespace spore::codegen
 {
     namespace detail
@@ -87,6 +93,22 @@ namespace spore::codegen
         }
 
         static void register_conditions(codegen_condition_factory<spirv_module>& factory)
+        {
+            detail::register_default_conditions(factory);
+        }
+    };
+#endif
+
+#ifdef SPORE_WITH_SLANG
+    template <>
+    struct codegen_impl_traits<slang_module>
+    {
+        static constexpr std::string_view name()
+        {
+            return "slang";
+        }
+
+        static void register_conditions(codegen_condition_factory<slang_module>& factory)
         {
             detail::register_default_conditions(factory);
         }
@@ -223,6 +245,14 @@ int main(const int argc, const char* argv[])
     };
 #endif
 
+#ifdef SPORE_WITH_SLANG
+    const auto slang_args = parse_impl_args.operator()<codegen_impl<slang_module>>();
+    codegen_impl<slang_module> impl_slang {
+        codegen_parser_slang {slang_args},
+        codegen_converter_slang {},
+    };
+#endif
+
     codegen_renderer_composite renderer {
         std::make_unique<codegen_renderer_inja>(options.templates),
     };
@@ -246,6 +276,9 @@ int main(const int argc, const char* argv[])
 #endif
 #ifdef SPORE_WITH_SPIRV
             std::move(impl_spirv),
+#endif
+#ifdef SPORE_WITH_SLANG
+            std::move(impl_slang),
 #endif
         };
 

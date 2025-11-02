@@ -13,7 +13,8 @@
   ],
   "default-features": [
     "cpp",
-    "spirv"
+    "spirv",
+    "slang"
   ],
   "features": {
     "cpp": {
@@ -23,6 +24,12 @@
       "description": "support for SPIR-V parser",
       "dependencies": [
         "spirv-reflect"
+      ]
+    },
+    "slang": {
+      "description": "support for Slang parser",
+      "dependencies": [
+        "shader-slang"
       ]
     }
   }
