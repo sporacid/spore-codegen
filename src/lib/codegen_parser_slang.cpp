@@ -2,6 +2,7 @@
 
 #include <filesystem>
 
+#include "slang-com-helper.h"
 #include "slang.h"
 
 #include "spore/codegen/utils/files.hpp"
@@ -21,9 +22,124 @@ namespace spore::codegen
             return *global_session;
         }
 
-        slang_module make_module(const slang::IModule& sl_module)
+        std::string make_string(slang::IBlob& sl_blob)
+        {
+            return std::string(static_cast<const char*>(sl_blob.getBufferPointer()), sl_blob.getBufferSize());
+        }
+
+        std::string get_type_name(slang::TypeReflection& sl_type)
+        {
+            slang::IBlob* type_name_blob = nullptr;
+            const SlangResult slang_result = sl_type.getFullName(&type_name_blob);
+
+            if (SLANG_FAILED(slang_result))
+            {
+                return sl_type.getName();
+            }
+
+            return make_string(*type_name_blob);
+        }
+
+        slang_variable make_variable(slang::VariableReflection& sl_variable)
+        {
+            slang_variable variable;
+            variable.name = sl_variable.getName();
+
+            if (slang::TypeReflection* sl_type = sl_variable.getType())
+            {
+                variable.type = get_type_name(*sl_type);
+            }
+
+            return variable;
+        }
+
+        slang_struct make_struct(slang::TypeReflection& sl_type)
+        {
+            slang_struct struct_;
+            struct_.name = sl_type.getName();
+
+            const std::size_t field_num = sl_type.getFieldCount();
+
+            struct_.fields.reserve(field_num);
+
+            for (std::size_t index = 0; index < field_num; ++index)
+            {
+                if (slang::VariableReflection* sl_field = sl_type.getFieldByIndex(index))
+                {
+                    struct_.fields.emplace_back(make_variable(*sl_field));
+                }
+            }
+
+            return struct_;
+        }
+
+        slang_entry_point make_entry_point(slang::IEntryPoint& sl_entry_point)
+        {
+            slang_entry_point entry_point;
+
+            if (slang::FunctionReflection* sl_function = sl_entry_point.getFunctionReflection())
+            {
+                entry_point.name = sl_function->getName();
+            }
+
+            return entry_point;
+        }
+
+        slang_module make_module(slang::IModule& sl_module)
         {
             slang_module module;
+            module.path = sl_module.getFilePath();
+
+            SlangResult slang_result = SLANG_OK;
+            const std::size_t entry_point_num = static_cast<std::size_t>(sl_module.getDefinedEntryPointCount());
+
+            module.entry_points.reserve(entry_point_num);
+
+            for (std::size_t index = 0; index < entry_point_num; ++index)
+            {
+                slang::IEntryPoint* entry_point = nullptr;
+                slang_result = sl_module.getDefinedEntryPoint(index, &entry_point);
+
+                if (SLANG_FAILED(slang_result))
+                {
+                    SPDLOG_WARN("failed to get slang entry point, index={}", index);
+                    continue;
+                }
+
+                module.entry_points.emplace_back(make_entry_point(*entry_point));
+            }
+
+            if (slang::DeclReflection* sl_decl = sl_module.getModuleReflection())
+            {
+                const std::size_t children_count = sl_decl->getChildrenCount();
+
+                for (std::size_t index = 0; index < children_count; ++index)
+                {
+                    if (slang::DeclReflection* sl_child_decl = sl_decl->getChild(index))
+                    {
+                        switch (sl_child_decl->getKind())
+                        {
+                            case slang::DeclReflection::Kind::Namespace:
+                                break;
+                            case slang::DeclReflection::Kind::Struct:
+                                module.structs.emplace_back(make_struct(*sl_child_decl->getType()));
+                                break;
+                            case slang::DeclReflection::Kind::Variable:
+                                module.variables.emplace_back(make_variable(*sl_child_decl->asVariable()));
+                                break;
+                            case slang::DeclReflection::Kind::Generic:
+                                break;
+                            case slang::DeclReflection::Kind::Func:
+                                break;
+                            case slang::DeclReflection::Kind::Module:
+                            case slang::DeclReflection::Kind::Unsupported:
+                            default:
+                                break;
+                        }
+                    }
+                }
+            }
+
             return module;
         }
     }
@@ -58,7 +174,7 @@ namespace spore::codegen
                 return false;
             }
 
-            const slang::IModule* module = session->loadModuleFromSourceString(
+            slang::IModule* module = session->loadModuleFromSourceString(
                 file_path.filename().generic_string().data(),
                 file_path.generic_string().data(),
                 file_data.data(),

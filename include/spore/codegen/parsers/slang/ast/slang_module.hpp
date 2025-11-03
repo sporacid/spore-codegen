@@ -1,6 +1,8 @@
 #pragma once
 
+#include "spore/codegen/parsers/slang/ast/slang_entry_point.hpp"
 #include "spore/codegen/parsers/slang/ast/slang_struct.hpp"
+#include "spore/codegen/parsers/slang/ast/slang_variable.hpp"
 
 namespace spore::codegen
 {
@@ -8,5 +10,7 @@ namespace spore::codegen
     {
         std::string path;
         std::vector<slang_struct> structs;
+        std::vector<slang_variable> variables;
+        std::vector<slang_entry_point> entry_points;
     };
 }

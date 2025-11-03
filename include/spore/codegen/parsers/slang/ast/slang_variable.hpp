@@ -1,14 +1,16 @@
 #pragma once
 
 #include "spore/codegen/parsers/slang/ast/slang_attribute.hpp"
-#include "spore/codegen/parsers/slang/ast/slang_variable.hpp"
+
+#include <string>
+#include <vector>
 
 namespace spore::codegen
 {
-    struct slang_struct
+    struct slang_variable
     {
+        std::string type;
         std::string name;
-        std::vector<slang_variable> fields;
         std::vector<slang_attribute> attributes;
     };
 }
