@@ -322,6 +322,8 @@ Some additional functions have been added to the `inja` templating engine to sim
 | `truthy(any)`                     | `{% if truthy(class.attributes.json) %}{% endif %}`    | Evaluates whether a given value is truthy.                                                             |
 | `truthy(any, string)`             | `{% if truthy(class.attributes, "json") %}{% endif %}` | Evaluates whether a given value at the given path is truthy.                                           |
 | `contains(string, string)`        | `{{ contains(class.name, "_test") }}`                  | Checks whether a string contains a given substring.                                                    |
+| `regex_match(string, string)`     | `{{ regex_match("Hello123", "^[A-Za-z]+\\d+") }}`      | Check if the input string matches a format. Follows `std::regex_match` rules.                          |
+| `regex_search(string, string)`    | `{{ regex_search("Hello123 ABC", "^[A-Za-z]+\\d+") }}` | Search for character groups by format. Follows `std::regex_search` rules.                              |
 | `find_by(array, string, string)`  | `{{ find_by(classes, "name", "MyClass") }}`            | Find an object in array with the desired key value. May be useful to get specified class.              |
 | `replace(string, string, string)` | `{{ replace(class.name, "_t", "_test") }}`             | Replaces a given substring within string with another given substring.                                 |
 | `format(string, ...)`             | `{{ format("{}: {}", key, value) }}`                   | Formats the given string with the given arguments. Follows `std::format` rules.                        |

@@ -208,6 +208,27 @@ namespace spore::codegen
                     return value.find(str) != std::string::npos;
                 });
 
+            inja_env.add_callback("regex_match", 2,
+                [](const inja::Arguments& args) {
+                    const std::string& input = args.at(0)->get<std::string>();
+                    const std::string& regex = args.at(1)->get<std::string>();
+
+                    return strings::regex_match(input, regex);
+                });
+
+            inja_env.add_callback("regex_search", 2,
+                [](const inja::Arguments& args) {
+                    const std::string& input = args.at(0)->get<std::string>();
+                    const std::string& regex = args.at(1)->get<std::string>();
+                    nlohmann::json json = nlohmann::json::array();
+
+                    strings::for_each_by_regex(input, regex, [&](const std::string_view match) {
+                        json.push_back(match);
+                    });
+
+                    return json;
+                });
+
             inja_env.add_callback("find_by", 3,
                 [](const inja::Arguments& args) {
                     const nlohmann::json& json = *args.at(0);
