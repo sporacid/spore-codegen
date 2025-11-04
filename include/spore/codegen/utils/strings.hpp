@@ -4,6 +4,7 @@
 #include <format>
 #include <functional>
 #include <optional>
+#include <regex>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -212,6 +213,28 @@ namespace spore::codegen::strings
     inline std::string to_sentence_case(const std::string_view input)
     {
         return detail::to_any_case(input, " ", detail::toupper, detail::tolower, detail::tolower);
+    }
+
+    inline bool regex_match(const std::string_view input, const std::string_view regex)
+    {
+        const std::regex pattern(regex.cbegin(), regex.cend());
+        return std::regex_match(input.cbegin(), input.cend(), pattern);
+    }
+
+    template <typename callback_t>
+    void for_each_by_regex(const std::string_view input, const std::string_view regex, const callback_t&& callback)
+    {
+        const std::regex pattern(regex.cbegin(), regex.cend());
+        std::match_results<std::string_view::const_iterator> matches {};
+
+        if (std::regex_search(input.cbegin(), input.cend(), matches, pattern))
+        {
+            for (auto it = matches.cbegin() + 1; it < matches.cend(); ++it)
+            {
+                const auto match_view = std::string_view(it->first, it->length());
+                callback(match_view);
+            }
+        }
     }
 }
 
