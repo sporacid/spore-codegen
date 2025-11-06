@@ -495,7 +495,7 @@ namespace spore::codegen
             return func();
         }
 
-        std::string include_file(const std::string& file, std::span<const nlohmann::json*> args)
+        std::string include_file(const std::string& file, const std::span<const nlohmann::json*> args)
         {
             nlohmann::json json;
 
@@ -503,7 +503,7 @@ namespace spore::codegen
             {
                 json = *args[0];
             }
-            else if (args.size() > 2)
+            else if (args.size() > 1)
             {
                 for (std::size_t index = 1; index < args.size(); index += 2)
                 {
