@@ -40,7 +40,7 @@ namespace spore::codegen
             return make_string(*type_name_blob);
         }
 
-        slang_variable make_variable(slang::VariableReflection& sl_variable)
+        slang_variable make_variable(slang::IModule& sl_module, slang::VariableReflection& sl_variable)
         {
             slang_variable variable;
             variable.name = sl_variable.getName();
@@ -48,12 +48,26 @@ namespace spore::codegen
             if (slang::TypeReflection* sl_type = sl_variable.getType())
             {
                 variable.type = get_type_name(*sl_type);
+
+                if (slang::ProgramLayout* sl_layout = sl_module.getLayout())
+                {
+                    if (slang::TypeLayoutReflection* sl_type_layout = sl_layout->getTypeLayout(sl_type))
+                    {
+                        if (slang::VariableLayoutReflection* sl_variable_layout = sl_type_layout->getElementVarLayout())
+                        {
+                            variable.layout = slang_layout {
+                                .space = sl_variable_layout->getBindingSpace(),
+                                .binding = sl_variable_layout->getBindingIndex(),
+                            };
+                        }
+                    }
+                }
             }
 
             return variable;
         }
 
-        slang_struct make_struct(slang::TypeReflection& sl_type)
+        slang_struct make_struct(slang::IModule& sl_module, slang::TypeReflection& sl_type)
         {
             slang_struct struct_;
             struct_.name = sl_type.getName();
@@ -66,14 +80,14 @@ namespace spore::codegen
             {
                 if (slang::VariableReflection* sl_field = sl_type.getFieldByIndex(index))
                 {
-                    struct_.fields.emplace_back(make_variable(*sl_field));
+                    struct_.fields.emplace_back(make_variable(sl_module, *sl_field));
                 }
             }
 
             return struct_;
         }
 
-        slang_entry_point make_entry_point(slang::IEntryPoint& sl_entry_point)
+        slang_entry_point make_entry_point(slang::IModule& sl_module, slang::IEntryPoint& sl_entry_point)
         {
             slang_entry_point entry_point;
 
@@ -106,7 +120,7 @@ namespace spore::codegen
                     continue;
                 }
 
-                module.entry_points.emplace_back(make_entry_point(*entry_point));
+                module.entry_points.emplace_back(make_entry_point(sl_module, *entry_point));
             }
 
             if (slang::DeclReflection* sl_decl = sl_module.getModuleReflection())
@@ -122,10 +136,10 @@ namespace spore::codegen
                             case slang::DeclReflection::Kind::Namespace:
                                 break;
                             case slang::DeclReflection::Kind::Struct:
-                                module.structs.emplace_back(make_struct(*sl_child_decl->getType()));
+                                module.structs.emplace_back(make_struct(sl_module, *sl_child_decl->getType()));
                                 break;
                             case slang::DeclReflection::Kind::Variable:
-                                module.variables.emplace_back(make_variable(*sl_child_decl->asVariable()));
+                                module.variables.emplace_back(make_variable(sl_module, *sl_child_decl->asVariable()));
                                 break;
                             case slang::DeclReflection::Kind::Generic:
                                 break;
@@ -150,7 +164,14 @@ namespace spore::codegen
 
         slang::IGlobalSession& global_session = detail::get_global_session();
 
-        constexpr slang::SessionDesc session_desc;
+        const slang::TargetDesc target_desc {
+            .format = SLANG_SPIRV,
+        };
+
+        const slang::SessionDesc session_desc {
+            .targets = &target_desc,
+            .targetCount = 1,
+        };
 
         slang::ISession* session = nullptr;
         slang_result = global_session.createSession(session_desc, &session);

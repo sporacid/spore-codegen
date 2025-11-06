@@ -13,11 +13,22 @@ namespace spore::codegen
         json["values"] = value.values;
     }
 
+    inline void to_json(nlohmann::json& json, const slang_layout& value)
+    {
+        json["space"] = value.space;
+        json["binding"] = value.binding;
+    }
+
     inline void to_json(nlohmann::json& json, const slang_variable& value)
     {
         json["type"] = value.type;
         json["name"] = value.name;
         json["attributes"] = value.attributes;
+
+        if (value.layout.has_value())
+        {
+            json["layout"] = value.layout.value();
+        }
     }
 
     inline void to_json(nlohmann::json& json, const slang_struct& value)
