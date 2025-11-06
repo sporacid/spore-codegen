@@ -505,9 +505,9 @@ namespace spore::codegen
             }
             else if (args.size() > 1)
             {
-                for (std::size_t index = 1; index < args.size(); index += 2)
+                for (const nlohmann::json* arg : args)
                 {
-                    json.emplace_back(*args[index]);
+                    json.emplace_back(*arg);
                 }
             }
             else
