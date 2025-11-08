@@ -12,7 +12,7 @@
 namespace spore::codegen::strings
 {
     template <typename callback_t>
-    inline void for_each_words(const std::string_view input, const callback_t&& callback);
+    void for_each_words(std::string_view input, callback_t&& callback);
 
     namespace detail
     {
@@ -130,11 +130,11 @@ namespace spore::codegen::strings
     }
 
     template <typename callback_t>
-    inline void for_each_words(const std::string_view input, const callback_t&& callback)
+    void for_each_words(const std::string_view input, callback_t&& callback)
     {
         std::optional<std::string_view::const_iterator> word_begin;
 
-        for (auto it = input.cbegin(); it < input.cend(); ++it)
+        for (auto it = input.begin(); it < input.end(); ++it)
         {
             if (word_begin)
             {
@@ -143,9 +143,9 @@ namespace spore::codegen::strings
                     if (std::isupper(*it))
                     {
                         const bool is_previous_lower = std::islower(*(it - 1));
-                        const bool is_last = it == input.cend() - 1;
+                        const bool is_last = it == input.end() - 1;
                         const bool is_next_lower = is_last ? false : std::islower(*(it + 1));
-                        const bool is_next_last = is_last ? false : it + 1 == input.cend() - 1;
+                        const bool is_next_last = is_last ? false : it + 1 == input.end() - 1;
                         if (is_previous_lower || (is_next_lower && !is_next_last))
                         {
                             callback(std::string_view(word_begin.value(), it));
@@ -170,7 +170,7 @@ namespace spore::codegen::strings
 
         if (word_begin)
         {
-            callback(std::string_view(word_begin.value(), input.cend()));
+            callback(std::string_view(word_begin.value(), input.end()));
         }
     }
 
@@ -217,21 +217,21 @@ namespace spore::codegen::strings
 
     inline bool regex_match(const std::string_view input, const std::string_view regex)
     {
-        const std::regex pattern(regex.cbegin(), regex.cend());
-        return std::regex_match(input.cbegin(), input.cend(), pattern);
+        const std::regex pattern(regex.begin(), regex.end());
+        return std::regex_match(input.begin(), input.end(), pattern);
     }
 
     template <typename callback_t>
     void for_each_by_regex(const std::string_view input, const std::string_view regex, const callback_t&& callback)
     {
-        const std::regex pattern(regex.cbegin(), regex.cend());
+        const std::regex pattern(regex.begin(), regex.end());
         std::match_results<std::string_view::const_iterator> matches {};
 
-        if (std::regex_search(input.cbegin(), input.cend(), matches, pattern))
+        if (std::regex_search(input.begin(), input.end(), matches, pattern))
         {
-            for (auto it = matches.cbegin() + 1; it < matches.cend(); ++it)
+            for (auto it = matches.begin() + 1; it < matches.end(); ++it)
             {
-                const auto match_view = std::string_view(it->first, it->length());
+                const auto match_view = std::string_view(it->first, it->second);
                 callback(match_view);
             }
         }
