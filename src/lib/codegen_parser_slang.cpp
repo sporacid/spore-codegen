@@ -1,8 +1,8 @@
 #include "spore/codegen/parsers/slang/codegen_parser_slang.hpp"
 
 #include <filesystem>
+#include <string>
 
-#include "slang-com-helper.h"
 #include "slang-com-ptr.h"
 #include "slang.h"
 #include "spdlog/spdlog.h"
@@ -20,18 +20,39 @@ namespace spore::codegen
             const slang::SessionDesc& session_desc;
         };
 
+        void parse_args(const std::span<const std::string> args, std::vector<std::string>& out_args)
+        {
+            out_args.reserve(2 * args.size());
+            // out_args.emplace_back(SPORE_CODEGEN_NAME);
+
+            for (const std::string& arg : args)
+            {
+                const std::size_t index_equal = arg.find('=');
+
+                if (index_equal != std::string::npos)
+                {
+                    out_args.emplace_back(arg.substr(0, index_equal));
+                    out_args.emplace_back(arg.substr(index_equal + 1));
+                }
+                else
+                {
+                    out_args.emplace_back(arg);
+                }
+            }
+        }
+
         slang::IGlobalSession& get_global_session()
         {
-            static slang::IGlobalSession* global_session = [] {
-                slang::IGlobalSession* value = nullptr;
-                slang::createGlobalSession(&value);
+            static Slang::ComPtr<slang::IGlobalSession> global_session = [] {
+                Slang::ComPtr<slang::IGlobalSession> value;
+                slang::createGlobalSession(value.writeRef());
                 return value;
             }();
 
             return *global_session;
         }
 
-        std::string make_string(slang::IBlob& sl_blob)
+        std::string get_string(slang::IBlob& sl_blob)
         {
             return std::string(static_cast<const char*>(sl_blob.getBufferPointer()), sl_blob.getBufferSize());
         }
@@ -46,7 +67,7 @@ namespace spore::codegen
                 return sl_type.getName();
             }
 
-            return make_string(*type_name_blob);
+            return get_string(*type_name_blob);
         }
 
         std::string get_target_name(const SlangCompileTarget sl_target)
@@ -365,17 +386,30 @@ namespace spore::codegen
         }
     }
 
+    codegen_parser_slang::codegen_parser_slang(const std::span<const std::string> args)
+    {
+        detail::parse_args(args, slang_args);
+    }
+
     bool codegen_parser_slang::parse_asts(const std::vector<std::string>& paths, std::vector<slang_module>& modules)
     {
         SlangResult slang_result = SLANG_OK;
 
         slang::IGlobalSession& global_session = detail::get_global_session();
 
-#if 0
+        for (auto& arg : slang_args)
+        {
+            SPDLOG_INFO("arg: {}", arg);
+        }
+
+#if 1
         std::vector<const char*> args;
-        args.resize(slang_args.size());
-        std::ranges::transform(slang_args, args.begin(),
-            [](const std::string& arg) { return arg.data(); });
+        args.reserve(slang_args.size() + paths.size() + 1);
+
+        constexpr auto transformer = [](const std::string& path) { return path.data(); };
+        std::ranges::transform(slang_args, std::back_inserter(args), transformer);
+        args.emplace_back("--");
+        std::ranges::transform(paths, std::back_inserter(args), transformer);
 
         slang::SessionDesc session_desc;
         Slang::ComPtr<ISlangUnknown> session_memory;
@@ -402,14 +436,39 @@ namespace spore::codegen
         };
 #endif
 
-        slang::ISession* session = nullptr;
-        slang_result = global_session.createSession(session_desc, &session);
+        Slang::ComPtr<slang::ISession> session;
+        slang_result = global_session.createSession(session_desc, session.writeRef());
 
         if (SLANG_FAILED(slang_result))
         {
             SPDLOG_ERROR("failed to create slang session, error={}", slang::getLastInternalErrorMessage());
             return false;
         }
+
+        // Slang::ComPtr<slang::ICompileRequest> compile_request;
+        // slang_result = session->createCompileRequest(compile_request.writeRef());
+        //
+        // if (SLANG_FAILED(slang_result))
+        // {
+        //     SPDLOG_ERROR("failed to create slang compile request, error={}", slang::getLastInternalErrorMessage());
+        //     return false;
+        // }
+        //
+        // slang_result = compile_request->processCommandLineArguments(args.data(), args.size());
+        //
+        // if (SLANG_FAILED(slang_result))
+        // {
+        //     SPDLOG_ERROR("failed to process slang compile request arguments, error={}", slang::getLastInternalErrorMessage());
+        //     return false;
+        // }
+
+        // compile_request->addCodeGenTarget(SLANG_SPIRV);
+
+        // std::vector<const slang::TargetDesc*> entries;
+        // for (auto i = 0; i < session_desc.targetCount; ++i)
+        // {
+        //     entries.push_back(session_desc.targets + i);
+        // }
 
         modules.reserve(paths.size());
 

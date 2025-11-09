@@ -23,7 +23,7 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(yaml-cpp CONFIG REQUIRED)
 
-add_library(${TARGET_NAME} ${TARGET_FILES})
+add_library(${TARGET_NAME} STATIC ${TARGET_FILES})
 
 target_link_libraries(
   ${TARGET_NAME} PUBLIC

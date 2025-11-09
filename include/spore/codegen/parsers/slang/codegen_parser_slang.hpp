@@ -11,9 +11,7 @@ namespace spore::codegen
     {
         std::vector<std::string> slang_args;
 
-        explicit codegen_parser_slang(const std::span<const std::string> args)
-            : slang_args(args.begin(), args.end()) {}
-
+        explicit codegen_parser_slang(const std::span<const std::string> args);
         bool parse_asts(const std::vector<std::string>& paths, std::vector<slang_module>& modules) override;
     };
 }
