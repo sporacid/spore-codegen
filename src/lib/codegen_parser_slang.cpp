@@ -13,6 +13,13 @@ namespace spore::codegen
 {
     namespace detail
     {
+        struct slang_context
+        {
+            slang::IModule& module;
+            slang::ISession& session;
+            const slang::SessionDesc& session_desc;
+        };
+
         slang::IGlobalSession& get_global_session()
         {
             static slang::IGlobalSession* global_session = [] {
@@ -40,6 +47,45 @@ namespace spore::codegen
             }
 
             return make_string(*type_name_blob);
+        }
+
+        std::string get_target_name(const SlangCompileTarget sl_target)
+        {
+            switch (sl_target)
+            {
+                case SLANG_GLSL:
+                case SLANG_GLSL_VULKAN_DEPRECATED:
+                case SLANG_GLSL_VULKAN_ONE_DESC_DEPRECATED:
+                    return "glsl";
+                case SLANG_HLSL:
+                    return "hlsl";
+                case SLANG_WGSL_SPIRV_ASM:
+                case SLANG_WGSL_SPIRV:
+                case SLANG_SPIRV:
+                case SLANG_SPIRV_ASM:
+                    return "spirv";
+                case SLANG_DXBC:
+                case SLANG_DXBC_ASM:
+                    return "dxbc";
+                case SLANG_DXIL:
+                case SLANG_DXIL_ASM:
+                    return "dxil";
+                case SLANG_C_SOURCE:
+                    return "c";
+                case SLANG_CPP_SOURCE:
+                    return "c++";
+                case SLANG_CUDA_SOURCE:
+                case SLANG_CUDA_OBJECT_CODE:
+                    return "cuda";
+                case SLANG_METAL:
+                case SLANG_METAL_LIB:
+                case SLANG_METAL_LIB_ASM:
+                    return "metal";
+                case SLANG_WGSL:
+                    return "wgsl";
+                default:
+                    return "unknown";
+            }
         }
 
         slang_layout_unit get_layout_unit(const slang::ParameterCategory sl_category)
@@ -102,35 +148,48 @@ namespace spore::codegen
             return attribute;
         }
 
-        slang_type make_type(slang::IModule& sl_module, slang::TypeReflection& sl_type);
-
-        slang_variable make_variable(slang::IModule& sl_module, slang::VariableReflection& sl_variable)
+        slang_variable make_variable(const slang_context& context, slang::VariableReflection& sl_variable)
         {
             slang_variable variable;
             variable.name = sl_variable.getName();
 
             if (slang::TypeReflection* sl_type = sl_variable.getType())
             {
-                // variable.type = get_type_name(*sl_type);
-                variable.type = make_type(sl_module, *sl_type);
+                variable.type = get_type_name(*sl_type);
+                variable.targets.reserve(context.session_desc.targetCount);
 
-                if (slang::ProgramLayout* sl_layout = sl_module.getLayout())
+                for (std::size_t index_target = 0; index_target < context.session_desc.targetCount; ++index_target)
                 {
-                    if (slang::TypeLayoutReflection* sl_type_layout = sl_layout->getTypeLayout(sl_type))
+                    slang::ProgramLayout* sl_layout = context.module.getLayout(index_target);
+                    if (sl_layout == nullptr)
                     {
-                        if (slang::VariableLayoutReflection* sl_variable_layout = sl_type_layout->getElementVarLayout())
-                        {
-                            const std::size_t layout_count = sl_variable_layout->getCategoryCount();
-                            variable.layouts.reserve(layout_count);
+                        continue;
+                    }
 
-                            for (std::size_t index = 0; index < layout_count; ++index)
-                            {
-                                const slang::ParameterCategory category = sl_variable_layout->getCategoryByIndex(index);
-                                slang_variable_layout& variable_layout = variable.layouts.emplace_back();
-                                variable_layout.unit = get_layout_unit(category);
-                                variable_layout.offset = sl_variable_layout->getOffset(category);
-                            }
-                        }
+                    slang::TypeLayoutReflection* sl_type_layout = sl_layout->getTypeLayout(sl_type);
+                    if (sl_type_layout == nullptr)
+                    {
+                        continue;
+                    }
+
+                    slang::VariableLayoutReflection* sl_variable_layout = sl_type_layout->getElementVarLayout();
+                    if (sl_variable_layout == nullptr)
+                    {
+                        continue;
+                    }
+
+                    slang_target<slang_variable_layout>& target = variable.targets.emplace_back();
+                    target.name = get_target_name(context.session_desc.targets[index_target].format);
+
+                    const std::size_t layout_count = sl_variable_layout->getCategoryCount();
+                    target.layouts.reserve(layout_count);
+
+                    for (std::size_t index_layout = 0; index_layout < layout_count; ++index_layout)
+                    {
+                        const slang::ParameterCategory category = sl_variable_layout->getCategoryByIndex(index_layout);
+                        slang_variable_layout& variable_layout = target.layouts.emplace_back();
+                        variable_layout.unit = get_layout_unit(category);
+                        variable_layout.offset = sl_variable_layout->getOffset(category);
                     }
                 }
             }
@@ -149,7 +208,7 @@ namespace spore::codegen
             return variable;
         }
 
-        slang_type make_type(slang::IModule& sl_module, slang::TypeReflection& sl_type)
+        slang_type make_type(const slang_context& context, slang::TypeReflection& sl_type)
         {
             slang_type type;
             type.name = sl_type.getName();
@@ -162,7 +221,40 @@ namespace spore::codegen
             {
                 if (slang::VariableReflection* sl_field = sl_type.getFieldByIndex(index))
                 {
-                    type.fields.emplace_back(make_variable(sl_module, *sl_field));
+                    type.fields.emplace_back(make_variable(context, *sl_field));
+                }
+            }
+
+            type.targets.reserve(context.session_desc.targetCount);
+
+            for (std::size_t index_target = 0; index_target < context.session_desc.targetCount; ++index_target)
+            {
+                slang::ProgramLayout* sl_layout = context.module.getLayout(index_target);
+                if (sl_layout == nullptr)
+                {
+                    continue;
+                }
+
+                slang::TypeLayoutReflection* sl_type_layout = sl_layout->getTypeLayout(&sl_type);
+                if (sl_type_layout == nullptr)
+                {
+                    continue;
+                }
+
+                slang_target<slang_type_layout>& target = type.targets.emplace_back();
+                target.name = get_target_name(context.session_desc.targets[index_target].format);
+
+                const std::size_t layout_count = sl_type_layout->getCategoryCount();
+                target.layouts.reserve(layout_count);
+
+                for (std::size_t index = 0; index < layout_count; ++index)
+                {
+                    const slang::ParameterCategory category = sl_type_layout->getCategoryByIndex(index);
+                    slang_type_layout& type_layout = target.layouts.emplace_back();
+                    type_layout.unit = get_layout_unit(category);
+                    type_layout.size = sl_type_layout->getSize(category);
+                    type_layout.stride = sl_type_layout->getStride(category);
+                    type_layout.alignment = sl_type_layout->getAlignment(category);
                 }
             }
 
@@ -180,7 +272,7 @@ namespace spore::codegen
             return type;
         }
 
-        slang_entry_point make_entry_point(slang::IModule& sl_module, slang::IEntryPoint& sl_entry_point)
+        slang_entry_point make_entry_point(const slang_context& context, slang::IEntryPoint& sl_entry_point)
         {
             slang_entry_point entry_point;
 
@@ -195,7 +287,7 @@ namespace spore::codegen
                 {
                     if (slang::VariableReflection* sl_variable = sl_function->getParameterByIndex(index))
                     {
-                        entry_point.inputs.emplace_back(make_variable(sl_module, *sl_variable));
+                        entry_point.inputs.emplace_back(make_variable(context, *sl_variable));
                     }
                 }
 
@@ -214,20 +306,20 @@ namespace spore::codegen
             return entry_point;
         }
 
-        slang_module make_module(slang::IModule& sl_module)
+        slang_module make_module(const slang_context& context)
         {
             slang_module module;
-            module.path = sl_module.getFilePath();
+            module.path = context.module.getFilePath();
 
             SlangResult slang_result = SLANG_OK;
-            const std::size_t entry_point_num = static_cast<std::size_t>(sl_module.getDefinedEntryPointCount());
+            const std::size_t entry_point_num = static_cast<std::size_t>(context.module.getDefinedEntryPointCount());
 
             module.entry_points.reserve(entry_point_num);
 
             for (std::size_t index = 0; index < entry_point_num; ++index)
             {
                 slang::IEntryPoint* entry_point = nullptr;
-                slang_result = sl_module.getDefinedEntryPoint(index, &entry_point);
+                slang_result = context.module.getDefinedEntryPoint(index, &entry_point);
 
                 if (SLANG_FAILED(slang_result))
                 {
@@ -235,10 +327,10 @@ namespace spore::codegen
                     continue;
                 }
 
-                module.entry_points.emplace_back(make_entry_point(sl_module, *entry_point));
+                module.entry_points.emplace_back(make_entry_point(context, *entry_point));
             }
 
-            if (slang::DeclReflection* sl_decl = sl_module.getModuleReflection())
+            if (slang::DeclReflection* sl_decl = context.module.getModuleReflection())
             {
                 const std::size_t children_count = sl_decl->getChildrenCount();
 
@@ -251,10 +343,10 @@ namespace spore::codegen
                             case slang::DeclReflection::Kind::Namespace:
                                 break;
                             case slang::DeclReflection::Kind::Struct:
-                                module.types.emplace_back(make_type(sl_module, *sl_child_decl->getType()));
+                                module.types.emplace_back(make_type(context, *sl_child_decl->getType()));
                                 break;
                             case slang::DeclReflection::Kind::Variable:
-                                module.variables.emplace_back(make_variable(sl_module, *sl_child_decl->asVariable()));
+                                module.variables.emplace_back(make_variable(context, *sl_child_decl->asVariable()));
                                 break;
                             case slang::DeclReflection::Kind::Generic:
                                 break;
@@ -344,7 +436,13 @@ namespace spore::codegen
                 return false;
             }
 
-            modules.emplace_back(detail::make_module(*module));
+            const detail::slang_context context {
+                .module = *module,
+                .session = *session,
+                .session_desc = session_desc,
+            };
+
+            modules.emplace_back(detail::make_module(context));
         }
 
         return true;

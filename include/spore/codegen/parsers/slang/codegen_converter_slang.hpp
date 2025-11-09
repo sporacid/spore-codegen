@@ -56,23 +56,26 @@ namespace spore::codegen
         json["offset"] = value.offset;
     }
 
-    inline void to_json(nlohmann::json& json, const slang_variable& value)
+    template <typename layout_t>
+    void to_json(nlohmann::json& json, const slang_target<layout_t>& value)
     {
-        // json["type"] = value.type;
         json["name"] = value.name;
         json["layouts"] = value.layouts;
-        json["attributes"] = value.attributes;
+    }
 
-        if (value.type.has_value())
-        {
-            json["type"] = value.type.value();
-        }
+    inline void to_json(nlohmann::json& json, const slang_variable& value)
+    {
+        json["type"] = value.type;
+        json["name"] = value.name;
+        json["targets"] = value.targets;
+        json["attributes"] = value.attributes;
     }
 
     inline void to_json(nlohmann::json& json, const slang_type_layout& value)
     {
         json["unit"] = value.unit;
         json["size"] = value.size;
+        json["stride"] = value.stride;
         json["alignment"] = value.alignment;
     }
 
@@ -80,7 +83,7 @@ namespace spore::codegen
     {
         json["name"] = value.name;
         json["fields"] = value.fields;
-        json["layouts"] = value.layouts;
+        json["targets"] = value.targets;
         json["attributes"] = value.attributes;
     }
 

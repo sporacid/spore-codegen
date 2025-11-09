@@ -1,8 +1,9 @@
 #pragma once
 
 #include "spore/codegen/parsers/slang/ast/slang_attribute.hpp"
-#include "spore/codegen/parsers/slang/ast/slang_variable.hpp"
+#include "spore/codegen/parsers/slang/ast/slang_target.hpp"
 #include "spore/codegen/parsers/slang/ast/slang_type_layout.hpp"
+#include "spore/codegen/parsers/slang/ast/slang_variable.hpp"
 
 namespace spore::codegen
 {
@@ -10,7 +11,7 @@ namespace spore::codegen
     {
         std::string name;
         std::vector<slang_variable> fields;
-        std::vector<slang_type_layout> layouts;
+        std::vector<slang_target<slang_type_layout>> targets;
         std::vector<slang_attribute> attributes;
     };
 }
