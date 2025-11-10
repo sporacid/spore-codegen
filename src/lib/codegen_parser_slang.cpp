@@ -70,8 +70,26 @@ namespace spore::codegen
             return get_string(*type_name_blob);
         }
 
-        std::string get_target_name(const SlangCompileTarget sl_target)
+        std::string get_target_name(const slang::TargetDesc& sl_target_desc)
         {
+            SlangCompileTarget sl_target = sl_target_desc.format;
+            if (sl_target == SLANG_TARGET_UNKNOWN)
+            {
+                constexpr auto predicate = [](const slang::CompilerOptionEntry& entry) {
+                    return entry.name == slang::CompilerOptionName::Target;
+                };
+
+                const auto sl_target_option = std::ranges::find_if(
+                    sl_target_desc.compilerOptionEntries,
+                    sl_target_desc.compilerOptionEntries + sl_target_desc.compilerOptionEntryCount,
+                    predicate);
+
+                if (sl_target_option != nullptr)
+                {
+                    sl_target = static_cast<SlangCompileTarget>(sl_target_option->value.intValue0);
+                }
+            }
+
             switch (sl_target)
             {
                 case SLANG_GLSL:
@@ -200,7 +218,7 @@ namespace spore::codegen
                     }
 
                     slang_target<slang_variable_layout>& target = variable.targets.emplace_back();
-                    target.name = get_target_name(context.session_desc.targets[index_target].format);
+                    target.name = get_target_name(context.session_desc.targets[index_target]);
 
                     const std::size_t layout_count = sl_variable_layout->getCategoryCount();
                     target.layouts.reserve(layout_count);
@@ -263,7 +281,7 @@ namespace spore::codegen
                 }
 
                 slang_target<slang_type_layout>& target = type.targets.emplace_back();
-                target.name = get_target_name(context.session_desc.targets[index_target].format);
+                target.name = get_target_name(context.session_desc.targets[index_target]);
 
                 const std::size_t layout_count = sl_type_layout->getCategoryCount();
                 target.layouts.reserve(layout_count);
@@ -397,14 +415,8 @@ namespace spore::codegen
 
         slang::IGlobalSession& global_session = detail::get_global_session();
 
-        for (auto& arg : slang_args)
-        {
-            SPDLOG_INFO("arg: {}", arg);
-        }
-
-#if 1
         std::vector<const char*> args;
-        args.reserve(slang_args.size() + paths.size() + 1);
+        args.reserve(slang_args.size() + paths.size());
 
         constexpr auto transformer = [](const std::string& path) { return path.data(); };
         std::ranges::transform(slang_args, std::back_inserter(args), transformer);
@@ -420,21 +432,6 @@ namespace spore::codegen
             SPDLOG_ERROR("failed to parse slang arguments, error={}", slang::getLastInternalErrorMessage());
             return false;
         }
-#else
-        constexpr slang::TargetDesc target_descs[] {
-            slang::TargetDesc {
-                .format = SLANG_SPIRV,
-            },
-            slang::TargetDesc {
-                .format = SLANG_DXBC,
-            },
-        };
-
-        const slang::SessionDesc session_desc {
-            .targets = target_descs,
-            .targetCount = 2,
-        };
-#endif
 
         Slang::ComPtr<slang::ISession> session;
         slang_result = global_session.createSession(session_desc, session.writeRef());
@@ -444,31 +441,6 @@ namespace spore::codegen
             SPDLOG_ERROR("failed to create slang session, error={}", slang::getLastInternalErrorMessage());
             return false;
         }
-
-        // Slang::ComPtr<slang::ICompileRequest> compile_request;
-        // slang_result = session->createCompileRequest(compile_request.writeRef());
-        //
-        // if (SLANG_FAILED(slang_result))
-        // {
-        //     SPDLOG_ERROR("failed to create slang compile request, error={}", slang::getLastInternalErrorMessage());
-        //     return false;
-        // }
-        //
-        // slang_result = compile_request->processCommandLineArguments(args.data(), args.size());
-        //
-        // if (SLANG_FAILED(slang_result))
-        // {
-        //     SPDLOG_ERROR("failed to process slang compile request arguments, error={}", slang::getLastInternalErrorMessage());
-        //     return false;
-        // }
-
-        // compile_request->addCodeGenTarget(SLANG_SPIRV);
-
-        // std::vector<const slang::TargetDesc*> entries;
-        // for (auto i = 0; i < session_desc.targetCount; ++i)
-        // {
-        //     entries.push_back(session_desc.targets + i);
-        // }
 
         modules.reserve(paths.size());
 
