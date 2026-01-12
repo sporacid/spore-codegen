@@ -5,14 +5,12 @@
 #include <string>
 #include <vector>
 
-#include "glob/glob.h"
-#include "nlohmann/json.hpp"
-
 #include "spore/codegen/codegen_cache.hpp"
 #include "spore/codegen/codegen_config.hpp"
 #include "spore/codegen/codegen_data.hpp"
 #include "spore/codegen/codegen_error.hpp"
 #include "spore/codegen/codegen_impl.hpp"
+#include "spore/codegen/codegen_macros.hpp"
 #include "spore/codegen/codegen_options.hpp"
 #include "spore/codegen/codegen_version.hpp"
 #include "spore/codegen/misc/current_path_scope.hpp"
@@ -20,6 +18,11 @@
 #include "spore/codegen/utils/aggregates.hpp"
 #include "spore/codegen/utils/files.hpp"
 #include "spore/codegen/utils/strings.hpp"
+
+SPORE_CODEGEN_PUSH_DISABLE_WARNINGS
+#include "glob/glob.h"
+#include "nlohmann/json.hpp"
+SPORE_CODEGEN_POP_DISABLE_WARNINGS
 
 namespace spore::codegen
 {

@@ -217,22 +217,22 @@ namespace spore::codegen::strings
 
     inline bool regex_match(const std::string_view input, const std::string_view regex)
     {
-        const std::regex pattern(regex.cbegin(), regex.cend());
-        return std::regex_match(input.cbegin(), input.cend(), pattern);
+        const std::regex pattern(regex.begin(), regex.end());
+        return std::regex_match(input.begin(), input.end(), pattern);
     }
 
     template <typename callback_t>
-    void for_each_by_regex(const std::string_view input, const std::string_view regex, const callback_t&& callback)
+    void for_each_by_regex(const std::string_view input, const std::string_view regex, callback_t&& callback)
     {
-        const std::regex pattern(regex.cbegin(), regex.cend());
+        const std::regex pattern(regex.begin(), regex.end());
         std::match_results<std::string_view::const_iterator> matches {};
 
-        if (std::regex_search(input.cbegin(), input.cend(), matches, pattern))
+        if (std::regex_search(input.begin(), input.end(), matches, pattern))
         {
-            for (auto it = matches.cbegin() + 1; it < matches.cend(); ++it)
+            for (auto it_match = matches.begin() + 1; it_match < matches.end(); ++it_match)
             {
-                const auto match_view = std::string_view(it->first, it->length());
-                callback(match_view);
+                const std::string_view match {it_match->first, it_match->second};
+                callback(match);
             }
         }
     }
