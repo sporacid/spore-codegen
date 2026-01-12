@@ -187,10 +187,173 @@ namespace spore::codegen
             return attribute;
         }
 
+        template <typename slang_value_t>
+        slang_modifier make_modifiers(slang_value_t& sl_value)
+        {
+            slang_modifier modifiers = slang_modifier::none;
+
+            const auto add_modifier_if = [&](const slang_modifier modifier, const slang::Modifier::ID sl_modifier) {
+                if (sl_value.findModifier(sl_modifier) != nullptr)
+                {
+                    modifiers = modifiers | modifier;
+                }
+            };
+
+            add_modifier_if(slang_modifier::shared, slang::Modifier::Shared);
+            add_modifier_if(slang_modifier::no_diff, slang::Modifier::NoDiff);
+            add_modifier_if(slang_modifier::static_, slang::Modifier::Static);
+            add_modifier_if(slang_modifier::const_, slang::Modifier::Const);
+            add_modifier_if(slang_modifier::export_, slang::Modifier::Export);
+            add_modifier_if(slang_modifier::extern_, slang::Modifier::Extern);
+            add_modifier_if(slang_modifier::differentiable, slang::Modifier::Differentiable);
+            add_modifier_if(slang_modifier::mutating, slang::Modifier::Mutating);
+            add_modifier_if(slang_modifier::in, slang::Modifier::In);
+            add_modifier_if(slang_modifier::out, slang::Modifier::Out);
+            add_modifier_if(slang_modifier::in_out, slang::Modifier::InOut);
+
+            return modifiers;
+        }
+
+        slang_stage get_stage(const SlangStage sl_stage)
+        {
+            switch (sl_stage)
+            {
+                case SLANG_STAGE_NONE:
+                    return slang_stage::none;
+                case SLANG_STAGE_VERTEX:
+                    return slang_stage::vertex;
+                case SLANG_STAGE_HULL:
+                    return slang_stage::hull;
+                case SLANG_STAGE_DOMAIN:
+                    return slang_stage::domain;
+                case SLANG_STAGE_GEOMETRY:
+                    return slang_stage::geometry;
+                case SLANG_STAGE_FRAGMENT:
+                    return slang_stage::fragment;
+                case SLANG_STAGE_COMPUTE:
+                    return slang_stage::compute;
+                case SLANG_STAGE_RAY_GENERATION:
+                    return slang_stage::ray_generation;
+                case SLANG_STAGE_INTERSECTION:
+                    return slang_stage::ray_intersection;
+                case SLANG_STAGE_ANY_HIT:
+                    return slang_stage::ray_any_hit;
+                case SLANG_STAGE_CLOSEST_HIT:
+                    return slang_stage::ray_closest_hit;
+                case SLANG_STAGE_MISS:
+                    return slang_stage::ray_miss;
+                case SLANG_STAGE_CALLABLE:
+                    return slang_stage::callable;
+                case SLANG_STAGE_MESH:
+                    return slang_stage::mesh;
+                case SLANG_STAGE_AMPLIFICATION:
+                    return slang_stage::mesh_amplification;
+                case SLANG_STAGE_DISPATCH:
+                    return slang_stage::mesh_dispatch;
+                default:
+                    return slang_stage::unknown;
+            }
+        }
+
+        slang_image_format get_image_format(const SlangImageFormat sl_format)
+        {
+            switch (sl_format)
+            {
+                case SLANG_IMAGE_FORMAT_rgba32f:
+                    return slang_image_format::rgba32f;
+                case SLANG_IMAGE_FORMAT_rgba16f:
+                    return slang_image_format::rgba16f;
+                case SLANG_IMAGE_FORMAT_rg32f:
+                    return slang_image_format::rg32f;
+                case SLANG_IMAGE_FORMAT_rg16f:
+                    return slang_image_format::rg16f;
+                case SLANG_IMAGE_FORMAT_r11f_g11f_b10f:
+                    return slang_image_format::r11f_g11f_b10f;
+                case SLANG_IMAGE_FORMAT_r32f:
+                    return slang_image_format::r32f;
+                case SLANG_IMAGE_FORMAT_r16f:
+                    return slang_image_format::r16f;
+                case SLANG_IMAGE_FORMAT_rgba16:
+                    return slang_image_format::rgba16;
+                case SLANG_IMAGE_FORMAT_rgb10_a2:
+                    return slang_image_format::rgb10_a2;
+                case SLANG_IMAGE_FORMAT_rgba8:
+                    return slang_image_format::rgba8;
+                case SLANG_IMAGE_FORMAT_rg16:
+                    return slang_image_format::rg16;
+                case SLANG_IMAGE_FORMAT_rg8:
+                    return slang_image_format::rg8;
+                case SLANG_IMAGE_FORMAT_r16:
+                    return slang_image_format::r16;
+                case SLANG_IMAGE_FORMAT_r8:
+                    return slang_image_format::r8;
+                case SLANG_IMAGE_FORMAT_rgba16_snorm:
+                    return slang_image_format::rgba16_snorm;
+                case SLANG_IMAGE_FORMAT_rgba8_snorm:
+                    return slang_image_format::rgba8_snorm;
+                case SLANG_IMAGE_FORMAT_rg16_snorm:
+                    return slang_image_format::rg16_snorm;
+                case SLANG_IMAGE_FORMAT_rg8_snorm:
+                    return slang_image_format::rg8_snorm;
+                case SLANG_IMAGE_FORMAT_r16_snorm:
+                    return slang_image_format::r16_snorm;
+                case SLANG_IMAGE_FORMAT_r8_snorm:
+                    return slang_image_format::r8_snorm;
+                case SLANG_IMAGE_FORMAT_rgba32i:
+                    return slang_image_format::rgba32i;
+                case SLANG_IMAGE_FORMAT_rgba16i:
+                    return slang_image_format::rgba16i;
+                case SLANG_IMAGE_FORMAT_rgba8i:
+                    return slang_image_format::rgba8i;
+                case SLANG_IMAGE_FORMAT_rg32i:
+                    return slang_image_format::rg32i;
+                case SLANG_IMAGE_FORMAT_rg16i:
+                    return slang_image_format::rg16i;
+                case SLANG_IMAGE_FORMAT_rg8i:
+                    return slang_image_format::rg8i;
+                case SLANG_IMAGE_FORMAT_r32i:
+                    return slang_image_format::r32i;
+                case SLANG_IMAGE_FORMAT_r16i:
+                    return slang_image_format::r16i;
+                case SLANG_IMAGE_FORMAT_r8i:
+                    return slang_image_format::r8i;
+                case SLANG_IMAGE_FORMAT_rgba32ui:
+                    return slang_image_format::rgba32ui;
+                case SLANG_IMAGE_FORMAT_rgba16ui:
+                    return slang_image_format::rgba16ui;
+                case SLANG_IMAGE_FORMAT_rgb10_a2ui:
+                    return slang_image_format::rgb10_a2ui;
+                case SLANG_IMAGE_FORMAT_rgba8ui:
+                    return slang_image_format::rgba8ui;
+                case SLANG_IMAGE_FORMAT_rg32ui:
+                    return slang_image_format::rg32ui;
+                case SLANG_IMAGE_FORMAT_rg16ui:
+                    return slang_image_format::rg16ui;
+                case SLANG_IMAGE_FORMAT_rg8ui:
+                    return slang_image_format::rg8ui;
+                case SLANG_IMAGE_FORMAT_r32ui:
+                    return slang_image_format::r32ui;
+                case SLANG_IMAGE_FORMAT_r16ui:
+                    return slang_image_format::r16ui;
+                case SLANG_IMAGE_FORMAT_r8ui:
+                    return slang_image_format::r8ui;
+                case SLANG_IMAGE_FORMAT_r64ui:
+                    return slang_image_format::r64ui;
+                case SLANG_IMAGE_FORMAT_r64i:
+                    return slang_image_format::r64i;
+                case SLANG_IMAGE_FORMAT_bgra8:
+                    return slang_image_format::bgra8;
+                case SLANG_IMAGE_FORMAT_unknown:
+                default:
+                    return slang_image_format::unknown;
+            }
+        }
+
         slang_variable make_variable(const slang_context& context, slang::VariableReflection& sl_variable)
         {
             slang_variable variable;
             variable.name = sl_variable.getName();
+            variable.modifiers = make_modifiers(sl_variable);
 
             if (slang::TypeReflection* sl_type = sl_variable.getType())
             {
@@ -229,6 +392,8 @@ namespace spore::codegen
                         slang_variable_layout& variable_layout = target.layouts.emplace_back();
                         variable_layout.unit = get_layout_unit(category);
                         variable_layout.offset = sl_variable_layout->getOffset(category);
+                        variable_layout.stage = get_stage(sl_variable_layout->getStage());
+                        variable_layout.image_format = get_image_format(sl_variable_layout->getImageFormat());
                     }
                 }
             }
@@ -311,22 +476,28 @@ namespace spore::codegen
             return type;
         }
 
-        slang_entry_point make_entry_point(const slang_context& context, slang::IEntryPoint& sl_entry_point)
+        slang_entry_point make_entry_point(const slang_context& context, slang::IEntryPoint& sl_entry_point, const std::size_t entry_point_index)
         {
             slang_entry_point entry_point;
 
             if (slang::FunctionReflection* sl_function = sl_entry_point.getFunctionReflection())
             {
                 entry_point.name = sl_function->getName();
+                entry_point.modifiers = make_modifiers(*sl_function);
+
+                if (slang::TypeReflection* sl_return_type = sl_function->getReturnType())
+                {
+                    entry_point.return_type = sl_return_type->getName();
+                }
 
                 const std::size_t input_count = sl_function->getParameterCount();
-                entry_point.inputs.reserve(input_count);
+                entry_point.arguments.reserve(input_count);
 
                 for (std::size_t index = 0; index < input_count; ++index)
                 {
                     if (slang::VariableReflection* sl_variable = sl_function->getParameterByIndex(index))
                     {
-                        entry_point.inputs.emplace_back(make_variable(context, *sl_variable));
+                        entry_point.arguments.emplace_back(make_variable(context, *sl_variable));
                     }
                 }
 
@@ -340,6 +511,21 @@ namespace spore::codegen
                         entry_point.attributes.emplace_back(make_attribute(*sl_attribute));
                     }
                 }
+
+#if 0
+                // TODO @sporacid Can an entry point have different stages per target?
+                for (std::size_t index_target = 0; index_target < context.session_desc.targetCount; ++index_target)
+                {
+                    if (slang::ProgramLayout* sl_layout = context.module.getLayout(index_target))
+                    {
+                        if (slang::EntryPointLayout* sl_entry_point_layout = sl_layout->getEntryPointByIndex(entry_point_index))
+                        {
+                            entry_point.stage = get_stage(sl_entry_point_layout->getStage());
+                            break;
+                        }
+                    }
+                }
+#endif
             }
 
             return entry_point;
@@ -366,7 +552,7 @@ namespace spore::codegen
                     continue;
                 }
 
-                module.entry_points.emplace_back(make_entry_point(context, *entry_point));
+                module.entry_points.emplace_back(make_entry_point(context, *entry_point, index));
             }
 
             if (slang::DeclReflection* sl_decl = context.module.getModuleReflection())
@@ -399,6 +585,20 @@ namespace spore::codegen
                     }
                 }
             }
+
+#if 0
+            for (std::size_t index_target = 0; index_target < context.session_desc.targetCount; ++index_target)
+            {
+                if (slang::ProgramLayout* sl_layout = context.module.getLayout(index_target))
+                {
+                    Slang::ComPtr<slang::IBlob> blob;
+                    sl_layout->toJson(blob.writeRef());
+
+                    std::string value {(const char*) blob->getBufferPointer(), blob->getBufferSize()};
+                    SPDLOG_INFO("{}", value);
+                }
+            }
+#endif
 
             return module;
         }
